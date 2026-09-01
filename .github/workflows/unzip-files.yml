@@ -1,0 +1,27 @@
+name: Unzip Files
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'BLAGO-github.zip'
+
+jobs:
+  unzip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Unzip BLAGO-github.zip
+        run: |
+          cd ${{ github.workspace }}
+          unzip -o BLAGO-github.zip
+          ls -la
+      
+      - name: Commit extracted files
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add -A
+          git commit -m "Extract BLAGO-github.zip contents" || echo "No changes to commit"
+          git push
