@@ -1,0 +1,199 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { UIProvider } from "@/lib/context/UIContext";
+import { useGameStore, startLocalPersist } from "@/lib/stores/gameStore";
+import { useVillage } from "@/lib/hooks/useVillage";
+import { useMarket } from "@/lib/hooks/useMarket";
+import { useCloudSync } from "@/lib/hooks/useCloudSync";
+import { useFullscreen, requestNativeFullscreen } from "@/lib/hooks/useFullscreen";
+import { useSlotStore } from "@/lib/stores/slotStore";
+import { Header } from "./Header";
+import { AppNav } from "./AppNav";
+import { SlotScreen } from "./SlotScreen";
+import { VillageScreen } from "./VillageScreen";
+import { MissionsScreen } from "./MissionsScreen";
+import { ShopScreen } from "./ShopScreen";
+import { SocialHub } from "./SocialHub";
+import { LevelUpToast } from "./LevelUpToast";
+import { DailyRewardModal } from "./DailyRewardModal";
+import { RaidModal } from "./RaidModal";
+import { ScreenPager } from "./ScreenPager";
+import { type TabId } from "@/lib/game/constants";
+import { setMuted, unlockAudio, startBgm } from "@/lib/game/audio";
+import { SAVE_KEYS } from "@/lib/game/persist";
+import { ART, CREDITS, preloadArt } from "@/lib/game/art";
+import { LiveShell } from "@/lib/multiplayer";
+import { LiveTicker } from "./LiveTicker";
+import { OnboardModal } from "./OnboardModal";
+import { VideoLoop } from "./VideoLoop";
+import { APP_VERSION } from "@/lib/game/version";
+
+function GameInner({
+  started,
+  muted,
+  onToggleMute,
+}: {
+  started: boolean;
+  muted: boolean;
+  onToggleMute: () => void;
+}) {
+  const ucitavam = useGameStore((s) => s.ucitavam);
+  const ucitaj = useGameStore((s) => s.ucitaj);
+  const [tab, setTab] = useState<TabId>("automat");
+  const shellRef = useRef<HTMLDivElement>(null);
+  const { native, canNative, toggle: toggleFs } = useFullscreen(shellRef);
+  const raidAktivan = useSlotStore((s) => s.raidAktivan);
+  const setRaidAktivan = useSlotStore((s) => s.setRaidAktivan);
+  const ukupnoVrtnji = useGameStore((s) => s.ukupnoVrtnji);
+  const [onboard, setOnboard] = useState(false);
+  useVillage();
+  useMarket();
+  useCloudSync();
+
+  useEffect(() => {
+    startBgm(tab === "selo" ? "selo" : "igra");
+  }, [tab]);
+
+  useEffect(() => {
+    startLocalPersist();
+    ucitaj();
+  }, [ucitaj]);
+
+  useEffect(() => {
+    if (!started || ucitavam) return;
+    const seen = window.localStorage.getItem(SAVE_KEYS.onboard);
+    if (!seen && ukupnoVrtnji === 0) setOnboard(true);
+  }, [started, ucitavam, ukupnoVrtnji]);
+
+  const panes = useMemo(
+    () => [
+      { id: "automat" as const, node: <SlotScreen /> },
+      { id: "selo" as const, node: <VillageScreen /> },
+      { id: "misije" as const, node: <MissionsScreen /> },
+      { id: "trznica" as const, node: <ShopScreen /> },
+      { id: "ceh" as const, node: <SocialHub /> },
+    ],
+    [],
+  );
+
+  if (!started || ucitavam) {
+    return <Splash loading={started && ucitavam} />;
+  }
+
+  return (
+    <LiveShell>
+    <div className="atmosphere relative flex h-dvh flex-col overflow-hidden text-ink">
+      <div className="sparkle-field" aria-hidden />
+      <div
+        ref={shellRef}
+        className="game-shell relative z-0 mx-auto flex h-dvh w-full max-w-lg flex-1 flex-col"
+      >
+        <Header
+          muted={muted}
+          onToggleMute={onToggleMute}
+          nativeFs={native}
+          canNativeFs={canNative}
+          onToggleFullscreen={() => void toggleFs()}
+        />
+        <LiveTicker />
+        <ScreenPager tab={tab} onTab={setTab} panes={panes} />
+        <AppNav tab={tab} onTab={setTab} />
+      </div>
+      {!onboard && <DailyRewardModal />}
+      <OnboardModal open={onboard} onDone={() => setOnboard(false)} />
+      <RaidModal vidljiv={raidAktivan} onZatvori={() => setRaidAktivan(false)} />
+      <LevelUpToast />
+    </div>
+    </LiveShell>
+  );
+}
+
+function Splash({ loading }: { loading: boolean }) {
+  return (
+    <div className="splash-scene relative flex h-dvh w-full flex-col overflow-hidden bg-void">
+      <img
+        src={ART.splash}
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover object-[center_28%]"
+      />
+      <VideoLoop
+        className="absolute inset-0 opacity-35 mix-blend-screen"
+        src={ART.duga}
+      />
+      <div className="splash-veil absolute inset-0" />
+      <div className="relative mt-auto flex flex-col items-center px-6 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-10 text-center">
+        <p className="text-[11px] font-bold tracking-[0.46em] text-gold uppercase">
+          kaubojski automat · beta
+        </p>
+        <h1 className="wordmark wordmark-bounce relative mt-2 text-6xl tracking-[0.2em]">BLAGO</h1>
+        <p className="relative mt-2 text-sm font-bold tracking-[0.32em] text-ink/90 uppercase">
+          Vrti · Gradi · Traži blago
+        </p>
+        {loading ? (
+          <p className="relative mt-8 text-xs font-bold tracking-widest text-volt">Učitavanje…</p>
+        ) : (
+          <span className="cta-bounce relative mt-8 inline-flex min-h-12 items-center rounded-full border border-gold/55 bg-gold/18 px-8 text-sm font-bold tracking-[0.24em] text-gold uppercase">
+            Dodirni za ulaz
+          </span>
+        )}
+        <p className="relative mt-5 max-w-[18rem] text-[10px] font-bold leading-relaxed tracking-[0.12em] text-ink/50">
+          {APP_VERSION} · {CREDITS}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export function GameApp() {
+  const [started, setStarted] = useState(false);
+  const [muted, setMutedState] = useState(false);
+
+  useEffect(() => {
+    document.documentElement.classList.add("is-fs");
+    document.body.classList.add("is-fs");
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem(SAVE_KEYS.mute);
+    if (saved === "1") {
+      setMutedState(true);
+      setMuted(true);
+    }
+  }, []);
+
+  const start = () => {
+    unlockAudio();
+    startBgm("igra");
+    preloadArt();
+    requestNativeFullscreen(document.documentElement);
+    setStarted(true);
+  };
+
+  const toggleMute = () => {
+    const next = !muted;
+    setMutedState(next);
+    setMuted(next);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(SAVE_KEYS.mute, next ? "1" : "0");
+    }
+  };
+
+  if (!started) {
+    return (
+      <button
+        type="button"
+        className="block h-dvh w-full bg-void"
+        onPointerDown={start}
+        aria-label="Pokreni igru"
+      >
+        <Splash loading={false} />
+      </button>
+    );
+  }
+
+  return (
+    <UIProvider>
+      <GameInner started muted={muted} onToggleMute={toggleMute} />
+    </UIProvider>
+  );
+}

@@ -1,0 +1,1 @@
+export const WILD_BOOST_CHANCE_PER_LEVEL = 0.04;
