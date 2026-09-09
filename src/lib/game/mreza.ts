@@ -43,10 +43,50 @@ export type MrezaUlaz = {
 
 export const BAZA_SELO = 20;
 
+export const STAZA_RED: Array<keyof Gradevine> = [
+  "kuca",
+  "blok",
+  "lov",
+  "mesnica",
+  "pekara",
+  "salun",
+  "karte",
+  "bunar",
+  "mlin",
+  "pilana",
+  "kamenolom",
+  "rudnik",
+  "ured",
+  "staja",
+  "korali",
+  "staza",
+  "farma",
+  "ordinacija",
+  "trgovina",
+  "banka",
+];
+
 const ZGRADA_XY: Record<keyof Gradevine, { x: number; y: number }> = {
-  pilana: { x: 22, y: 28 },
-  kamenolom: { x: 78, y: 26 },
-  rudnik: { x: 80, y: 62 },
+  kuca: { x: 18, y: 58 },
+  blok: { x: 26, y: 46 },
+  lov: { x: 34, y: 74 },
+  mesnica: { x: 42, y: 82 },
+  pekara: { x: 24, y: 82 },
+  salun: { x: 50, y: 52 },
+  karte: { x: 42, y: 40 },
+  bunar: { x: 64, y: 34 },
+  mlin: { x: 74, y: 22 },
+  pilana: { x: 82, y: 58 },
+  kamenolom: { x: 76, y: 30 },
+  rudnik: { x: 90, y: 42 },
+  ured: { x: 50, y: 34 },
+  staja: { x: 8, y: 44 },
+  korali: { x: 6, y: 58 },
+  staza: { x: 4, y: 32 },
+  farma: { x: 14, y: 72 },
+  ordinacija: { x: 58, y: 28 },
+  trgovina: { x: 36, y: 36 },
+  banka: { x: 62, y: 42 },
 };
 
 function clampK(n: number) {
@@ -70,7 +110,7 @@ function jedinstveneMete(kronika: KronikaZapis[]) {
   const seen = new Set<string>();
   const out: KronikaZapis[] = [];
   for (const z of kronika) {
-    const k = z.metaIme.trim();
+    const k = (z.metaIme || "").trim();
     if (!k || seen.has(k)) continue;
     seen.add(k);
     out.push(z);
@@ -107,20 +147,24 @@ export function izgradiMrezu(s: MrezaUlaz): { cvorovi: MrezaCvor[]; veze: MrezaV
     const prod = !gori && lv > 0 ? lv * z.bazaProizvodnja * pasivni : 0;
     const kap = z.maxLv * z.bazaProizvodnja * 2.5;
     const id = `z:${z.id}`;
+    const xy = ZGRADA_XY[z.id] ?? { x: 50, y: 50 };
     kv[id] = gori ? 0 : clampK((lv / z.maxLv) * 100);
     cvorovi.push({
       id,
       naziv: z.naziv,
       vrsta: "zgrada",
-      art: MREZA_ART[z.id],
-      x: ZGRADA_XY[z.id].x,
-      y: ZGRADA_XY[z.id].y,
+      art: MREZA_ART[z.id] ?? MREZA_ART.selo,
+      x: xy.x,
+      y: xy.y,
       kvaliteta: kv[id],
       akcija: "zgrada",
       zgradaId: z.id,
     });
     const j = jacinaProizvodnje(prod, kap);
     if (j > 0) dodaj(id, "selo", 1, j, `Proizvodnja ${z.naziv.toLowerCase()}`);
+    else if (lv > 0 && !gori) {
+      dodaj(id, "selo", 1, 0.08 + 0.12 * (lv / z.maxLv), `${z.naziv} drži kaubu`);
+    }
   }
 
   kv.oklop = clampK((s.stitovi / Math.max(1, maxStit)) * 100);
@@ -135,21 +179,6 @@ export function izgradiMrezu(s: MrezaUlaz): { cvorovi: MrezaCvor[]; veze: MrezaV
   });
   if (s.stitovi > 0) {
     dodaj("oklop", "selo", 1, 0.2 + 0.1 * (s.stitovi / maxStit), "Štit drži bazu");
-  }
-
-  if (s.klan.naziv) {
-    kv.klan = clampK(24 + s.klan.razina * 14 + s.klan.xp / 80);
-    cvorovi.push({
-      id: "klan",
-      naziv: s.klan.naziv,
-      vrsta: "klan",
-      art: MREZA_ART.klan,
-      x: 88,
-      y: 46,
-      kvaliteta: kv.klan,
-      akcija: "ceh",
-    });
-    dodaj("klan", "selo", 1, 0.12 + 0.03 * s.klan.razina, "Ceh drži leđa");
   }
 
   const stav = stavOd(s.stavSela);

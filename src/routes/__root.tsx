@@ -15,7 +15,7 @@ export const Route = createRootRoute({
       },
       { title: APP_NAME },
       { name: "description", content: "Kaubojski automat — vrti, gradi kaubu i traži blago." },
-      { name: "theme-color", content: "#1A4A46" },
+      { name: "theme-color", content: "#2B1814" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { name: "mobile-web-app-capable", content: "yes" },
     ],

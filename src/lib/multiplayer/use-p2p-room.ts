@@ -50,8 +50,20 @@ export function useP2PRoom(options: UseP2PRoomOptions = {}): P2PRoomHandle {
       onConnected: () => setJoined(true),
     });
     roomRef.current = p2p;
-    void p2p.join();
+    let pokrenuto = false;
+    const start = () => {
+      if (pokrenuto || roomRef.current !== p2p) return;
+      pokrenuto = true;
+      void p2p.join();
+    };
+    const delay = window.setTimeout(start, 3500);
+    let idleId = 0;
+    if ("requestIdleCallback" in window) {
+      idleId = window.requestIdleCallback(start, { timeout: 6000 });
+    }
     return () => {
+      window.clearTimeout(delay);
+      if (idleId && "cancelIdleCallback" in window) window.cancelIdleCallback(idleId);
       roomRef.current = null;
       p2p.close();
     };

@@ -42,6 +42,8 @@ export type Misija = {
   nagrada: Nagrada;
   trenutno: number;
   zavrseno: boolean;
+  likId?: string;
+  likIme?: string;
 };
 
 export type KlanZadatak = {
@@ -65,12 +67,50 @@ export type Klan = {
 
 export type Resursi = { drvo: number; kamen: number; zeljezo: number };
 
-export type Gradevine = { pilana: number; kamenolom: number; rudnik: number };
+export type Gradevine = {
+  pilana: number;
+  kamenolom: number;
+  rudnik: number;
+  kuca: number;
+  blok: number;
+  salun: number;
+  karte: number;
+  bunar: number;
+  mlin: number;
+  lov: number;
+  mesnica: number;
+  pekara: number;
+  ured: number;
+  staja: number;
+  korali: number;
+  staza: number;
+  farma: number;
+  ordinacija: number;
+  trgovina: number;
+  banka: number;
+};
+
+export type Karavana = {
+  ciljUid: string;
+  ciljIme: string;
+  start: number;
+  kraj: number;
+  teret: Resursi;
+  vozacId: string;
+  vozacIme: string;
+};
+
+export type Gradnja = {
+  zgrada: keyof Gradevine;
+  ciljLv: number;
+  start: number;
+  kraj: number;
+  majstorId: string;
+  majstorIme: string;
+};
 
 export type Ostecenja = {
-  pilana: boolean;
-  kamenolom: boolean;
-  rudnik: boolean;
+  [K in keyof Gradevine]: boolean;
 };
 
 export type Razine = {
@@ -89,6 +129,7 @@ export type Zgrada = {
   maxLv: number;
   ikona: LucideIcon;
   bazaBoja: string;
+  tip: "resurs" | "kuca" | "blok" | "salun" | "bunar" | "mlin" | "lov" | "mesnica" | "pekara" | "karte" | "ured" | "staja" | "korali" | "staza" | "farma" | "ordinacija" | "trgovina" | "banka";
   cijena: (lv: number) => {
     zlato: number;
     drvo: number;
@@ -98,14 +139,33 @@ export type Zgrada = {
   bazaProizvodnja: number;
 };
 
+export type SkinTema = {
+  void: string;
+  panel: string;
+  panel2: string;
+  line: string;
+  ink: string;
+  dim: string;
+  gold: string;
+  volt: string;
+  energy: string;
+  xp: string;
+  quest: string;
+  clan: string;
+  prestige: string;
+  aurora: string;
+};
+
 export type Skin = {
   id: string;
   naziv: string;
+  opis: string;
   ikona: LucideIcon;
   boja: string;
   nijansa: string;
   koprena: number;
   cijenaDijamanti: number;
+  tema: SkinTema;
 };
 
 export type Alat = {
@@ -124,6 +184,9 @@ export type RaidMeta = {
   igracRazina: number;
   resursi: Resursi;
   uzivo?: boolean;
+  kauba?: string;
+  serif?: string;
+  rec?: string;
 };
 
 export type DebriefStav = "osvetnik" | "strateg" | "pljackas";
@@ -133,8 +196,9 @@ export type KronikaZapis = {
   t: number;
   metaIme: string;
   pobjeda: boolean;
-  stav: DebriefStav;
+  stav: DebriefStav | null;
   recap: string;
+  vrsta?: "pohod" | "obrana" | "selidba" | "gradnja" | "dogadaj" | "dostignuce";
 };
 
 export type LjestvicaRed = {

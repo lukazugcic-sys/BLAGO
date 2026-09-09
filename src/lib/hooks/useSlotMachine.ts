@@ -13,26 +13,38 @@ import {
   izgradiTezinskiPool,
 } from "@/lib/game/constants";
 import {
-  izracunajMaxEnergiju,
+  capEnergija,
   izracunajMaxStitova,
   izracunajPrestigeMnozitelj,
   izracunajSansuZaDobitak,
+  modifikatorBlagaZaUsko,
   LINE_MULT,
   JACKPOT_BONUS,
   GAMBLE_MAX,
   GAMBLE_WIN_P,
   izracunajXpVrtnje,
+  serifDrziRed,
 } from "@/lib/game/economy";
 import { delay } from "@/lib/game/helpers";
 import { playSfx, vibrate } from "@/lib/game/audio";
+import { serif, dodajXpLiku, jacina, imaBuff, imaManu, kaubaOd } from "@/lib/game/ljudi";
+import { tjedanSad } from "@/lib/game/tjedan";
+import { alatLv, POJACALO_PER_LV, SKULL_GOLD_LOSS, LUCKY_WILD_P, FORCED_P5, FORCED_P4 } from "@/lib/game/tuning";
 import { dohvatiAktivniDogadaj } from "@/lib/game/sezonalniDogadaji";
 import type { Dobitak, SimbolId } from "@/lib/game/types";
 import type { SezonalniDogadaj } from "@/lib/game/sezonalniDogadaji";
 
-const BAZA_POOL = izgradiTezinskiPool();
-
-const poolZa = (dogadaj: SezonalniDogadaj | null): SimbolId[] =>
-  dogadaj?.modifikatorBlaga ? izgradiTezinskiPool(dogadaj.modifikatorBlaga) : BAZA_POOL;
+function poolZaSpin(
+  dogadaj: SezonalniDogadaj | null,
+  usko: Parameters<typeof modifikatorBlagaZaUsko>[0],
+  lucky: boolean,
+): SimbolId[] {
+  return izgradiTezinskiPool({
+    ...modifikatorBlagaZaUsko(usko),
+    ...(dogadaj?.modifikatorBlaga ?? {}),
+    ...(lucky ? { wild: 7, energy: 1.2 } : {}),
+  });
+}
 
 export function useSlotMachine() {
   const busy = useRef(false);
@@ -45,11 +57,10 @@ export function useSlotMachine() {
     vibrate(20);
     const gs = useGameStore.getState();
     const maxStitova = izracunajMaxStitova(gs.razine.oklop || 0);
-    const maxEnergija = izracunajMaxEnergiju(gs.razine.baterija || 0);
     useGameStore.setState((s) => ({
       zlato: s.zlato + d.zlato,
       dijamanti: s.dijamanti + d.dijamanti,
-      energija: Math.min(maxEnergija, s.energija + d.energija),
+      energija: capEnergija(s.energija + d.energija, gs.razine.baterija || 0),
       stitovi: Math.min(maxStitova, s.stitovi + d.stitovi),
       resursi: {
         drvo: s.resursi.drvo + d.drvo,
@@ -63,7 +74,7 @@ export function useSlotMachine() {
       gs.azurirajMisiju("zlato", d.zlato);
       gs.azurirajKlanZadatak("zlato", d.zlato);
       const ukupno = useGameStore.getState().ukupnoZlata;
-      useGameStore.getState().provjeriDostignuca(undefined, ukupno, undefined, undefined);
+      useGameStore.getState().provjeriDostignuca();
     }
     if (d.linije > 0) {
       gs.azurirajMisiju("dobitak", d.linije);
@@ -147,7 +158,7 @@ export function useSlotMachine() {
     }));
     useGameStore.getState().azurirajMisiju("spin");
     useGameStore.getState().azurirajKlanZadatak("spin");
-    useGameStore.getState().provjeriDostignuca(novaVrtnja, undefined, undefined, undefined);
+    useGameStore.getState().provjeriDostignuca();
     if (jeFreeSpin) useGameStore.getState().azurirajMisiju("luckySpin");
 
     useSlotStore.setState({
@@ -166,9 +177,11 @@ export function useSlotMachine() {
     const finalDelay = turboRezim ? 90 : 160;
 
     const aktivniDogadaj = dohvatiAktivniDogadaj();
-    const simbolPool = poolZa(aktivniDogadaj);
+    const kauba = kaubaOd(gs);
+    const simbolPool = poolZaSpin(aktivniDogadaj, kauba.usko, jeFreeSpin);
     const scrambleBuf = useSlotStore.getState().simboli.slice();
     const scramble = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
       const spinning = useSlotStore.getState().spinningCols;
       for (let col = 0; col < 5; col++) {
         if (!spinning[col]) continue;
@@ -177,15 +190,16 @@ export function useSlotMachine() {
         }
       }
       useSlotStore.getState().setSimboli(scrambleBuf.slice());
-    }, 70);
+    }, turboRezim ? 90 : 110);
 
     await delay(spinDelay);
 
     try {
       const gs2 = useGameStore.getState();
-      const wildBoostLevel = gs2.razine.wildBoost || 0;
+      const wildBoostLevel = alatLv("wildBoost", gs2.razine.wildBoost || 0);
       const wildBoostChance = wildBoostLevel * WILD_BOOST_CHANCE_PER_LEVEL;
-      const sansaZaDobitak = izracunajSansuZaDobitak(gs2.razine.sreca || 0);
+      const sansaZaDobitak =
+        izracunajSansuZaDobitak(gs2.razine.sreca || 0) + jacina(gs2.ljudi, "sreca") * 0.008;
       const prestigeMnozitelj = izracunajPrestigeMnozitelj(gs2.prestigeRazina);
       const winStreakMultiplier =
         1 + Math.min(gs2.winStreak, MAX_WIN_STREAK) * STREAK_BONUS_PER_WIN;
@@ -194,9 +208,17 @@ export function useSlotMachine() {
       const noviSimboli: SimbolId[] = Array(15)
         .fill(null)
         .map(() => {
-          if (Math.random() < wildBoostChance) return "wild";
+          const luckyWild = jeFreeSpin && Math.random() < LUCKY_WILD_P;
+          if (luckyWild || Math.random() < wildBoostChance) return "wild";
           return simbolPool[Math.floor(Math.random() * simbolPool.length)]!;
         });
+
+      if (jeFreeSpin) {
+        const extra = 3 + Math.floor(Math.random() * 3);
+        for (let k = 0; k < extra; k++) {
+          noviSimboli[Math.floor(Math.random() * 15)] = "wild";
+        }
+      }
 
       const linije = [
         [5, 6, 7, 8, 9],
@@ -211,7 +233,7 @@ export function useSlotMachine() {
         const dob = ponudjenoBlago[Math.floor(Math.random() * ponudjenoBlago.length)]!;
         const rLinija = linije[Math.floor(Math.random() * linije.length)]!;
         const rand = Math.random();
-        const raspon = rand > 0.97 ? [0, 1, 2, 3, 4] : rand > 0.78 ? [0, 1, 2, 3] : [0, 1, 2];
+        const raspon = rand > 1 - FORCED_P5 ? [0, 1, 2, 3, 4] : rand > 1 - FORCED_P5 - FORCED_P4 ? [0, 1, 2, 3] : [0, 1, 2];
         raspon.forEach((i) => {
           noviSimboli[rLinija[i]!] = dob;
         });
@@ -282,27 +304,20 @@ export function useSlotMachine() {
           if (targetSymbol === "shield" && !isAllWilds) {
             ukupnoStitova += (ulog >= 10 ? 2 : 1) * (consecutiveCount - 2);
           } else if (targetSymbol === "energy" && !isAllWilds) {
-            ukupnoEnergije += Math.max(
+            const vrtnje = consecutiveCount === 5 ? 5 : consecutiveCount === 4 ? 3 : 2;
+            ukupnoEnergije += vrtnje * Math.max(1, ulog);
+          } else if (targetSymbol === "gem" || isAllWilds) {
+            const gemAmt = Math.max(
               1,
               Math.floor(
-                detalji.baza *
-                  ulog *
-                  0.5 *
+                (isAllWilds ? 2 : 1) *
+                  (1 + ulog * 0.15) *
                   multiplier *
+                  jackpotBonus *
                   prestigeMnozitelj *
                   winStreakMultiplier *
                   eventMnozitelj,
               ),
-            );
-          } else if (targetSymbol === "gem" || isAllWilds) {
-            const gemAmt = Math.floor(
-              (isAllWilds ? 5 : detalji.baza) *
-                (ulog * 0.1) *
-                multiplier *
-                jackpotBonus *
-                prestigeMnozitelj *
-                winStreakMultiplier *
-                eventMnozitelj,
             );
             ukupnoDijamanata += gemAmt;
           } else {
@@ -311,7 +326,7 @@ export function useSlotMachine() {
                 ulog *
                 multiplier *
                 jackpotBonus *
-                (1 + (gs2.razine.pojacalo || 0) * 0.1) *
+                (1 + alatLv("pojacalo", gs2.razine.pojacalo || 0) * POJACALO_PER_LV + jacina(gs2.ljudi, "plijen") * 0.03) *
                 prestigeMnozitelj *
                 winStreakMultiplier *
                 eventMnozitelj,
@@ -351,6 +366,11 @@ export function useSlotMachine() {
         });
         useGameStore.setState({ winStreak: noviWinStreak });
         if (noviWinStreak >= 3) useGameStore.getState().azurirajMisiju("streak");
+        useGameStore.getState().uhvatiPotjernicu({
+          lucky: jeFreeSpin || tjedanSad().vrsta === "sajam",
+          linije: linijaDobitnih,
+          jackpot: jackpotLinija,
+        });
 
         if (jackpotLinija) {
           hitstop(140, "slot");
@@ -394,18 +414,32 @@ export function useSlotMachine() {
           flash("rgba(244, 63, 94, 0.55)", "slot");
           playSfx("skull");
           vibrate(50);
-          const gubitakZlata = Math.floor(gs3.zlato * (0.05 * brojLubanja));
+          const gubitakZlata = Math.floor(gs3.zlato * (SKULL_GOLD_LOSS * brojLubanja));
           novoZlato = Math.max(0, gs3.zlato - gubitakZlata);
           noviStitovi = 0;
           const izgradeneINeostecene = ZGRADE.filter(
-            (zg) => gs3.gradevine[zg.id] > 0 && !gs3.ostecenja[zg.id],
+            (zg) => zg.tip === "resurs" && gs3.gradevine[zg.id] > 0 && !gs3.ostecenja[zg.id],
           );
           if (brojLubanja >= 4 && izgradeneINeostecene.length > 0) {
-            const meta =
-              izgradeneINeostecene[Math.floor(Math.random() * izgradeneINeostecene.length)]!;
-            ostecenja = { ...gs3.ostecenja, [meta.id]: true };
-            otvoriRaid = true;
-            novaPoruka = `KATASTROFA! −${gubitakZlata} zlata I OŠTEĆENA ${meta.naziv.toUpperCase()}!`;
+            const tko = serif(gs3.ljudi);
+            const drzi =
+              serifDrziRed(gs3.gradevine.ured || 0, tko?.razina ?? 0, gs3.stanovnici) +
+              (tko && imaBuff(tko, "obrana") ? 0.1 : 0) +
+              (tko && imaManu(tko, "obrana") ? -0.08 : 0) +
+              jacina(gs3.ljudi, "red") * 0.04 +
+              gs3.zamjenici.filter((z) => z.spreman).length * 0.06;
+            if (tko && Math.random() < drzi) {
+              novaPoruka = `${tko.ime} je zaustavio pljačku.`;
+              useGameStore.setState({
+                ljudi: gs3.ljudi.map((p) => (p.id === tko.id ? dodajXpLiku(p, 8) : p)),
+              });
+            } else {
+              const meta =
+                izgradeneINeostecene[Math.floor(Math.random() * izgradeneINeostecene.length)]!;
+              ostecenja = { ...gs3.ostecenja, [meta.id]: true };
+              otvoriRaid = true;
+              novaPoruka = `KATASTROFA! −${gubitakZlata} zlata I OŠTEĆENA ${meta.naziv.toUpperCase()}!`;
+            }
           } else {
             novaPoruka = `NAPAD! ODUZETO ${gubitakZlata} ZLATA`;
           }
@@ -416,6 +450,12 @@ export function useSlotMachine() {
           const steta = Math.min(gs3.stitovi, Math.floor(brojLubanja / 2) || 1);
           noviStitovi = gs3.stitovi - steta;
           novaPoruka = `OBRANA AKTIVNA! −${steta} ŠTITA`;
+          const tko = serif(gs3.ljudi);
+          if (tko) {
+            useGameStore.setState({
+              ljudi: gs3.ljudi.map((p) => (p.id === tko.id ? dodajXpLiku(p, 4) : p)),
+            });
+          }
         }
         const skullP = noviSimboli
           .map((v, i) => (v === "skull" ? i : null))

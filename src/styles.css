@@ -1,26 +1,27 @@
 @import "tailwindcss";
 
 @theme {
-  --color-void: #1a4a46;
-  --color-panel: #235851;
-  --color-panel-2: #2e6c64;
-  --color-line: rgb(255 206 120 / 0.42);
-  --color-ink: #fff1d4;
-  --color-dim: #d7c6a4;
-  --color-gold: #ffc43a;
-  --color-volt: #d4e14a;
-  --color-ruby: #ff6140;
-  --color-ice: #6ec9b8;
-  --color-gem: #e28aa0;
-  --color-wood: #e08a3c;
-  --color-stone: #d4c4a8;
-  --color-iron: #ece2cc;
-  --color-xp: #9ad64a;
-  --color-quest: #f0a03a;
-  --color-clan: #6ec9b8;
-  --color-prestige: #ffc43a;
-  --color-gear: #7ecfb8;
-  --color-aurora: #5eb8a8;
+  --color-void: #24140c;
+  --color-panel: #5a321c;
+  --color-panel-2: #6e3d22;
+  --color-line: rgb(255 210 100 / 0.45);
+  --color-ink: #fff8e8;
+  --color-dim: #f0d4a8;
+  --color-gold: #ffd24a;
+  --color-volt: #ffbf3a;
+  --color-energy: #ff6a18;
+  --color-ruby: #ff6b73;
+  --color-ice: #5ec8ff;
+  --color-gem: #ff5ab4;
+  --color-wood: #f4a24a;
+  --color-stone: #e4d8c4;
+  --color-iron: #d0daf0;
+  --color-xp: #8cff5a;
+  --color-quest: #ff9a3a;
+  --color-clan: #5ec8ff;
+  --color-prestige: #ffd24a;
+  --color-gear: #7ed4c0;
+  --color-aurora: #ff8a6a;
 
   --font-display: "Cinzel Decorative", "Cinzel", "Times New Roman", serif;
   --font-sans: "Barlow Condensed", "Segoe UI", sans-serif;
@@ -48,6 +49,7 @@
     height: 100%;
     background: var(--color-void);
     color: var(--color-ink);
+    transition: background-color 480ms ease, color 480ms ease;
   }
 
   body {
@@ -69,14 +71,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-
   .pager-track {
     transition: none !important;
   }
@@ -116,6 +110,12 @@
   .mreza-veza-puls,
   .mreza-cvor-kriza,
   .mreza-ispis li,
+  .king-staza,
+  .king-pin,
+  .king-pin-on,
+  .king-satelit,
+  .king-lik,
+  .faro-mijesaj,
   .token-bob,
   .nav-bounce,
   .wordmark-bounce,
@@ -129,19 +129,16 @@
 
 @keyframes reel-cycle {
   0% {
-    transform: translateY(-10%);
-    filter: blur(2px);
-    opacity: 0.45;
+    transform: translateY(-8%);
+    opacity: 0.55;
   }
   50% {
-    transform: translateY(10%);
-    filter: blur(3px);
-    opacity: 0.75;
+    transform: translateY(8%);
+    opacity: 0.85;
   }
   100% {
-    transform: translateY(-10%);
-    filter: blur(2px);
-    opacity: 0.45;
+    transform: translateY(-8%);
+    opacity: 0.55;
   }
 }
 
@@ -262,49 +259,70 @@
   animation: reel-cycle 0.09s linear infinite;
 }
 
-.slot-win {
-  animation: win-pulse 0.55s cubic-bezier(0.34, 1.36, 0.64, 1) 2;
+.slot-token {
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid color-mix(in oklab, var(--color-gold) 78%, white 6%);
+  background-color: #24140c;
+  background-image:
+    radial-gradient(circle at 30% 22%, rgb(255 248 232 / 0.34), transparent 42%),
+    radial-gradient(circle at 50% 72%, color-mix(in oklab, var(--sym, var(--color-gold)) 52%, #1c0e08), #120806 78%);
+  box-shadow:
+    0 0 0 1.5px color-mix(in oklab, var(--sym, var(--color-gold)) 40%, #6a4218),
+    inset 0 1px 0 rgb(255 255 255 / 0.42),
+    inset 0 -8px 12px rgb(0 0 0 / 0.5),
+    0 3px 0 #2a140c,
+    0 6px 10px rgb(0 0 0 / 0.38);
 }
 
-.slot-token {
-  border-radius: 18%;
-  border: 2px solid color-mix(in oklab, var(--sym) 55%, var(--color-void));
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.22),
-    inset 0 -6px 10px rgb(0 0 0 / 0.35),
-    0 2px 0 rgb(0 0 0 / 0.45);
-  background-image: radial-gradient(
-    circle at 32% 24%,
-    color-mix(in oklab, var(--sym) 42%, transparent),
-    transparent 62%
-  );
+.slot-token::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 8%;
+  z-index: 2;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in oklab, var(--sym, var(--color-gold)) 60%, var(--color-gold) 28%);
+  box-shadow: inset 0 0 10px color-mix(in oklab, var(--sym, var(--color-gold)) 28%, transparent);
+}
+
+.slot-token-gold {
+  border-color: color-mix(in oklab, var(--color-gold) 88%, white);
+}
+
+.slot-token-gold::before {
+  display: none;
+}
+
+.slot-token-gold .slot-art {
+  width: 88%;
+  height: 88%;
+}
+
+.slot-token-energy {
+  border-color: color-mix(in oklab, var(--color-energy) 82%, white);
 }
 
 .slot-token-shine {
   pointer-events: none;
   position: absolute;
   inset: 0;
+  z-index: 3;
+  border-radius: inherit;
   background: linear-gradient(
     125deg,
-    rgb(255 255 255 / 0.28) 0%,
-    transparent 36%,
+    rgb(255 255 255 / 0.38) 0%,
+    transparent 34%,
     transparent 62%,
     rgb(255 255 255 / 0.08) 100%
   );
 }
 
-.slot-hole {
-  fill: var(--color-void);
-}
-
-.slot-shine {
-  fill: rgb(255 255 255 / 0.35);
-}
-
 .slot-win {
+  animation: win-pulse 0.55s cubic-bezier(0.34, 1.36, 0.64, 1) 2;
   box-shadow:
     0 0 0 2px var(--color-gold),
-    0 0 18px color-mix(in oklab, var(--color-gold) 75%, transparent),
+    0 0 18px color-mix(in oklab, var(--sym, var(--color-gold)) 80%, transparent),
     inset 0 1px 0 rgb(255 255 255 / 0.3);
 }
 
@@ -444,8 +462,11 @@ html.is-fs,
 html.is-fs body,
 html.is-fs #root {
   height: 100%;
-  height: 100dvh;
+  min-height: 100%;
+  min-height: 100vh;
   min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
   background: var(--color-void);
   overflow: hidden;
   overscroll-behavior: none;
@@ -486,7 +507,7 @@ html.hitstop .slot-token,
       color-mix(in oklab, var(--color-void) 62%, transparent) 70%,
       var(--color-void) 100%
     ),
-    url("/art/aurora.png");
+    url("/art/aurora.jpg?v=30");
   background-size: cover;
   background-position: center 30%;
 }
@@ -517,6 +538,71 @@ html.hitstop .slot-token,
   animation: xp-float 1.15s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
+.xp-nivo {
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 32% 28%, rgb(255 255 255 / 0.45), transparent 42%),
+    linear-gradient(180deg, color-mix(in oklab, var(--color-xp) 88%, white), var(--color-xp));
+  border: 1.5px solid color-mix(in oklab, var(--color-gold) 70%, white 10%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.45),
+    0 1px 0 #2a140c,
+    0 0 10px color-mix(in oklab, var(--color-xp) 40%, transparent);
+}
+
+.xp-traka-tijelo {
+  position: relative;
+  overflow: hidden;
+  height: 100%;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgb(0 0 0 / 0.35), transparent 40%),
+    color-mix(in oklab, var(--color-void) 82%, #1a3a14);
+  border: 1.5px solid color-mix(in oklab, var(--color-gold) 55%, var(--color-xp) 20%);
+  box-shadow:
+    inset 0 2px 4px rgb(0 0 0 / 0.45),
+    0 1px 0 color-mix(in oklab, var(--color-gold) 35%, transparent);
+}
+
+.xp-traka-punjenje {
+  position: absolute;
+  inset: 2px auto 2px 2px;
+  max-width: calc(100% - 4px);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.38), transparent 42%, rgb(0 0 0 / 0.18)),
+    linear-gradient(90deg, color-mix(in oklab, var(--color-xp) 70%, #3a6a18), var(--color-xp));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.4);
+  transition: width 320ms ease;
+}
+
+.xp-traka-sjaj {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 20%,
+    rgb(255 255 255 / 0.16) 42%,
+    transparent 58%
+  );
+}
+
+.xp-traka-broj {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink);
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.65);
+}
+
 .game-shell {
   background-color: var(--color-void);
   background-image:
@@ -532,26 +618,46 @@ html.hitstop .slot-token,
 
 .kauba-hero {
   position: relative;
-  min-height: 12.5rem;
   overflow: hidden;
-  background-image:
-    linear-gradient(
-      180deg,
-      transparent 0%,
-      color-mix(in oklab, var(--color-void) 58%, transparent) 100%
-    ),
-    url("/art/selo-poster.jpg");
+  touch-action: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  background-color: #2b1814;
+  background-image: url("/art/selo-poster.jpg?v=30");
   background-size: cover;
-  background-position: center 30%;
+  background-position: center 58%;
 }
 
-.kauba-hero video {
+.kauba-hero-platno {
+  min-height: 20rem;
+  height: min(48svh, 28rem);
+}
+
+.kauba-hero-platno::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: auto 0 0;
+  height: 28%;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in oklab, var(--color-void) 55%, transparent)
+  );
+}
+
+.kauba-hero video,
+.kauba-hero img.kauba-hero-still {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 30%;
+  object-position: center 58%;
+  filter: var(--skin-filter, brightness(1));
+  transform: none;
+  pointer-events: none;
+  -webkit-user-drag: none;
 }
 
 .kauba-hero .kauba-hero-veil {
@@ -565,9 +671,386 @@ html.hitstop .slot-token,
   pointer-events: none;
 }
 
-.art-frame {
-  background-size: cover;
-  background-position: center;
+.kauba-doba-veil {
+  z-index: 2;
+  mix-blend-mode: multiply;
+  opacity: 0;
+  background: transparent;
+  transition: background 480ms ease, opacity 480ms ease;
+}
+.kauba-doba-jutro .kauba-doba-veil {
+  opacity: 1;
+  mix-blend-mode: soft-light;
+  background: linear-gradient(180deg, rgb(255 196 110 / 0.32), rgb(255 220 160 / 0.1) 45%, transparent);
+}
+.kauba-doba-suton .kauba-doba-veil {
+  opacity: 1;
+  background: linear-gradient(180deg, rgb(90 30 20 / 0.35), rgb(220 90 40 / 0.22) 40%, rgb(40 12 8 / 0.3));
+}
+.kauba-doba-noc .kauba-doba-veil {
+  opacity: 1;
+  background: linear-gradient(180deg, rgb(8 14 36 / 0.62), rgb(18 22 48 / 0.4) 50%, rgb(8 10 24 / 0.55));
+}
+.kauba-doba-svjetla {
+  z-index: 3;
+  background:
+    radial-gradient(circle at 27% 48%, rgb(255 190 90 / 0.7) 0 3px, transparent 11px),
+    radial-gradient(circle at 34% 52%, rgb(255 170 70 / 0.55) 0 2px, transparent 9px),
+    radial-gradient(circle at 61% 46%, rgb(255 200 100 / 0.65) 0 3px, transparent 12px),
+    radial-gradient(circle at 72% 50%, rgb(255 160 80 / 0.5) 0 2px, transparent 10px);
+}
+
+.kauba-mood-veil {
+  z-index: 2;
+  mix-blend-mode: multiply;
+  opacity: 0.18;
+  background: transparent;
+  transition: background 480ms ease, opacity 480ms ease;
+}
+
+.kauba-mood-glad .kauba-mood-veil {
+  opacity: 0.42;
+  background:
+    radial-gradient(ellipse at 50% 80%, rgb(90 48 18 / 0.55), transparent 62%),
+    linear-gradient(180deg, rgb(70 32 12 / 0.2), rgb(40 18 8 / 0.55));
+}
+
+.kauba-mood-glad .kauba-hero-still {
+  filter: var(--skin-filter, brightness(1)) sepia(0.4) saturate(0.72) brightness(0.9);
+}
+
+.kauba-mood-susa .kauba-mood-veil {
+  opacity: 0.38;
+  mix-blend-mode: overlay;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgb(255 220 140 / 0.45), transparent 55%),
+    linear-gradient(180deg, rgb(255 210 120 / 0.2), rgb(180 90 30 / 0.35));
+}
+
+.kauba-mood-susa .kauba-hero-still {
+  filter: var(--skin-filter, brightness(1)) saturate(0.55) contrast(1.12) brightness(1.08);
+}
+
+.kauba-mood-susa::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: repeating-linear-gradient(
+    180deg,
+    transparent 0 10px,
+    rgb(255 255 255 / 0.04) 10px 12px
+  );
+  animation: kauba-vrucina 2.8s linear infinite;
+  mix-blend-mode: overlay;
+}
+
+.kauba-mood-krov .kauba-mood-veil {
+  opacity: 0.48;
+  background: linear-gradient(180deg, rgb(8 6 12 / 0.55), rgb(20 10 8 / 0.2) 40%, rgb(10 8 8 / 0.5));
+}
+
+.kauba-mood-krov .kauba-hero-still {
+  filter: var(--skin-filter, brightness(1)) saturate(0.65) brightness(0.78);
+}
+
+.kauba-mood-tiho .kauba-mood-veil {
+  opacity: 0.4;
+  mix-blend-mode: multiply;
+  background: linear-gradient(180deg, rgb(28 36 52 / 0.45), rgb(18 16 22 / 0.5));
+}
+
+.kauba-mood-tiho .kauba-hero-still {
+  filter: var(--skin-filter, brightness(1)) saturate(0.5) brightness(0.82) hue-rotate(-8deg);
+}
+
+.kauba-mood-dokolica .kauba-mood-veil {
+  opacity: 0.32;
+  background: linear-gradient(180deg, transparent, rgb(40 36 28 / 0.45));
+}
+
+.kauba-mood-dokolica .kauba-hero-still {
+  filter: var(--skin-filter, brightness(1)) grayscale(0.25) brightness(0.92);
+}
+
+.kauba-mood-zurka .kauba-mood-veil {
+  opacity: 0.28;
+  mix-blend-mode: screen;
+  background:
+    radial-gradient(circle at 62% 48%, rgb(255 180 60 / 0.45), transparent 28%),
+    radial-gradient(circle at 38% 52%, rgb(255 120 40 / 0.22), transparent 24%);
+}
+
+.kauba-mood-mir .kauba-mood-veil {
+  opacity: 0.12;
+  mix-blend-mode: overlay;
+  background: linear-gradient(180deg, rgb(255 200 120 / 0.12), transparent 50%);
+}
+
+.kauba-mood-pusto .kauba-mood-veil {
+  opacity: 0.5;
+  background: linear-gradient(180deg, rgb(20 16 14 / 0.4), rgb(12 10 10 / 0.6));
+}
+
+.kauba-mood-pusto .kauba-hero-still {
+  filter: var(--skin-filter, brightness(1)) grayscale(0.45) brightness(0.7);
+}
+
+.kauba-mood-gori .kauba-mood-veil {
+  opacity: 0.4;
+  mix-blend-mode: multiply;
+  background:
+    radial-gradient(circle at 78% 42%, rgb(255 80 20 / 0.55), transparent 32%),
+    linear-gradient(180deg, rgb(80 20 8 / 0.2), transparent);
+}
+
+.kauba-mood-rec {
+  position: absolute;
+  left: 0.75rem;
+  bottom: 0.85rem;
+  z-index: 5;
+  max-width: calc(100% - 4.5rem);
+  min-height: 2.4rem;
+  border-radius: 999px;
+  border: 1.5px solid color-mix(in oklab, var(--color-gold) 55%, transparent);
+  background: color-mix(in oklab, var(--color-void) 78%, transparent);
+  padding: 0.35rem 0.85rem;
+  text-align: left;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-ink);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.35);
+}
+
+.kauba-ulica {
+  pointer-events: none;
+}
+
+.kauba-avatar {
+  display: block;
+  width: 3.1rem;
+  height: 4.2rem;
+  overflow: visible;
+  filter: drop-shadow(0 2px 0 #1a0c08);
+}
+
+.kauba-avatar-veliki {
+  width: 4.6rem;
+  height: 6.2rem;
+}
+
+.kauba-avatar-jase {
+  width: 4.2rem;
+  height: 4.8rem;
+}
+.kauba-avatar-veliki.kauba-avatar-jase {
+  width: 5.4rem;
+  height: 6.6rem;
+}
+
+.kauba-chip-avatar {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: end center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #2a1810;
+}
+
+.kauba-chip-avatar .kauba-avatar {
+  width: 2.1rem;
+  height: 2.8rem;
+  filter: none;
+}
+
+.kauba-lik {
+  pointer-events: auto;
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 3.6rem;
+  translate: -50% -100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  animation: kauba-hod 2.8s ease-in-out infinite;
+}
+
+.kauba-lik-ime {
+  margin-top: 0.08rem;
+  max-width: 3.6rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 0.2rem;
+  border: 1px solid color-mix(in oklab, var(--color-gold) 45%, transparent);
+  background: rgb(42 22 10 / 0.88);
+  padding: 0.08rem 0.32rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--color-ink);
+}
+
+.kauba-balon {
+  position: absolute;
+  bottom: calc(100% - 0.2rem);
+  left: 50%;
+  z-index: 4;
+  max-width: 7.2rem;
+  translate: -50% 0;
+  border-radius: 0.55rem 0.55rem 0.55rem 0.12rem;
+  background: rgb(255 248 232 / 0.95);
+  padding: 0.28rem 0.45rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1.25;
+  color: #1a0c08;
+  box-shadow: 0 2px 0 #1a0c08;
+  pointer-events: none;
+  animation: kauba-balon 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.lik-plakat {
+  border-radius: 1rem;
+  border: 1.5px solid color-mix(in oklab, var(--color-gold) 50%, var(--color-line));
+  background:
+    linear-gradient(180deg, rgb(90 50 24 / 0.35), transparent 42%),
+    var(--color-panel);
+  box-shadow: inset 0 0 0 1px rgb(20 8 4 / 0.35);
+}
+
+.lik-plakat-okvir {
+  display: grid;
+  width: 4.7rem;
+  height: 6rem;
+  flex-shrink: 0;
+  place-items: end center;
+  overflow: hidden;
+  padding: 0;
+  border-radius: 0.55rem;
+  border: 2px solid var(--color-gold);
+  background: linear-gradient(180deg, #4a2c18, #1a0c08);
+}
+
+.kauba-mood-nered .kauba-mood-veil {
+  opacity: 0.4;
+  background:
+    radial-gradient(ellipse at 50% 70%, rgb(80 20 20 / 0.5), transparent 62%),
+    linear-gradient(180deg, rgb(40 10 10 / 0.2), rgb(20 8 8 / 0.5));
+}
+
+.kauba-mood-nered .kauba-hero-still {
+  filter: var(--skin-filter, brightness(1)) saturate(0.7) contrast(1.1) brightness(0.88);
+}
+
+.kauba-mood-bolesno .kauba-mood-veil {
+  opacity: 0.46;
+  background:
+    radial-gradient(ellipse at 62% 58%, rgb(70 110 50 / 0.48), transparent 60%),
+    linear-gradient(180deg, rgb(40 50 20 / 0.22), rgb(20 28 12 / 0.52));
+}
+.kauba-mood-bolesno .kauba-hero-still {
+  filter: var(--skin-filter, brightness(1)) saturate(0.55) contrast(1.05) hue-rotate(-12deg);
+}
+
+.kauba-lik-glad,
+.kauba-lik-tiho,
+.kauba-lik-dokolica,
+.kauba-lik-nered {
+  animation: none;
+}
+.kauba-lik-glad .kauba-lik-ime,
+.kauba-lik-nered .kauba-lik-ime,
+.kauba-lik-bolesno .kauba-lik-ime {
+  color: #ff8a7a;
+}
+.kauba-lik-susa .kauba-lik-ime {
+  color: #ffd24a;
+}
+.kauba-lik-susa {
+  animation-duration: 3.6s;
+}
+.kauba-lik-zurka {
+  animation: kauba-hod 0.9s ease-in-out infinite;
+}
+.kauba-lik-odabran .kauba-lik-ime {
+  color: var(--color-gold);
+}
+
+.kauba-lik-jase {
+  width: 4.4rem;
+  animation: kauba-jas 1.05s ease-in-out infinite;
+}
+.kauba-lik-jase .kauba-lik-ime {
+  color: var(--color-gold);
+}
+
+.lik-crta {
+  border-radius: 999px;
+  padding: 0.08rem 0.4rem;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.lik-crta-plus {
+  background: color-mix(in oklab, var(--color-gold) 28%, transparent);
+  color: var(--color-gold);
+}
+.lik-crta-minus {
+  background: color-mix(in oklab, var(--color-ruby) 22%, transparent);
+  color: var(--color-ruby);
+}
+
+.kauba-mood-pjeske .kauba-mood-veil {
+  opacity: 0.42;
+  background:
+    radial-gradient(ellipse at 18% 62%, rgb(140 80 30 / 0.45), transparent 58%),
+    linear-gradient(180deg, rgb(60 30 12 / 0.18), rgb(40 18 8 / 0.48));
+}
+.kauba-mood-pjeske .kauba-hero-still {
+  filter: var(--skin-filter, brightness(1)) saturate(0.78) contrast(1.08) sepia(0.18);
+}
+.kauba-lik-pjeske .kauba-lik-ime {
+  color: #e8b878;
+}
+
+@keyframes kauba-hod {
+  0%,
+  100% { transform: translateX(-6px) rotate(-2.2deg); }
+  50% { transform: translateX(6px) translateY(-7px) rotate(2.2deg); }
+}
+
+@keyframes kauba-jas {
+  0%,
+  100% { transform: translateX(-3px) translateY(0) rotate(-1deg); }
+  50% { transform: translateX(4px) translateY(-6px) rotate(1.5deg); }
+}
+
+@keyframes kauba-vrucina {
+  to { background-position: 0 18px; }
+}
+
+.zgrada-skele {
+  background: repeating-linear-gradient(
+    -45deg,
+    rgb(255 210 80 / 0.5) 0 8px,
+    rgb(40 18 8 / 0.4) 8px 16px
+  );
+  background-size: 22px 22px;
+  animation: zgrada-skele 0.7s linear infinite;
+}
+
+@keyframes zgrada-skele {
+  to {
+    background-position: 28px 0;
+  }
 }
 
 .login-scene {
@@ -584,9 +1067,22 @@ html.hitstop .slot-token,
 }
 
 .village-pixel {
+  display: inline-block;
+  box-sizing: border-box;
+  border-radius: 50%;
   object-fit: contain;
+  object-position: center;
+  padding: 16%;
   image-rendering: auto;
-  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.38));
+  background-color: #24140c;
+  background-image:
+    radial-gradient(circle at 30% 22%, rgb(255 248 232 / 0.3), transparent 46%),
+    radial-gradient(circle at 50% 78%, color-mix(in oklab, var(--color-gold) 28%, #1c0e08), #120806);
+  border: 1.5px solid color-mix(in oklab, var(--color-gold) 75%, white 8%);
+  filter: none;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.28),
+    0 2px 0 #2a140c;
 }
 
 .iko {
@@ -595,23 +1091,42 @@ html.hitstop .slot-token,
   justify-content: center;
   flex-shrink: 0;
   overflow: hidden;
-  border-radius: 999px;
-  border: 1px solid color-mix(in oklab, var(--color-line) 70%, white 10%);
-  background:
-    radial-gradient(circle at 32% 26%, rgb(255 255 255 / 0.2), transparent 58%),
-    color-mix(in oklab, var(--color-panel-2) 92%, var(--color-gold) 8%);
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in oklab, var(--color-gold) 78%, white 8%);
+  background-color: #24140c;
+  background-image:
+    radial-gradient(circle at 30% 22%, rgb(255 248 232 / 0.34), transparent 42%),
+    radial-gradient(circle at 50% 72%, color-mix(in oklab, var(--sym, var(--color-gold)) 52%, #1c0e08), #120806 78%);
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.22),
-    0 1px 2px rgb(0 0 0 / 0.32);
+    0 0 0 1px color-mix(in oklab, var(--sym, var(--color-gold)) 35%, #6a4218),
+    inset 0 1px 0 rgb(255 255 255 / 0.38),
+    inset 0 -3px 5px rgb(0 0 0 / 0.42),
+    0 1px 0 #2a140c,
+    0 2px 4px rgb(0 0 0 / 0.32);
 }
 
 .iko img {
-  width: 68%;
-  height: 68%;
+  width: 72%;
+  height: 72%;
   object-fit: contain;
   pointer-events: none;
   image-rendering: auto;
-  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.4));
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.5));
+}
+
+.iko-gold img {
+  width: 86%;
+  height: 86%;
+}
+
+.iko-energy {
+  border-color: color-mix(in oklab, var(--color-energy) 85%, white);
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--color-energy) 45%, #6a4218),
+    inset 0 1px 0 rgb(255 255 255 / 0.38),
+    inset 0 -3px 5px rgb(0 0 0 / 0.42),
+    0 1px 0 #2a140c,
+    0 2px 4px rgb(0 0 0 / 0.32);
 }
 
 .nav-iko {
@@ -624,8 +1139,11 @@ html.hitstop .slot-token,
 }
 
 .slot-art {
+  width: 72%;
+  height: 72%;
+  object-fit: contain;
   image-rendering: auto;
-  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.45));
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.55));
 }
 
 .mreza-veza {
@@ -640,6 +1158,10 @@ html.hitstop .slot-token,
   animation: mreza-tok 1.6s linear infinite;
 }
 
+.mreza-veza-utjecaj {
+  stroke-dasharray: 1.2 2.2;
+}
+
 .mreza-veza-puls {
   animation: mreza-protok 1.15s ease-out, mreza-tok 0.7s linear infinite;
   filter: drop-shadow(0 0 1.2px currentColor);
@@ -652,9 +1174,931 @@ html.hitstop .slot-token,
     border-color 200ms ease,
     box-shadow 200ms ease;
 }
+.mreza-ime {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 999px;
+  padding: 0.08rem 0.4rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.mreza-ime-top {
+  bottom: 112%;
+  left: 50%;
+  translate: -50% 0;
+}
+.mreza-ime-bottom {
+  top: 112%;
+  left: 50%;
+  translate: -50% 0;
+}
+.mreza-ime-left {
+  top: 50%;
+  right: 112%;
+  translate: 0 -50%;
+}
+.mreza-ime-right {
+  top: 50%;
+  left: 112%;
+  translate: 0 -50%;
+}
+
+.selo-rast {
+  pointer-events: none;
+}
+.selo-znak {
+  position: absolute;
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  translate: -50% -50%;
+}
+.selo-kuca-svg {
+  width: 1.8rem;
+  height: 1.45rem;
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.5));
+  opacity: 0.82;
+}
+.selo-dim {
+  width: 0.7rem;
+  height: 1.1rem;
+  border-radius: 999px;
+  background: radial-gradient(circle at 50% 80%, rgb(220 200 180 / 0.7), transparent 70%);
+  animation: selo-dim 3.2s ease-in-out infinite;
+}
+.selo-znak-gori .selo-dim {
+  background: radial-gradient(circle at 50% 80%, rgb(255 90 40 / 0.85), transparent 70%);
+}
+.selo-svjetlo {
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 1px;
+  background: #ffc46a;
+  box-shadow: 0 0 10px 3px rgb(255 180 80 / 0.55);
+  opacity: 0.35;
+}
+.kauba-doba-noc .selo-svjetlo,
+.selo-znak-noc .selo-svjetlo {
+  opacity: 1;
+}
+.kauba-doba-jutro .selo-svjetlo {
+  opacity: 0.2;
+}
+.selo-zvezda {
+  font-size: 0.85rem;
+  line-height: 1;
+  color: var(--color-gold);
+  text-shadow: 0 0 8px rgb(232 176 80 / 0.8);
+}
+.selo-voda {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  border: 2px solid color-mix(in oklab, var(--color-gold) 50%, #4a90a8);
+  box-shadow: inset 0 0 6px rgb(80 160 180 / 0.7);
+  animation: selo-voda 2.4s ease-in-out infinite;
+}
+.selo-kolo {
+  width: 0.85rem;
+  height: 0.85rem;
+  border: 2px solid #c4a06a;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px #6a4a28;
+  animation: selo-kolo 4s linear infinite;
+}
+.selo-logor {
+  width: 0.45rem;
+  height: 0.55rem;
+  border-radius: 50% 50% 40% 40%;
+  background: radial-gradient(circle at 50% 70%, #ffb040, #c44a12 70%, transparent);
+  animation: selo-logor 1.2s ease-in-out infinite;
+}
+.selo-konj {
+  width: 1.15rem;
+  height: 0.7rem;
+  border-radius: 0.55rem 0.7rem 0.2rem 0.35rem;
+  background: #3a2414;
+  box-shadow:
+    0.55rem -0.18rem 0 -0.12rem #3a2414,
+    inset 0 -0.12rem 0 #1a0c08;
+  animation: selo-konj 1.6s ease-in-out infinite;
+}
+.selo-kriz {
+  font-size: 0.95rem;
+  line-height: 1;
+  color: #e8c8c0;
+  text-shadow: 0 0 8px rgb(200 80 80 / 0.7);
+}
+.selo-torba {
+  width: 0.7rem;
+  height: 0.55rem;
+  border-radius: 0.12rem 0.12rem 0.28rem 0.28rem;
+  background: #8a5a28;
+  box-shadow: inset 0 0.18rem 0 #c4a06a;
+}
+.selo-seif {
+  width: 0.62rem;
+  height: 0.72rem;
+  border-radius: 0.1rem;
+  background: linear-gradient(180deg, #e8c878, #8a6a28);
+  box-shadow: inset 0 0 0 1px #3a2414;
+}
+.selo-klasa {
+  width: 0.9rem;
+  height: 0.45rem;
+  border-radius: 0.08rem;
+  background: repeating-linear-gradient(90deg, #c4a04a 0 3px, #6a8a38 3px 6px);
+  box-shadow: 0 2px 0 #4a6a28;
+}
+.kauba-dogadaj {
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-gold) 55%, transparent);
+  animation: kauba-dogadaj 1.6s ease-in-out infinite;
+}
+@keyframes kauba-dogadaj {
+  0%,
+  100% { box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-gold) 40%, transparent); }
+  50% { box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-gold) 80%, transparent); }
+}
+.selo-gradnja {
+  position: absolute;
+  z-index: 6;
+  width: 7.4rem;
+  height: 8rem;
+  translate: -50% -84%;
+  pointer-events: none;
+}
+
+.kauba-hero-gradi {
+  animation: kauba-gradi-trese 1.2s ease-in-out infinite;
+}
+.kauba-hero-gradi::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background:
+    radial-gradient(ellipse at 50% 70%, rgb(255 180 60 / 0.14), transparent 58%);
+  animation: kauba-gradi-toplo 2.4s ease-in-out infinite;
+}
+@keyframes kauba-gradi-toplo {
+  0%,
+  100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+@keyframes kauba-gradi-trese {
+  0%,
+  62% { transform: translate(0, 0); }
+  68% { transform: translate(0, 1.5px); }
+  74% { transform: translate(0, 0); }
+}
+
+.gradnja-scena {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.gradnja-scena-kompakt {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  overflow: hidden;
+}
+.gradnja-tlo {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: 6%;
+  height: 18%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 50%, rgb(40 18 8 / 0.55), transparent 70%);
+}
+.gradnja-zid {
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  bottom: 14%;
+  height: calc(var(--pct, 0) * 0.42%);
+  max-height: 48%;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      #6a3a18 0 5px,
+      #8a5a28 5px 6px,
+      #4a2810 6px 11px
+    );
+  box-shadow: inset 0 0 0 1px #2a1408;
+  transition: height 280ms ease-out;
+  animation: gradnja-zid-hit 1.2s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+.gradnja-temelj {
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: 10%;
+  height: 8%;
+  border-radius: 2px;
+  background: #3a2414;
+  box-shadow: 0 2px 0 #1a0c08, inset 0 1px 0 #6a4218;
+}
+.gradnja-krov {
+  position: absolute;
+  left: 16%;
+  right: 16%;
+  bottom: calc(14% + min(48%, var(--pct, 0) * 0.42%));
+  height: 0.7rem;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  background: linear-gradient(180deg, #c45a28, #6a2810);
+  box-shadow: 0 2px 0 #2a1008;
+  animation: gradnja-krov-in 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  z-index: 1;
+}
+.gradnja-skele {
+  position: absolute;
+  inset: 4% 2% 8%;
+  width: 96%;
+  height: 88%;
+  filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.5));
+  animation: selo-skele-ljulja 1.6s ease-in-out infinite;
+}
+.gradnja-kanta {
+  transform-origin: 62px 26px;
+  animation: gradnja-kanta 1.8s ease-in-out infinite;
+}
+.gradnja-daska {
+  position: absolute;
+  left: 12%;
+  bottom: 28%;
+  width: 1.7rem;
+  height: 0.28rem;
+  border-radius: 1px;
+  background: #c4a06a;
+  box-shadow: 0 1px 0 #5a3214;
+  animation: gradnja-nosi 2.6s linear infinite;
+}
+.gradnja-iver,
+.gradnja-prasina {
+  position: absolute;
+  left: 48%;
+  bottom: 22%;
+  width: 0.38rem;
+  height: 0.38rem;
+  border-radius: 1px;
+  background: #d4b078;
+  animation: gradnja-iver 1.2s ease-out infinite;
+}
+.gradnja-iver-2 {
+  left: 56%;
+  animation-delay: 0.18s;
+  width: 0.28rem;
+}
+.gradnja-iver-3 {
+  left: 42%;
+  animation-delay: 0.4s;
+  background: #8a5a28;
+}
+.gradnja-prasina {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: rgb(210 180 120 / 0.7);
+  animation: selo-prasina 0.9s ease-out infinite;
+}
+.gradnja-prasina-2 {
+  left: 62%;
+  animation-delay: 0.35s;
+}
+.gradnja-iskra {
+  position: absolute;
+  left: 52%;
+  bottom: 30%;
+  width: 0.28rem;
+  height: 0.28rem;
+  border-radius: 50%;
+  background: #ffe08a;
+  box-shadow: 0 0 8px 2px rgb(255 180 40 / 0.8);
+  animation: gradnja-iskra 1.2s ease-out infinite;
+}
+.gradnja-iskra-2 {
+  left: 46%;
+  animation-delay: 0.12s;
+  background: #ffb060;
+}
+.gradnja-iver-4 {
+  left: 60%;
+  animation-delay: 0.55s;
+  width: 0.22rem;
+  height: 0.22rem;
+}
+.gradnja-prasina-3 {
+  left: 38%;
+  animation-delay: 0.55s;
+  width: 0.55rem;
+  height: 0.55rem;
+}
+.gradnja-daska-2 {
+  animation-delay: -1.3s;
+  bottom: 36%;
+  width: 1.3rem;
+  background: #8a5a28;
+}
+.gradnja-cava {
+  position: absolute;
+  left: 50%;
+  bottom: 28%;
+  width: 0.18rem;
+  height: 0.55rem;
+  border-radius: 1px;
+  background: #c8c0b0;
+  transform-origin: 50% 100%;
+  animation: gradnja-cava 1.2s ease-out infinite;
+}
+.gradnja-udar-prsten {
+  position: absolute;
+  left: 50%;
+  bottom: 22%;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  border: 2px solid rgb(255 210 80 / 0.7);
+  translate: -50% 0;
+  animation: gradnja-prsten 1.2s ease-out infinite;
+  pointer-events: none;
+}
+.gradnja-piljevina {
+  position: absolute;
+  left: 42%;
+  bottom: 12%;
+  width: calc(8% + var(--pct, 0) * 0.18%);
+  height: calc(4% + var(--pct, 0) * 0.06%);
+  border-radius: 50% 50% 20% 20%;
+  background: rgb(196 160 106 / 0.75);
+  pointer-events: none;
+}
+.gradnja-znoj {
+  position: absolute;
+  right: 12%;
+  top: 8%;
+  width: 0.18rem;
+  height: 0.28rem;
+  border-radius: 50%;
+  background: rgb(180 220 255 / 0.8);
+  animation: gradnja-znoj 1.4s ease-in infinite;
+}
+.gradnja-znoj-2 {
+  right: 28%;
+  animation-delay: 0.45s;
+}
+.gradnja-segrt-teret {
+  position: absolute;
+  left: 50%;
+  top: 8%;
+  width: 1.15rem;
+  height: 0.22rem;
+  translate: -50% 0;
+  border-radius: 1px;
+  background: #c4a06a;
+  box-shadow: 0 1px 0 #5a3214;
+}
+.gradnja-balon {
+  position: absolute;
+  left: 50%;
+  top: 18%;
+  z-index: 3;
+  translate: -50% -120%;
+  max-width: 6.4rem;
+  border-radius: 0.45rem 0.45rem 0.45rem 0.1rem;
+  background: rgb(255 248 232 / 0.95);
+  padding: 0.18rem 0.4rem;
+  font-size: 0.55rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #1a0c08;
+  box-shadow: 0 2px 0 #1a0c08;
+  animation: kauba-balon 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  white-space: nowrap;
+}
+.gradnja-konfeti {
+  position: absolute;
+  left: 48%;
+  bottom: 40%;
+  width: 0.32rem;
+  height: 0.32rem;
+  border-radius: 1px;
+  background: var(--color-gold);
+  animation: gradnja-konfeti 1.1s ease-out infinite;
+}
+.gradnja-konfeti-2 {
+  left: 38%;
+  background: var(--color-ruby);
+  animation-delay: 0.12s;
+}
+.gradnja-konfeti-3 {
+  left: 58%;
+  background: var(--color-xp);
+  animation-delay: 0.24s;
+}
+.gradnja-scena-gotova .gradnja-cekic,
+.gradnja-scena-gotova .gradnja-majstor,
+.gradnja-scena-gotova .gradnja-segrt {
+  animation: gradnja-slavlje 0.7s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+.gradnja-scena-gotova .gradnja-rec {
+  color: var(--color-xp);
+}
+.gradnja-majstor {
+  position: absolute;
+  left: 50%;
+  bottom: 4%;
+  width: 2.6rem;
+  translate: -50% 0;
+  animation: gradnja-rad 1.2s ease-in-out infinite;
+  transform-origin: 50% 90%;
+}
+.gradnja-majstor .kauba-avatar {
+  width: 2.6rem;
+  height: 3.4rem;
+}
+.gradnja-cekic {
+  position: absolute;
+  right: -0.15rem;
+  top: 18%;
+  width: 1.15rem;
+  height: 1.15rem;
+  transform-origin: 20% 80%;
+  animation: gradnja-udar 1.2s ease-in-out infinite;
+  background:
+    linear-gradient(180deg, #7a7a80 0 38%, transparent 38%),
+    linear-gradient(90deg, transparent 42%, #5a3214 42% 58%, transparent 58%);
+  background-size: 70% 45%, 100% 100%;
+  background-repeat: no-repeat;
+  background-position: 70% 0, center;
+}
+.gradnja-segrt {
+  position: absolute;
+  left: 8%;
+  bottom: 2%;
+  width: 1.9rem;
+  animation: gradnja-nosi 2.6s linear infinite;
+}
+.gradnja-segrt .kauba-avatar {
+  width: 1.9rem;
+  height: 2.5rem;
+}
+.gradnja-segrt-2 {
+  left: auto;
+  right: 6%;
+  animation-delay: -1.3s;
+  animation-direction: reverse;
+}
+.gradnja-rec {
+  position: absolute;
+  left: 50%;
+  top: -0.1rem;
+  z-index: 2;
+  translate: -50% -100%;
+  white-space: nowrap;
+  border-radius: 999px;
+  background: rgb(20 10 6 / 0.88);
+  padding: 0.14rem 0.45rem;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-gold);
+  box-shadow: 0 2px 0 #1a0c08;
+}
+.gradnja-traka {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: 0;
+  height: 0.28rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(12 6 4 / 0.7);
+}
+.gradnja-traka-pun {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-gold);
+  transition: width 280ms ease-out;
+}
+
+.gradnja-scena-kompakt .gradnja-majstor {
+  width: 2.2rem;
+  bottom: 10%;
+}
+.gradnja-scena-kompakt .gradnja-majstor .kauba-avatar {
+  width: 2.2rem;
+  height: 2.9rem;
+}
+.gradnja-scena-kompakt .gradnja-rec {
+  top: 0.35rem;
+  translate: -50% 0;
+}
+.gradnja-scena-kompakt .gradnja-traka {
+  bottom: 0.35rem;
+}
+
+@keyframes selo-skele-ljulja {
+  0%,
+  100% { transform: rotate(-1.6deg); }
+  50% { transform: rotate(1.6deg); }
+}
+@keyframes selo-prasina {
+  0% { transform: translateY(0) scale(0.55); opacity: 0.85; }
+  100% { transform: translateY(-18px) scale(1.35); opacity: 0; }
+}
+@keyframes gradnja-udar {
+  0%,
+  50% { transform: rotate(-78deg); }
+  62% { transform: rotate(-82deg); }
+  68% { transform: rotate(22deg); }
+  78% { transform: rotate(8deg); }
+  88%,
+  100% { transform: rotate(-18deg); }
+}
+@keyframes gradnja-rad {
+  0%,
+  50% { transform: rotate(-6deg) translateY(0); }
+  62% { transform: rotate(-8deg) translateY(-1px); }
+  68% { transform: rotate(10deg) translateY(4px); }
+  80%,
+  100% { transform: rotate(0) translateY(0); }
+}
+@keyframes gradnja-iver {
+  0% { transform: translate(0, 0) rotate(0); opacity: 0.9; }
+  100% { transform: translate(10px, -18px) rotate(120deg); opacity: 0; }
+}
+@keyframes gradnja-iskra {
+  0%,
+  62% { opacity: 0; transform: scale(0.3); }
+  68% { opacity: 1; transform: scale(1.4); }
+  100% { opacity: 0; transform: translate(6px, -10px) scale(0.2); }
+}
+@keyframes gradnja-nosi {
+  0% { transform: translateX(0) translateY(0); }
+  25% { transform: translateX(14px) translateY(-5px); }
+  50% { transform: translateX(28px) translateY(0); }
+  75% { transform: translateX(14px) translateY(-5px); }
+  100% { transform: translateX(0) translateY(0); }
+}
+@keyframes gradnja-kanta {
+  0%,
+  100% { transform: translateY(0); }
+  50% { transform: translateY(5px); }
+}
+@keyframes gradnja-zid-hit {
+  0%,
+  62% { transform: scale(1); filter: brightness(1); }
+  68% { transform: scale(1.03, 0.97); filter: brightness(1.18); }
+  80%,
+  100% { transform: scale(1); filter: brightness(1); }
+}
+@keyframes gradnja-krov-in {
+  from { transform: translateY(-10px) scale(0.6); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes gradnja-cava {
+  0%,
+  55% { opacity: 0; transform: translate(0, 8px) rotate(-20deg); }
+  68% { opacity: 1; transform: translate(8px, -6px) rotate(40deg); }
+  100% { opacity: 0; transform: translate(16px, 10px) rotate(90deg); }
+}
+@keyframes gradnja-prsten {
+  0%,
+  62% { opacity: 0; transform: scale(0.3); }
+  68% { opacity: 0.9; transform: scale(0.8); }
+  100% { opacity: 0; transform: scale(3.2); }
+}
+@keyframes gradnja-znoj {
+  0% { opacity: 0; transform: translateY(0); }
+  30% { opacity: 0.9; }
+  100% { opacity: 0; transform: translateY(10px); }
+}
+@keyframes gradnja-konfeti {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0); }
+  100% { opacity: 0; transform: translate(var(--dx, 12px), -28px) rotate(180deg); }
+}
+@keyframes gradnja-slavlje {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.18) translateY(-6px); }
+  100% { transform: scale(1); }
+}
+.selo-karavana {
+  position: absolute;
+  left: 6%;
+  bottom: 18%;
+  z-index: 6;
+  animation: selo-kola 5.5s linear infinite;
+}
+.selo-kola {
+  display: block;
+  width: 2.4rem;
+  height: 1.15rem;
+  border-radius: 0.35rem 0.7rem 0.35rem 0.35rem;
+  background: linear-gradient(180deg, #c4a06a, #6a4218);
+  box-shadow: 0.15rem 0.7rem 0 0 #2a1810, 1.5rem 0.7rem 0 0 #2a1810;
+}
+.selo-karavana-rec {
+  position: absolute;
+  left: 50%;
+  top: -0.2rem;
+  translate: -50% -100%;
+  white-space: nowrap;
+  border-radius: 999px;
+  background: rgb(20 10 6 / 0.82);
+  padding: 0.1rem 0.4rem;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-gold);
+}
+@keyframes selo-kola {
+  0% { transform: translateX(0); }
+  50% { transform: translateX(220%); }
+  100% { transform: translateX(0); }
+}
+@keyframes kauba-balon {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.92);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gradnja-skele,
+  .gradnja-majstor,
+  .gradnja-cekic,
+  .gradnja-segrt,
+  .gradnja-daska,
+  .gradnja-iver,
+  .gradnja-prasina,
+  .gradnja-iskra,
+  .gradnja-kanta,
+  .gradnja-cava,
+  .gradnja-udar-prsten,
+  .gradnja-znoj,
+  .gradnja-konfeti,
+  .gradnja-krov,
+  .kauba-lik,
+  .kauba-balon,
+  .kauba-hero-gradi,
+  .kauba-hero-gradi::after,
+  .selo-karavana,
+  .hub-kartica,
+  .hub-ulaz,
+  .kauba-oblak,
+  .kauba-ptica,
+  .kauba-zvijezde,
+  .kauba-prasina-ambijent,
+  .kauba-stopa,
+  .kauba-dogadaj,
+  .listak-ulaz,
+  .kronika-red,
+  .zgrada-slavlje,
+  .level-zrake,
+  .level-konfeti,
+  .stat-delta,
+  .faro-pobjeda,
+  .modal-ulaz,
+  .nagrada-dan-spreman,
+  .kauba-chip-odabran,
+  .nim-token-leti,
+  .nim-token-zadnji,
+  .pohod-prasina,
+  .pohod-prasina-ploca,
+  .pohod-kopita span,
+  .pohod-jahanje-art,
+  .pohod-konji-trka,
+  .pohod-ceka-tacke span,
+  .pohod-potez-ti,
+  .pohod-pulse,
+  .pohod-konj,
+  .pohod-mjesec,
+  .pohod-tabor-svjetlo,
+  .utrka-konj-trci,
+  .utrka-konj-prvi,
+  .utrka-prasina,
+  .live-cowboy,
+  .live-feed-red,
+  .live-duel-traka,
+  .pohod-poziv-toast,
+  .zvijezda-toast,
+  .potjernica-min-nova,
+  .posjet-domacin-traka,
+  .posjet-prasina,
+  .posjet-cin {
+    animation: none !important;
+  }
+  .gradnja-zid,
+  .gradnja-traka-pun,
+  .zid-traka > span,
+  .potjernica-min-aktivan,
+  .zvijezda-plaketa {
+    transition: none !important;
+  }
+  .potjernica-min-aktivan {
+    transform: none !important;
+  }
+}
+@keyframes selo-dim {
+  0%,
+  100% { opacity: 0.35; transform: translateY(0) scale(0.9); }
+  50% { opacity: 0.9; transform: translateY(-7px) scale(1.15); }
+}
+@keyframes selo-voda {
+  0%,
+  100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.15); opacity: 1; }
+}
+@keyframes selo-kolo {
+  to { transform: rotate(360deg); }
+}
+@keyframes selo-logor {
+  0%,
+  100% { transform: scaleY(1); opacity: 0.8; }
+  50% { transform: scaleY(1.25); opacity: 1; }
+}
+@keyframes selo-konj {
+  0%,
+  100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+.potjernica-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  z-index: 70;
+  display: flex;
+  width: min(22rem, calc(100vw - 1.5rem));
+  translate: -50% 0;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid var(--color-gold);
+  border-radius: 1rem;
+  background: color-mix(in oklab, var(--color-panel) 92%, #1a0c08);
+  padding: 0.7rem 0.85rem;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.5);
+  animation: toast-in 0.35s ease-out;
+}
+.potjernica-list,
+.potjernica-min {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid #c4a06a;
+  background:
+    repeating-linear-gradient(0deg, rgb(232 210 160 / 0.15) 0 2px, transparent 2px 6px),
+    #e8d2a0;
+  color: #2a160c;
+  box-shadow: inset 0 0 0 2px #6a4218;
+}
+.potjernica-list {
+  width: 3.6rem;
+  height: 4.6rem;
+  flex-shrink: 0;
+  border-radius: 0.2rem;
+}
+.potjernica-min {
+  min-height: 4.4rem;
+  border-radius: 0.25rem;
+  padding: 0.3rem 0.15rem;
+}
+.potjernica-min-prazna {
+  background: #2a1a12;
+  color: #6a5640;
+  border-color: #3a2818;
+  box-shadow: none;
+}
+.potjernica-stem {
+  font-size: 0.45rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #8a1810;
+}
+.potjernica-min-prazna .potjernica-stem {
+  color: #5a4030;
+}
+.potjernica-ime {
+  margin-top: 0.15rem;
+  padding: 0 0.15rem;
+  text-align: center;
+  font-size: 0.58rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.potjernica-cijena {
+  margin-top: 0.1rem;
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.potjernica-n {
+  position: absolute;
+  right: 0.15rem;
+  bottom: 0.1rem;
+  font-size: 0.5rem;
+  font-weight: 800;
+  color: #6a1808;
+}
+.potjernica-min-aktivan {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+  transform: scale(1.04);
+  z-index: 1;
+}
+.potjernica-min-nova {
+  animation: potjernica-nova 1.15s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.zid-plakat {
+  box-shadow: inset 0 1px 0 rgb(255 210 74 / 0.12), 0 8px 18px rgb(0 0 0 / 0.18);
+}
+.zid-traka {
+  background: #1a100c;
+}
+.zid-traka > span {
+  transform-origin: left center;
+  transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.zvijezda-plaketa {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.7rem;
+  border: 1px solid var(--color-line);
+  background: color-mix(in oklab, var(--color-panel) 86%, #000);
+  transition: transform 0.15s ease-out, border-color 0.15s ease-out, background 0.15s ease-out;
+}
+.zvijezda-plaketa:active {
+  transform: scale(0.96);
+}
+.zvijezda-plaketa-stoji {
+  border-color: color-mix(in oklab, var(--color-gold) 55%, var(--color-line));
+  background: color-mix(in oklab, var(--color-gold) 16%, var(--color-panel));
+}
+.zvijezda-plaketa-prazna {
+  opacity: 0.5;
+  filter: grayscale(1);
+}
+.zvijezda-plaketa-aktivna {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+  opacity: 1;
+  filter: none;
+}
+@keyframes potjernica-nova {
+  0% { transform: scale(0.86) rotate(-4deg); filter: brightness(1.5); }
+  55% { transform: scale(1.08) rotate(1deg); }
+  100% { transform: none; filter: none; }
+}
+.ljudi-traka {
+  scrollbar-width: none;
+}
+.ljudi-traka::-webkit-scrollbar {
+  display: none;
+}
 
 .mreza-cvor:active {
   scale: 0.96;
+}
+
+.mreza-platno {
+  aspect-ratio: 4 / 3;
+  min-height: 16rem;
+}
+
+.mreza-platno.mreza-hero {
+  aspect-ratio: auto;
+  min-height: 20rem;
+  height: min(48svh, 28rem);
+}
+
+.mreza-selo img {
+  object-position: center 58%;
 }
 
 .mreza-cvor-fokus {
@@ -759,6 +2203,11 @@ html.hitstop .slot-token,
 }
 
 .nim-token {
+  background:
+    radial-gradient(circle at 32% 28%, #f6de9a, #c4783a 62%, #6a3a12);
+  box-shadow:
+    0 2px 0 #4a240c,
+    0 5px 10px rgb(0 0 0 / 0.4);
   transition:
     transform 150ms cubic-bezier(0.22, 1, 0.36, 1),
     filter 150ms ease,
@@ -774,6 +2223,340 @@ html.hitstop .slot-token,
 .nim-token-npc {
   filter: brightness(1.1);
   box-shadow: 0 0 0 2px var(--color-ice);
+}
+.nim-token-leti {
+  animation: nim-leti 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  pointer-events: none;
+}
+.nim-token-zadnji {
+  animation: nim-zadnji 900ms ease-in-out infinite;
+  box-shadow: 0 0 0 2px var(--color-gold);
+}
+.pohod-jahanje {
+  position: relative;
+  overflow: hidden;
+  min-height: 8rem;
+}
+.pohod-kopita {
+  position: relative;
+  height: 2.4rem;
+  margin: 0.4rem 0 0.8rem;
+}
+.pohod-kopita span {
+  position: absolute;
+  top: 0.4rem;
+  width: 0.7rem;
+  height: 0.9rem;
+  border-radius: 40% 40% 35% 35%;
+  background: color-mix(in oklab, var(--color-gold) 55%, transparent);
+  animation: pohod-kopito 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.pohod-kopita span:nth-child(1) { left: 12%; animation-delay: 0s; }
+.pohod-kopita span:nth-child(2) { left: 34%; top: 0.9rem; animation-delay: 0.18s; }
+.pohod-kopita span:nth-child(3) { left: 56%; animation-delay: 0.36s; }
+.pohod-kopita span:nth-child(4) { left: 78%; top: 0.9rem; animation-delay: 0.54s; }
+.pohod-prasina,
+.pohod-prasina-ploca {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 80%, rgb(196 120 58 / 0.28), transparent 55%),
+    radial-gradient(ellipse at 80% 70%, rgb(232 93 93 / 0.18), transparent 50%);
+  animation: pohod-prasina 1.1s ease-out both;
+}
+.pohod-prasina-ploca {
+  inset: auto 0 0 0;
+  height: 2.5rem;
+  opacity: 0.55;
+  animation: pohod-prasina 2.4s ease-in-out infinite;
+}
+.pohod-ceka-tacke span {
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: var(--color-gold);
+  animation: pohod-tacka 1s ease-in-out infinite;
+}
+.pohod-ceka-tacke span:nth-child(2) { animation-delay: 0.15s; }
+.pohod-ceka-tacke span:nth-child(3) { animation-delay: 0.3s; }
+.pohod-potez-ti {
+  animation: zadatak-pulse 1.2s ease-in-out infinite;
+}
+.pohod-pulse {
+  animation: pohod-pulse 1.4s ease-in-out infinite;
+}
+.pohod-jahanje-platno {
+  position: relative;
+  overflow: hidden;
+  height: 10.5rem;
+  background: #1a100c;
+}
+.pohod-jahanje-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 62%;
+  animation: pohod-jahanje-pan 1.8s ease-out both;
+}
+.pohod-jahanje-veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgb(14 8 6 / 0.15), rgb(14 8 6 / 0.72));
+}
+.pohod-mjesec {
+  position: absolute;
+  top: 0.7rem;
+  right: 1.4rem;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 999px;
+  background: #f4e6c0;
+  box-shadow: 0 0 18px 6px rgb(244 230 192 / 0.35);
+  animation: pohod-mjesec 1.8s ease-out both;
+}
+.pohod-tabor-svjetlo {
+  position: absolute;
+  left: 18%;
+  bottom: 1.6rem;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgb(255 160 60 / 0.7), transparent 70%);
+  animation: pohod-tabor 1.4s ease-in-out infinite;
+}
+.pohod-konji-trka {
+  position: absolute;
+  left: -20%;
+  bottom: 0.4rem;
+  display: flex;
+  width: 140%;
+  height: 3.2rem;
+  animation: pohod-konji-jaha 1.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.pohod-konj {
+  display: block;
+  width: 4.2rem;
+  height: 2.4rem;
+  filter: drop-shadow(0 4px 6px rgb(0 0 0 / 0.45));
+}
+.pohod-konj-a {
+  margin-top: 0.55rem;
+  opacity: 0.85;
+}
+.pohod-konj-b {
+  margin-left: -0.6rem;
+}
+.pohod-opsada-tlo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 70%;
+  opacity: 0.32;
+  pointer-events: none;
+}
+.konj-silueta {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.utrka-scena {
+  position: relative;
+  height: 9.5rem;
+  background: #2a1a10;
+}
+.utrka-tlo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 70%;
+  opacity: 0.55;
+}
+.utrka-prasina {
+  pointer-events: none;
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 2.2rem;
+  background: radial-gradient(ellipse at 50% 100%, rgb(196 120 58 / 0.45), transparent 70%);
+  animation: pohod-prasina 2s ease-in-out infinite;
+}
+.utrka-trake {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  justify-content: space-evenly;
+  padding: 0.35rem 0.4rem;
+}
+.utrka-traka {
+  position: relative;
+  height: 1.7rem;
+  overflow: hidden;
+  border-bottom: 1px dashed rgb(232 210 160 / 0.25);
+}
+.utrka-ime {
+  position: absolute;
+  left: 0.2rem;
+  top: 0.15rem;
+  z-index: 2;
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #e8d2a0;
+  text-shadow: 0 1px 2px #1a100c;
+}
+.utrka-konj {
+  position: absolute;
+  left: 4%;
+  bottom: 0;
+  width: 3.4rem;
+  height: 1.55rem;
+  transform: translateX(0);
+}
+.utrka-konj-trci {
+  animation: utrka-galop linear both;
+}
+.utrka-konj-prvi {
+  filter: drop-shadow(0 0 6px rgb(255 210 74 / 0.8));
+}
+@keyframes pohod-jahanje-pan {
+  from { transform: scale(1.12) translateX(-4%); filter: brightness(0.7); }
+  to { transform: none; filter: none; }
+}
+@keyframes pohod-mjesec {
+  from { opacity: 0; transform: translateY(6px) scale(0.6); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes pohod-tabor {
+  0%, 100% { opacity: 0.55; transform: scale(0.92); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+@keyframes pohod-konji-jaha {
+  from { transform: translateX(-18%); }
+  to { transform: translateX(12%); }
+}
+@keyframes utrka-galop {
+  from { transform: translateX(0); }
+  to { transform: translateX(var(--cilj, 70%)); }
+}
+.live-cowboy {
+  animation: live-cowboy-ulaz 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.live-feed-red {
+  animation: live-feed-ulaz 280ms ease-out both;
+}
+.live-duel-traka {
+  animation: kauba-dogadaj-slam 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.pohod-poziv-toast {
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: 4.8rem;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in oklab, var(--color-ruby) 70%, var(--color-line));
+  background: color-mix(in oklab, var(--color-panel) 92%, var(--color-ruby));
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.45);
+  animation: kauba-dogadaj-slam 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.pohod-poziv-toast-gold {
+  border-color: color-mix(in oklab, var(--color-gold) 70%, var(--color-line));
+  background: color-mix(in oklab, var(--color-panel) 92%, var(--color-gold));
+}
+.zvijezda-toast {
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: 9.2rem;
+  z-index: 71;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in oklab, var(--color-gold) 70%, var(--color-line));
+  background: color-mix(in oklab, var(--color-panel) 92%, var(--color-gold));
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.45);
+  animation: kauba-dogadaj-slam 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.posjet-domacin-traka {
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: 4.8rem;
+  z-index: 65;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in oklab, var(--color-gold) 60%, var(--color-line));
+  background: color-mix(in oklab, var(--color-panel) 94%, var(--color-gold));
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.4);
+  animation: kauba-dogadaj-slam 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.posjet-prasina {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 30% 80%, rgb(196 120 58 / 0.3), transparent 55%),
+    radial-gradient(ellipse at 80% 60%, rgb(255 210 74 / 0.18), transparent 50%);
+  animation: pohod-prasina 1.4s ease-out both;
+}
+.posjet-cin {
+  animation: live-feed-ulaz 280ms ease-out both;
+}
+@keyframes nim-leti {
+  to {
+    opacity: 0;
+    transform: translateY(-18px) scale(0.6) rotate(-12deg);
+    filter: brightness(1.4);
+  }
+}
+@keyframes nim-zadnji {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.08); filter: brightness(1.25); }
+}
+@keyframes pohod-kopito {
+  from { opacity: 0; transform: translateY(8px) scale(0.4); }
+  35% { opacity: 1; transform: none; }
+  to { opacity: 0.35; }
+}
+@keyframes pohod-prasina {
+  0% { opacity: 0; transform: scaleX(0.6); }
+  40% { opacity: 1; }
+  100% { opacity: 0.35; transform: scaleX(1); }
+}
+@keyframes pohod-tacka {
+  0%, 100% { opacity: 0.25; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-3px); }
+}
+@keyframes pohod-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(94 224 106 / 0.55); }
+  50% { box-shadow: 0 0 0 6px rgb(94 224 106 / 0); }
+}
+@keyframes live-cowboy-ulaz {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes live-feed-ulaz {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
 }
 
 .reel-land {
@@ -1552,5 +3335,577 @@ html.hitstop .slot-token,
     transform: translate3d(-46px, -70px, 0);
   }
 }
+
+.zadatak-spreman {
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-quest) 55%, transparent),
+    0 8px 18px color-mix(in oklab, var(--color-quest) 22%, transparent);
+  animation: zadatak-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes zadatak-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-quest) 45%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 16px color-mix(in oklab, var(--color-quest) 40%, transparent);
+  }
+}
+
+.king-platno {
+  transform-origin: 50% 50%;
+  transition: transform 480ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.king-staza {
+  fill: none;
+  stroke: color-mix(in oklab, var(--color-gold) 82%, white);
+  stroke-width: 1.15;
+  stroke-linecap: round;
+  stroke-dasharray: 2.4 2.1;
+  animation: king-tok 7s linear infinite;
+  filter: drop-shadow(0 0 1.4px rgb(255 210 74 / 0.55));
+}
+
+.king-tocka {
+  fill: color-mix(in oklab, var(--color-gold) 70%, white);
+  opacity: 0.85;
+}
+
+.king-krov-luk {
+  fill: none;
+  stroke: color-mix(in oklab, var(--color-gold) 88%, white);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 1.6px rgb(255 210 74 / 0.65));
+}
+
+.king-pin {
+  box-shadow: 0 4px 0 #3a1c0c, 0 7px 12px rgb(0 0 0 / 0.35);
+  animation: king-bounce 2.2s ease-in-out infinite;
+}
+
+.king-pin-on {
+  animation-duration: 1.05s;
+  box-shadow: 0 5px 0 #8a4a12, 0 0 16px rgb(255 210 74 / 0.45);
+}
+
+.king-pin-off {
+  filter: grayscale(0.55) brightness(0.9);
+}
+
+.king-satelit {
+  animation: king-satelit-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.king-balon {
+  pointer-events: auto;
+  box-shadow: 0 4px 0 #3a1c0c, 0 8px 14px rgb(0 0 0 / 0.35);
+}
+
+.king-lik {
+  position: absolute;
+  bottom: 3.1rem;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--color-gold) 70%, white);
+  object-fit: cover;
+  box-shadow: 0 2px 0 #3a1c0c;
+}
+
+.kauba-oblak {
+  position: absolute;
+  pointer-events: none;
+  height: 16%;
+  border-radius: 999px;
+  background: rgb(255 248 232 / 0.14);
+  filter: blur(16px);
+  animation: kauba-oblak 26s linear infinite;
+}
+
+@keyframes king-tok {
+  to {
+    stroke-dashoffset: -36;
+  }
+}
+
+@keyframes king-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  45% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes king-satelit-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.25);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: none;
+  }
+}
+
+@keyframes king-lik-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes kauba-oblak {
+  from {
+    transform: translateX(-8%);
+  }
+  to {
+    transform: translateX(110%);
+  }
+}
+
+.krov-greda {
+  text-align: center;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-gold);
+  font-size: 10px;
+  font-weight: 800;
+  position: relative;
+}
+
+.krov-greda::before,
+.krov-greda::after {
+  content: "";
+  background: color-mix(in oklab, var(--color-gold) 55%, transparent);
+  width: 18%;
+  height: 2px;
+  position: absolute;
+  top: 50%;
+}
+
+.krov-greda::before {
+  left: 0;
+}
+
+.krov-greda::after {
+  right: 0;
+}
+
+.hub-kartica {
+  animation: hub-ulaz 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.hub-ulaz {
+  animation: hub-ulaz 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes hub-ulaz {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
+}
+
+.potreba-hit {
+  animation: potreba-hit 1.2s ease-in-out infinite;
+}
+
+@keyframes potreba-hit {
+  0%,
+  100% {
+    box-shadow: none;
+  }
+  50% {
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-ruby) 70%, transparent);
+  }
+}
+
+.faro-red {
+  perspective: 640px;
+}
+
+.faro-karta {
+  perspective: 640px;
+  width: 4.4rem;
+  height: 5.8rem;
+  transform-style: preserve-3d;
+  background: transparent;
+  border: 0;
+}
+
+.faro-unutra {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.faro-ledja,
+.faro-lice {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.55rem;
+  backface-visibility: hidden;
+  box-shadow: 0 4px 0 #1a0c06, 0 8px 14px rgb(0 0 0 / 0.35);
+}
+
+.faro-ledja {
+  background: repeating-linear-gradient(45deg, #6a2410 0 6px, #4a180c 6px 12px);
+  border: 2px solid color-mix(in oklab, var(--color-gold) 70%, white);
+}
+
+.faro-ledja-uzorak {
+  width: 62%;
+  height: 72%;
+  border-radius: 0.3rem;
+  border: 1px solid color-mix(in oklab, var(--color-gold) 50%, white);
+  background: radial-gradient(circle at 50% 40%, #c88820 0 18%, transparent 19%),
+    linear-gradient(160deg, #8a3418, #2a1208);
+}
+
+.faro-lice {
+  font-size: 1.35rem;
+  font-weight: 800;
+  background: linear-gradient(180deg, #fff6e4, #e8d2a8);
+  border: 2px solid #d4a04a;
+  transform: rotateY(180deg);
+}
+
+.faro-mijesaj {
+  animation: faro-mijesaj 0.7s ease-in-out;
+}
+
+.faro-otvorena .faro-unutra {
+  transform: rotateY(180deg);
+}
+
+.faro-adut .faro-lice {
+  background: linear-gradient(160deg, #ffe08a, #c88820);
+  color: #2a1408;
+}
+
+.faro-prazna .faro-lice {
+  background: linear-gradient(180deg, #f0d0d0, #c8a0a0);
+}
+
+.faro-pick {
+  transform: translateY(-8px) scale(1.06);
+}
+
+@keyframes faro-mijesaj {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-10px) rotate(-6deg);
+  }
+  75% {
+    transform: translateX(10px) rotate(6deg);
+  }
+}
+
+.kauba-ambient {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+}
+.kauba-oblak {
+  position: absolute;
+  top: 8%;
+  left: -20%;
+  width: 28%;
+  height: 10%;
+  border-radius: 999px;
+  background: rgb(255 248 232 / 0.16);
+  filter: blur(14px);
+  animation: kauba-oblak 28s linear infinite;
+}
+.kauba-oblak-2 {
+  top: 16%;
+  width: 18%;
+  height: 7%;
+  animation-duration: 38s;
+  animation-delay: -12s;
+  opacity: 0.7;
+}
+.kauba-ptica {
+  position: absolute;
+  top: 12%;
+  left: -8%;
+  width: 0.7rem;
+  height: 0.28rem;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow:
+    -0.22rem 0 0 -0.08rem #1a0c08,
+    0.22rem 0 0 -0.08rem #1a0c08;
+  animation: kauba-ptica 16s linear infinite;
+  opacity: 0.55;
+}
+.kauba-ptica-2 {
+  top: 22%;
+  animation-duration: 22s;
+  animation-delay: -7s;
+  opacity: 0.35;
+}
+.kauba-zvijezde {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle, #fff6d0 1px, transparent 1.4px),
+    radial-gradient(circle, #ffe08a 1px, transparent 1.4px),
+    radial-gradient(circle, #fff 0.8px, transparent 1.2px);
+  background-size: 72px 72px, 110px 90px, 54px 64px;
+  background-position: 8% 10%, 40% 4%, 70% 18%;
+  opacity: 0;
+  animation: kauba-zvijezde 3.2s ease-in-out infinite;
+}
+.kauba-doba-noc .kauba-zvijezde {
+  opacity: 0.7;
+}
+.kauba-prasina-ambijent {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle, rgb(232 200 140 / 0.35) 1px, transparent 1.4px);
+  background-size: 48px 48px;
+  animation: sparkle-drift 18s linear infinite;
+  opacity: 0.35;
+  mix-blend-mode: screen;
+}
+.kauba-vatra {
+  position: absolute;
+  inset: auto 8% 18% 8%;
+  height: 28%;
+  background:
+    radial-gradient(ellipse at 72% 40%, rgb(255 80 20 / 0.45), transparent 42%),
+    radial-gradient(ellipse at 28% 55%, rgb(255 140 40 / 0.28), transparent 38%);
+  animation: kauba-vatra 1.1s ease-in-out infinite;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+.kauba-stopa {
+  position: absolute;
+  left: 50%;
+  bottom: 0.15rem;
+  width: 0.55rem;
+  height: 0.28rem;
+  translate: -50% 0;
+  border-radius: 50%;
+  background: rgb(180 140 80 / 0.45);
+  animation: kauba-stopa 1.4s ease-out infinite;
+  pointer-events: none;
+}
+.kauba-lik-odabran {
+  z-index: 6;
+  filter: drop-shadow(0 0 6px rgb(255 210 74 / 0.7));
+}
+.kauba-lik-odabran .kauba-avatar {
+  animation: kauba-odabran 0.7s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.kauba-chip-odabran {
+  animation: kauba-chip-pop 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.kauba-dogadaj {
+  animation: kauba-dogadaj-slam 420ms cubic-bezier(0.22, 1, 0.36, 1) both, kauba-dogadaj 1.6s ease-in-out 420ms infinite;
+}
+.listak-ulaz {
+  animation: hub-ulaz 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.kronika-red {
+  animation: hub-ulaz 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.kronika-red-pobjeda {
+  border-left: 2px solid var(--color-gold);
+  padding-left: 0.45rem;
+}
+.kronika-red-poraz {
+  border-left: 2px solid color-mix(in oklab, var(--color-ruby) 70%, var(--color-line));
+  padding-left: 0.45rem;
+  opacity: 0.82;
+}
+.kronika-red-zvijezda {
+  border-left: 2px solid var(--color-gold);
+  padding-left: 0.45rem;
+}
+.zgrada-slavlje {
+  animation: zgrada-slavlje 1.15s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.zgrada-slavlje-veil {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background:
+    radial-gradient(circle at 50% 40%, rgb(255 210 74 / 0.45), transparent 62%);
+  animation: flash-fade 1.1s ease-out both;
+}
+.stat-delta {
+  position: absolute;
+  right: 0.2rem;
+  top: -0.55rem;
+  font-size: 0.58rem;
+  font-weight: 800;
+  color: var(--color-xp);
+  pointer-events: none;
+  animation: xp-float 0.95s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.stat-delta-minus {
+  color: var(--color-ruby);
+}
+.level-toast {
+  overflow: hidden;
+}
+.level-zrake {
+  pointer-events: none;
+  position: absolute;
+  inset: -40%;
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgb(140 255 90 / 0.18) 0 8deg,
+    transparent 8deg 22deg
+  );
+  animation: rays-spin 8s linear infinite;
+  opacity: 0.55;
+}
+.level-konfeti {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 1px;
+  background: var(--color-gold);
+  animation: particle-out 0.9s ease-out both;
+}
+.modal-ulaz {
+  animation: modal-ulaz 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.modal-pozadina {
+  animation: modal-pozadina 280ms ease-out both;
+}
+.faro-pobjeda {
+  animation: faro-pobjeda 0.7s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+.nagrada-dan-spreman {
+  animation: zadatak-pulse 1.4s ease-in-out infinite;
+}
+.header-chip {
+  position: relative;
+  overflow: visible;
+}
+.potreba-traka {
+  transition: width 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.lik-xp-traka {
+  transition: width 380ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.gradnja-traka-pun {
+  box-shadow: 0 0 8px rgb(255 210 74 / 0.55);
+}
+.selo-znak-dim .selo-dim,
+.selo-znak-svjetlo .selo-svjetlo {
+  will-change: transform, opacity;
+}
+.kauba-lik-zurka .kauba-avatar {
+  animation: kauba-ples 0.55s ease-in-out infinite;
+}
+
+@keyframes kauba-ptica {
+  0% { transform: translateX(0) translateY(0); }
+  50% { transform: translateX(60vw) translateY(-10px); }
+  100% { transform: translateX(120vw) translateY(4px); }
+}
+@keyframes kauba-zvijezde {
+  0%,
+  100% { opacity: 0.45; }
+  50% { opacity: 0.85; }
+}
+@keyframes kauba-vatra {
+  0%,
+  100% { opacity: 0.55; transform: scaleY(1); }
+  50% { opacity: 1; transform: scaleY(1.12); }
+}
+@keyframes kauba-stopa {
+  0% { opacity: 0.6; transform: scale(0.6); }
+  100% { opacity: 0; transform: scale(1.8) translateY(4px); }
+}
+@keyframes kauba-odabran {
+  0% { transform: scale(0.86) translateY(4px); }
+  55% { transform: scale(1.08) translateY(-4px); }
+  100% { transform: scale(1); }
+}
+@keyframes kauba-chip-pop {
+  0% { transform: scale(0.8); }
+  55% { transform: scale(1.14); }
+  100% { transform: scale(1); }
+}
+@keyframes kauba-dogadaj-slam {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.94);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+@keyframes zgrada-slavlje {
+  0% { transform: scale(1); }
+  28% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+@keyframes modal-ulaz {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+@keyframes modal-pozadina {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes faro-pobjeda {
+  0% { transform: scale(0.9); opacity: 0; }
+  40% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes kauba-ples {
+  0%,
+  100% { transform: rotate(-6deg) translateY(0); }
+  50% { transform: rotate(6deg) translateY(-5px); }
+}
+
 
 

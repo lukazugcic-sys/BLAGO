@@ -26,13 +26,31 @@ export function ScreenPager({
   const [dx, setDx] = useState(0);
   const [anim, setAnim] = useState(true);
   const skipClick = useRef(false);
-  const [mounted, setMounted] = useState(() => new Set<number>([0, 1]));
+  const [mounted, setMounted] = useState(() => new Set<number>([0]));
 
   idxRef.current = idx;
   const n = panes.length;
 
+  const keepAround = (center: number, extra?: number) => {
+    const next = new Set<number>([center]);
+    if (center > 0) next.add(center - 1);
+    if (center < n - 1) next.add(center + 1);
+    if (extra !== undefined) next.add(extra);
+    return next;
+  };
+
   useEffect(() => {
-    setMounted(new Set([idx, idx - 1, idx + 1].filter((x) => x >= 0 && x < n)));
+    setMounted((prev) => {
+      const next = keepAround(idx);
+      prev.forEach((i) => {
+        if (i === idx) next.add(i);
+      });
+      return next;
+    });
+    const t = window.setTimeout(() => setMounted(new Set([idx])), 560);
+    return () => window.clearTimeout(t);
+    // n is panes.length; keepAround uses current n from closure
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx, n]);
 
   useEffect(() => {
@@ -65,10 +83,13 @@ export function ScreenPager({
 
   const onDown = (e: React.PointerEvent) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
+    const t = e.target as HTMLElement | null;
+    if (t?.closest("[data-lock-pan]")) return;
     dragRef.current = true;
     axisRef.current = null;
     skipClick.current = false;
     originRef.current = { x: e.clientX, y: e.clientY, t: performance.now() };
+    setMounted(keepAround(idxRef.current));
     setAnim(false);
   };
 
@@ -150,7 +171,7 @@ export function ScreenPager({
       }}
     >
       <div
-        className={cn("flex h-full will-change-transform", anim && "pager-track")}
+        className={cn("flex h-full", anim && "pager-track", (!anim || dx !== 0) && "will-change-transform")}
         style={{
           width: w ? w * panes.length : "100%",
           transform: `translate3d(${tx}px, 0, 0)`,

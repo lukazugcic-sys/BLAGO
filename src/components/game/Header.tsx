@@ -25,6 +25,7 @@ export function Header({
 }) {
   const igracRazina = useGameStore((s) => s.igracRazina);
   const prestigeRazina = useGameStore((s) => s.prestigeRazina);
+  const krunjenja = useGameStore((s) => s.krunjenja);
   const xp = useGameStore((s) => s.xp);
   const zadnjiXp = useGameStore((s) => s.zadnjiXp);
   const xpFlash = useGameStore((s) => s.xpFlash);
@@ -48,22 +49,22 @@ export function Header({
   return (
     <header className="z-10 shrink-0 border-b border-line bg-void/92 px-2.5 pb-1.5 pt-[max(0.3rem,env(safe-area-inset-top))]">
       <div className="mb-1.5 flex items-center gap-1.5">
-        <div className="relative flex size-8 shrink-0 items-center justify-center rounded-full bg-xp text-xs font-bold text-void">
+        <div className="xp-nivo relative flex size-8 shrink-0 items-center justify-center text-xs font-bold text-void">
           {igracRazina}
-          {prestigeRazina > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 flex size-3.5 items-center justify-center rounded-full bg-prestige text-[7px] text-void">
-              <Crown className="size-2" strokeWidth={2.5} />
+          {(prestigeRazina > 0 || krunjenja > 0) && (
+            <span className="absolute -right-0.5 -top-0.5 flex size-3.5 items-center justify-center rounded-full bg-prestige text-[7px] font-bold text-void">
+              {krunjenja > 0 ? krunjenja : <Crown className="size-2" strokeWidth={2.5} />}
             </span>
           )}
         </div>
-        <div className="relative h-6 min-w-0 flex-1 overflow-hidden rounded-full bg-void ring-1 ring-xp/35">
-          <div
-            className="absolute inset-y-0 left-0 rounded-full bg-xp transition-[width] duration-300"
-            style={{ width: `${xpPct}%` }}
-          />
-          <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold tabular-nums leading-none text-ink">
-            {formatHud(xp)}/{formatHud(potrebanXp)} XP
-          </span>
+        <div className="xp-traka relative h-7 min-w-0 flex-1">
+          <div className="xp-traka-tijelo">
+            <div className="xp-traka-punjenje" style={{ width: `${xpPct}%` }} />
+            <span className="xp-traka-sjaj" aria-hidden />
+            <span className="xp-traka-broj">
+              {formatHud(xp)}/{formatHud(potrebanXp)} XP
+            </span>
+          </div>
           {xpFlash > 0 && zadnjiXp > 0 && (
             <span
               key={xpFlash}

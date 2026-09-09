@@ -142,6 +142,29 @@ function authPopupPlugin(): Plugin {
   };
 }
 
+function downloadHeadersPlugin(): Plugin {
+  const files: Record<string, [string, string]> = {
+    "/BLAGO.apk": ["application/vnd.android.package-archive", "BLAGO.apk"],
+    "/BLAGO-android.zip": ["application/zip", "BLAGO-android.zip"],
+    "/BLAGO-github.zip": ["application/zip", "BLAGO-github.zip"],
+  };
+  return {
+    name: "blago-download-headers",
+    apply: "serve",
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const pathOnly = (req.url ?? "").split("?", 1)[0] ?? "";
+        const hit = files[pathOnly];
+        if (hit) {
+          res.setHeader("Content-Type", hit[0]);
+          res.setHeader("Content-Disposition", `attachment; filename="${hit[1]}"`);
+        }
+        next();
+      });
+    },
+  };
+}
+
 // `0.0.0.0:8080` is the live-preview contract — don't change host/port.
 // The dev server starts once `src/router.tsx` and `src/routes/` exist — see
 // AGENTS.md § "First scaffold".
@@ -150,6 +173,15 @@ export default defineConfig(({ command, isPreview }) => ({
     host: "0.0.0.0",
     port: 8080,
     strictPort: true,
+    watch: {
+      ignored: [
+        "**/artifacts/**",
+        "**/android/**",
+        "**/apk-www/**",
+        "**/.android-sdk/**",
+        "**/node_modules/**",
+      ],
+    },
   },
   preview: {
     host: "127.0.0.1",
@@ -161,6 +193,7 @@ export default defineConfig(({ command, isPreview }) => ({
     pgliteBootstrapPlugin(),
     // Before tanstackStart so /auth/popup never falls through to the SPA.
     authPopupPlugin(),
+    downloadHeadersPlugin(),
     // Dev-only /__app-env, read by scripts/check-auth-invariant.mjs.
     appEnvPlugin(),
     // PWA head + ?install=1 tutorial page; runs before Start/Nitro.

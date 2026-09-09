@@ -10,8 +10,10 @@ import { ArtTraka } from "./ArtTraka";
 import type { TrznicaId } from "@/lib/game/types";
 import { cn } from "@/lib/utils";
 import { playSfx, vibrate } from "@/lib/game/audio";
+import { TjedanTraka } from "./TjedanTraka";
+import { sajamCijena, tjedanSad } from "@/lib/game/tjedan";
 
-const MNOZ = [10, 30, 50] as const;
+const MNOZ = [1, 10, 30, 50] as const;
 const HOLD_MS = 420;
 const REPEAT_MS = 170;
 
@@ -34,12 +36,16 @@ export function ShopScreen() {
   const tecaj = useGameStore((s) => s.tecaj);
   const trend = useGameStore((s) => s.trend);
   const dijamanti = useGameStore((s) => s.dijamanti);
+  const zlato = useGameStore((s) => Math.floor(s.zlato));
+  const resursi = useGameStore((s) => s.resursi);
   const aktivniSkin = useGameStore((s) => s.aktivniSkin);
+  const skinovi = useGameStore((s) => s.skinovi);
   const kupiSkin = useGameStore((s) => s.kupiSkin);
 
   return (
     <div className="mx-auto w-full max-w-lg px-3 pb-8 pt-2">
       <ArtTraka src={sekcija === "izgled" ? ART.vinograd : ART.trznica} label="Tržnica" />
+      {sekcija === "burza" && <TjedanTraka ceker />}
       <ScreenTabs tabs={TABS} value={sekcija} onChange={setSekcija} />
 
       {sekcija === "alati" && <UpgradesScreen embedded />}
@@ -47,7 +53,13 @@ export function ShopScreen() {
       {sekcija === "burza" && (
         <>
           <div className="mb-3 ml-1 flex items-end justify-between gap-2">
-            <h2 className="text-sm font-bold tracking-widest text-ink uppercase">Mjenjačnica</h2>
+            <div>
+              <h2 className="text-sm font-bold tracking-widest text-ink uppercase">Mjenjačnica</h2>
+              <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold text-dim">
+                {zlato}
+                <IconBadge src={SYMBOL_ART.gold} size="xs" />
+              </p>
+            </div>
             <div className="flex gap-1">
               {MNOZ.map((n) => (
                 <button
@@ -69,29 +81,33 @@ export function ShopScreen() {
           </div>
           {RESURSI.map((r) => {
             const lot = mnoz;
-            const cijenaKupi = tecaj[r.id].kupi * lot;
-            const cijenaProdaj = tecaj[r.id].prodaj * lot;
+            const sajam = tjedanSad().vrsta === "sajam";
+            const cijenaKupi = sajamCijena("kupi", tecaj[r.id].kupi, sajam) * lot;
+            const cijenaProdaj = sajamCijena("prodaj", tecaj[r.id].prodaj, sajam) * lot;
             const tr = trend[r.id];
             const TrendIkona = tr === 1 ? ArrowUpRight : tr === -1 ? ArrowDown : Minus;
+            const ima = r.id === "dijamant" ? dijamanti : Math.floor(resursi[r.id]);
             return (
-              <article key={r.id} className="mb-3.5 rounded-2xl border border-line bg-panel p-5 shadow-panel">
-                <div className="mb-4 flex items-center gap-3.5">
+              <article key={r.id} className="mb-3.5 rounded-2xl border border-line bg-panel p-4 shadow-panel">
+                <div className="mb-3 flex items-center gap-3">
                   <IconBadge src={r.art} />
-                  <div className="flex flex-1 items-center justify-between">
+                  <div className="min-w-0 flex-1">
                     <h3 className="text-base font-bold text-ink">
                       {r.n}
-                      {r.id !== "dijamant" && (
-                        <span className="ml-1 text-xs font-semibold text-dim">(×{lot})</span>
-                      )}
+                      <span className="ml-1 text-xs font-semibold text-dim">×{lot}</span>
                     </h3>
-                    <TrendIkona
-                      className={cn(
-                        "size-4",
-                        tr === 1 ? "text-gold" : tr === -1 ? "text-ruby" : "text-dim",
-                      )}
-                      strokeWidth={2.5}
-                    />
+                    <p className="mt-0.5 text-[11px] font-semibold text-dim">
+                      imaš {ima} · 1 = {sajamCijena("kupi", tecaj[r.id].kupi, tjedanSad().vrsta === "sajam")}/{sajamCijena("prodaj", tecaj[r.id].prodaj, tjedanSad().vrsta === "sajam")}
+                      {tjedanSad().vrsta === "sajam" ? " · sajam" : ""}
+                    </p>
                   </div>
+                  <TrendIkona
+                    className={cn(
+                      "size-4 shrink-0",
+                      tr === 1 ? "text-gold" : tr === -1 ? "text-ruby" : "text-dim",
+                    )}
+                    strokeWidth={2.5}
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <HoldTradeButton
@@ -123,13 +139,17 @@ export function ShopScreen() {
         <>
           <div className="mb-2 ml-1 flex items-end justify-between">
             <h2 className="text-sm font-bold tracking-widest text-ink uppercase">Izgled kaube</h2>
-            <span className="text-[11px] font-semibold text-dim">Skinovi zgrada</span>
+            <span className="text-[11px] font-semibold text-dim">Boja cijele igre</span>
           </div>
-          <p className="mb-3.5 ml-1 text-xs text-dim">Promijeni izgled svih zgrada u bazi odjednom.</p>
+          <p className="mb-3.5 ml-1 text-xs text-dim">
+            Kupi jednom, pa biraj. Nijansa ide na HUD, vrtnju, kaubu i tržnicu.
+          </p>
           {ZGRADE_SKINOVI.map((skin) => {
             const aktivan = aktivniSkin === skin.id;
-            const mozePlatiti = dijamanti >= skin.cijenaDijamanti;
+            const ima = skinovi.includes(skin.id) || skin.cijenaDijamanti === 0;
+            const mozePlatiti = ima || dijamanti >= skin.cijenaDijamanti;
             const SkinIkona = skin.ikona;
+            const t = skin.tema;
             return (
               <article
                 key={skin.id}
@@ -141,7 +161,7 @@ export function ShopScreen() {
               >
                 <div className="relative h-16 overflow-hidden">
                   <img
-                    src={ZGRADA_ART.pilana}
+                    src={ZGRADA_ART.kuca}
                     alt=""
                     draggable={false}
                     className="size-full object-cover"
@@ -151,7 +171,16 @@ export function ShopScreen() {
                     className="absolute inset-0"
                     style={{ backgroundColor: skin.boja, mixBlendMode: "color", opacity: skin.koprena }}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-r from-panel via-panel/40 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-panel via-panel/50 to-transparent" />
+                  <div className="absolute bottom-2 right-3 flex gap-1">
+                    {[t.void, t.gold, t.energy, t.xp].map((c) => (
+                      <span
+                        key={c}
+                        className="size-3.5 rounded-full border border-ink/40"
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                  </div>
                 </div>
                 <div className="flex items-center justify-between p-4 pt-3">
                 <div className="flex items-center gap-3.5">
@@ -164,19 +193,13 @@ export function ShopScreen() {
                   <div>
                     <p className="text-sm font-bold text-ink">{skin.naziv}</p>
                     <p className="mt-0.5 text-[10px] font-bold tracking-wider uppercase" style={{ color: skin.boja }}>
-                      {skin.id === "default"
-                        ? "pijesak"
-                        : skin.id === "medieval"
-                          ? "vino"
-                          : skin.id === "japanese"
-                            ? "cinober"
-                            : "noćno plavo"}
+                      {skin.opis}
                     </p>
                     <p className="mt-0.5 inline-flex items-center gap-1 text-xs font-semibold text-gem">
                       {skin.cijenaDijamanti === 0 ? (
                         "Besplatno"
-                      ) : aktivan ? (
-                        "Aktivno"
+                      ) : ima ? (
+                        "Tvoje"
                       ) : (
                         <>
                           {skin.cijenaDijamanti}
@@ -207,7 +230,7 @@ export function ShopScreen() {
                         : undefined
                     }
                   >
-                    {skin.cijenaDijamanti === 0 ? "ODABERI" : "KUPI"}
+                    {ima ? "ODABERI" : "KUPI"}
                   </button>
                 )}
                 </div>

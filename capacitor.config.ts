@@ -4,10 +4,10 @@ const config: CapacitorConfig = {
   appId: "hr.blago.game",
   appName: "BLAGO",
   webDir: "apk-www",
-  backgroundColor: "#1A4A46",
+  backgroundColor: "#2B1814",
   android: {
     allowMixedContent: true,
-    backgroundColor: "#1A4A46",
+    backgroundColor: "#2B1814",
   },
   server: {
     androidScheme: "https",
@@ -15,12 +15,12 @@ const config: CapacitorConfig = {
   plugins: {
     SplashScreen: {
       launchAutoHide: true,
-      backgroundColor: "#1A4A46",
+      backgroundColor: "#2B1814",
       showSpinner: false,
     },
     StatusBar: {
       style: "DARK",
-      backgroundColor: "#1A4A46",
+      backgroundColor: "#2B1814",
     },
   },
 };

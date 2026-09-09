@@ -10,7 +10,9 @@ import {
   jeUtvrdjeno,
   npcPotez,
   plijenUkupno,
+  potezIzDelte,
   primijeniPotez,
+  tkoIdePrvi,
   type Hrpe,
   type NimPotez,
   type Plijen,
@@ -25,9 +27,12 @@ import { delay, formatNum } from "@/lib/game/helpers";
 import { ART, SYMBOL_ART } from "@/lib/game/art";
 import { flash, hitstop, shake } from "@/lib/context/UIContext";
 import { useLive } from "@/lib/multiplayer";
+import { susjedPoUid, serifKaoLik } from "@/lib/game/susjedi";
+import { LikAvatar } from "./LikAvatar";
+import { KonjSilueta } from "./KonjSilueta";
 import { cn } from "@/lib/utils";
 
-type Faza = "lista" | "opsada" | "pobjeda" | "poraz" | "blokirano" | "prazno" | "greska";
+type Faza = "lista" | "jahanje" | "ceka" | "opsada" | "pobjeda" | "poraz" | "blokirano" | "prazno" | "greska";
 
 const HRPA_ART = [SYMBOL_ART.wood, SYMBOL_ART.stone, SYMBOL_ART.iron] as const;
 const HRPA_IME = ["Drvo", "Kamen", "Željezo"] as const;
@@ -70,15 +75,23 @@ export function RaidModal({
   const [plijen, setPlijen] = useState<Plijen | null>(null);
   const [poruka, setPoruka] = useState("");
   const [utvrdjenoStart, setUtvrdjenoStart] = useState(false);
+  const [liveDvoboj, setLiveDvoboj] = useState(false);
+  const [leaving, setLeaving] = useState<NimPotez | null>(null);
   const primiResurse = useGameStore((s) => s.primiResurse);
   const zapisiDebrief = useGameStore((s) => s.zapisiDebrief);
   const igracRazina = useGameStore((s) => s.igracRazina);
   const user = useCurrentUser();
   const userId = user?.id ?? null;
   const live = useLive();
+  const jahanje = useGameStore((s) => s.konjiDuznost.jahanje);
+  const radKonja = useGameStore((s) => s.konjiDuznost.rad);
+  const cowboyKey = live.cowboys.filter((c) => c.connected).map((c) => c.id).join("|");
   const lock = useRef(false);
   const dead = useRef(false);
   const turnLock = useRef(false);
+  const hrpeRef = useRef<Hrpe>([0, 0, 0]);
+  hrpeRef.current = hrpe;
+  const krajRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!vidljiv) {
@@ -90,20 +103,23 @@ export function RaidModal({
     dead.current = false;
     lock.current = false;
     turnLock.current = false;
+    krajRef.current = null;
     setFaza("lista");
     setMeta(null);
     setPlijen(null);
     setPoruka("");
     setNpcHint(null);
     setNaPotezu("igrac");
+    setLiveDvoboj(false);
+    setLeaving(null);
     setUcitava(true);
     let cancelled = false;
     (async () => {
       if (userId) {
         try {
-          const live = await withTimeout(listRaidTargets(), 2500);
-          if (!cancelled && live.length) {
-            setMete(live);
+          const cloudMete = await withTimeout(listRaidTargets(), 2500);
+          if (!cancelled && cloudMete.length) {
+            setMete(cloudMete);
             setUcitava(false);
             return;
           }
@@ -134,11 +150,38 @@ export function RaidModal({
   }, [vidljiv, userId, igracRazina]);
 
   useEffect(() => {
+    if (!vidljiv || faza !== "lista") return;
+    const uzivo: RaidMeta[] = live.cowboys
+      .filter((c) => c.connected)
+      .slice(0, 4)
+      .map((c) => ({
+        uid: c.id,
+        imeIgraca: c.ime,
+        igracRazina: c.razina,
+        resursi: { drvo: c.drvo, kamen: c.kamen, zeljezo: c.zeljezo },
+        uzivo: true,
+      }));
+    if (uzivo.length === 0) return;
+    setMete((prev) => {
+      const npc = prev.filter((m) => !m.uzivo);
+      const ids = uzivo.map((u) => u.uid).join("|");
+      const old = prev
+        .filter((m) => m.uzivo)
+        .map((m) => m.uid)
+        .join("|");
+      if (ids === old) return prev;
+      return [...uzivo, ...npc].slice(0, 6);
+    });
+  }, [vidljiv, faza, cowboyKey, live.cowboys]);
+
+  useEffect(() => {
     if (!vidljiv) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.code === "Space" || e.key === " ") e.preventDefault();
       if (e.key !== "Escape") return;
-      if (naPotezu === "npc" && faza === "opsada") return;
+      if (naPotezu === "npc" && faza === "opsada" && !liveDvoboj) return;
+      if (faza === "ceka") live.odbijPohod();
+      else if (liveDvoboj && (faza === "opsada" || faza === "jahanje")) live.bjeziPohod();
       onZatvori();
     };
     window.addEventListener("keydown", onKey);
@@ -148,15 +191,95 @@ export function RaidModal({
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
     };
-  }, [vidljiv, onZatvori, naPotezu, faza]);
+  }, [vidljiv, onZatvori, naPotezu, faza, liveDvoboj, live]);
+
+  useEffect(() => {
+    const p = live.pohod;
+    if (!p || !vidljiv) return;
+
+    const metaOd = (): RaidMeta => ({
+      uid: p.peerId,
+      imeIgraca: p.ime,
+      igracRazina: 1,
+      resursi: p.ostava ?? { drvo: p.hrpe[0] * 48, kamen: p.hrpe[1] * 48, zeljezo: p.hrpe[2] * 48 },
+      uzivo: true,
+    });
+
+    if (p.faza === "ceka" && p.uloga === "napadac") {
+      setLiveDvoboj(true);
+      setHrpe(p.hrpe);
+      setMeta(metaOd());
+      setFaza((f) => (f === "jahanje" ? f : "ceka"));
+      return;
+    }
+
+    if (p.faza === "serif") {
+      setLiveDvoboj(false);
+      setHrpe(p.hrpe);
+      setMeta((m) => m ?? metaOd());
+      setNaPotezu("igrac");
+      turnLock.current = false;
+      setFaza("opsada");
+      return;
+    }
+
+    if (p.faza === "igra") {
+      setLiveDvoboj(true);
+      setMeta((m) => m ?? metaOd());
+      const delta = potezIzDelte(hrpeRef.current, p.hrpe);
+      const sync = () => {
+        setHrpe(p.hrpe);
+        setNaPotezu(p.naPotezu ? "igrac" : "npc");
+        if (p.naPotezu) turnLock.current = false;
+        setFaza("opsada");
+        setLeaving(null);
+      };
+      if (delta && p.naPotezu) {
+        setLeaving(delta);
+        setNaPotezu("npc");
+        const t = window.setTimeout(() => {
+          if (dead.current) return;
+          playSfx("attack");
+          hitstop(40);
+          shake("soft");
+          sync();
+        }, npcDelayMs() > 100 ? 280 : 80);
+        return () => window.clearTimeout(t);
+      }
+      sync();
+      return;
+    }
+
+    if (p.faza === "kraj") {
+      setHrpe(p.hrpe);
+      setLiveDvoboj(true);
+      if (krajRef.current === p.id) return;
+      krajRef.current = p.id;
+      if (p.pobjeda) {
+        if (p.uloga === "napadac") {
+          setPlijen((prev) => prev ?? izracunajPlijen(p.ostava, 1, radKonja));
+        }
+        playSfx("collect");
+        flash("rgba(198, 224, 90, 0.4)");
+        setFaza("pobjeda");
+      } else {
+        playSfx("skull");
+        flash("rgba(232, 93, 93, 0.45)");
+        shake("hard");
+        setFaza("poraz");
+      }
+    }
+  }, [live.pohod, vidljiv, radKonja]);
 
   const zatvori = () => {
-    if (naPotezu === "npc" && faza === "opsada") return;
+    if (naPotezu === "npc" && faza === "opsada" && !liveDvoboj) return;
+    if (faza === "ceka") live.odbijPohod();
+    else if (liveDvoboj && (faza === "opsada" || faza === "jahanje")) live.bjeziPohod();
     onZatvori();
   };
 
   const kreniOpsadu = (m: RaidMeta) => {
-    if (lock.current || faza !== "lista") return;
+    if (lock.current || (faza !== "lista" && faza !== "jahanje")) return;
     const h = hrpeIzResursa(m.resursi);
     if (jeTerminal(h)) {
       playSfx("attack");
@@ -164,14 +287,64 @@ export function RaidModal({
       setFaza("prazno");
       return;
     }
-    playSfx("button");
+    playSfx("attack");
+    shake("soft");
     setMeta(m);
     setHrpe(h);
-    setNaPotezu("igrac");
     setNpcHint(null);
     setUtvrdjenoStart(jeUtvrdjeno(h));
     turnLock.current = false;
-    setFaza("opsada");
+    setLiveDvoboj(false);
+
+    if (m.uzivo && live.joined) {
+      live.pozoviPohod(m.uid, m.imeIgraca, h);
+      setLiveDvoboj(true);
+      if (jahanje > 0) {
+        setFaza("jahanje");
+        window.setTimeout(() => {
+          if (dead.current) return;
+          setFaza((f) => (f === "jahanje" ? "ceka" : f));
+        }, 1800);
+        return;
+      }
+      setFaza("ceka");
+      return;
+    }
+
+    const ophodnja = m.uzivo ? (live.cowboys.find((c) => c.id === m.uid)?.ophodnja ?? 0) : jeUtvrdjeno(h) ? 1 : 0;
+    const prvi = tkoIdePrvi(jahanje, ophodnja);
+    const kreni = () => {
+      if (prvi === "npc") {
+        setNaPotezu("npc");
+        const odgovor = npcPotez(h);
+        if (odgovor) {
+          setNpcHint(odgovor);
+          window.setTimeout(() => {
+            if (dead.current) return;
+            playSfx("button");
+            const nakon = primijeniPotez(h, odgovor);
+            setHrpe(nakon);
+            setNpcHint(null);
+            setNaPotezu("igrac");
+          }, npcDelayMs());
+        } else {
+          setNaPotezu("igrac");
+        }
+      } else {
+        setNaPotezu("igrac");
+      }
+      setFaza("opsada");
+    };
+
+    if (jahanje > 0) {
+      setFaza("jahanje");
+      window.setTimeout(() => {
+        if (dead.current) return;
+        kreni();
+      }, 1800);
+      return;
+    }
+    kreni();
   };
 
   const zavrsiPobjedu = async (m: RaidMeta) => {
@@ -179,9 +352,10 @@ export function RaidModal({
     lock.current = true;
     try {
       if (m.uzivo) {
-        live.napad(m.uid);
-        const loot = izracunajPlijen(m.resursi);
+        const loot = izracunajPlijen(m.resursi, m.igracRazina, radKonja);
         if (plijenUkupno(loot) > 0) primiResurse(loot);
+        playSfx("collect");
+        flash("rgba(198, 224, 90, 0.4)");
         setPlijen(loot);
         setFaza("pobjeda");
         lock.current = false;
@@ -227,7 +401,7 @@ export function RaidModal({
         return;
       }
 
-      const loot = izracunajPlijen(m.resursi, m.igracRazina);
+      const loot = izracunajPlijen(m.resursi, m.igracRazina, radKonja);
       if (plijenUkupno(loot) <= 0) {
         playSfx("attack");
         setFaza("prazno");
@@ -254,10 +428,28 @@ export function RaidModal({
     playSfx("attack");
     hitstop(50);
     shake("soft");
+    setLeaving(potez);
+    await delay(npcDelayMs() > 100 ? 280 : 80);
+    if (dead.current) return;
+    setLeaving(null);
+
+    if (liveDvoboj) {
+      const nakon = primijeniPotez(hrpe, potez);
+      setHrpe(nakon);
+      live.igrajPotez(potez);
+      if (jeTerminal(nakon)) {
+        hitstop(90);
+        return;
+      }
+      setNaPotezu("npc");
+      return;
+    }
+
     const nakonIgraca = primijeniPotez(hrpe, potez);
     setHrpe(nakonIgraca);
     if (jeTerminal(nakonIgraca)) {
       hitstop(90);
+      shake("hard");
       await zavrsiPobjedu(meta);
       return;
     }
@@ -271,9 +463,13 @@ export function RaidModal({
     await delay(npcDelayMs());
     if (dead.current) return;
     playSfx("button");
+    setLeaving(odgovor);
+    await delay(npcDelayMs() > 100 ? 240 : 60);
+    if (dead.current) return;
     const nakonNpc = primijeniPotez(nakonIgraca, odgovor);
     setHrpe(nakonNpc);
     setNpcHint(null);
+    setLeaving(null);
     if (jeTerminal(nakonNpc)) {
       playSfx("skull");
       flash("rgba(232, 93, 93, 0.45)");
@@ -301,22 +497,24 @@ export function RaidModal({
   if (!vidljiv || typeof document === "undefined") return null;
 
   const naslov =
-    faza === "pobjeda"
+    faza === "pobjeda" || faza === "poraz"
       ? "Kako to čitaš"
-      : faza === "poraz"
-        ? "Kako to čitaš"
-        : faza === "opsada"
-          ? "Dvoboj"
-          : "Odaberi tabor";
+      : faza === "opsada"
+        ? "Dvoboj"
+        : faza === "jahanje"
+          ? "Jašeš"
+          : faza === "ceka"
+            ? "Čekam"
+            : "Odaberi tabor";
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[90] flex items-center justify-center bg-void/85 p-3 sm:p-6"
+      className="modal-pozadina fixed inset-0 z-[90] flex items-center justify-center bg-void/85 p-3 sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-labelledby="raid-title"
     >
-      <div className="flex max-h-[min(40rem,90dvh)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-ruby/50 bg-panel shadow-[0_18px_50px_rgb(0_0_0_/_0.55)]">
+      <div className="modal-ulaz flex max-h-[min(40rem,90dvh)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-ruby/50 bg-panel shadow-[0_18px_50px_rgb(0_0_0_/_0.55)]">
         <div
           className="relative h-16 shrink-0 overflow-hidden sm:h-20"
           style={{
@@ -333,7 +531,7 @@ export function RaidModal({
           <button
             type="button"
             onClick={zatvori}
-            disabled={naPotezu === "npc" && faza === "opsada"}
+            disabled={naPotezu === "npc" && faza === "opsada" && !liveDvoboj}
             className="flex size-11 items-center justify-center rounded-lg text-lg text-dim disabled:opacity-40"
             aria-label="Zatvori"
           >
@@ -341,9 +539,10 @@ export function RaidModal({
           </button>
         </div>
 
-        {faza === "pobjeda" && plijen && (
+        {faza === "pobjeda" && (
           <DebriefIzlaz
             ime={meta?.imeIgraca ?? ""}
+            rec={meta ? susjedPoUid(meta.uid)?.recPobjeda : undefined}
             pobjeda
             utvrdjeno={utvrdjenoStart}
             plijen={plijen}
@@ -354,6 +553,7 @@ export function RaidModal({
         {faza === "poraz" && (
           <DebriefIzlaz
             ime={meta?.imeIgraca ?? ""}
+            rec={meta ? susjedPoUid(meta.uid)?.recPoraz : undefined}
             pobjeda={false}
             utvrdjeno={utvrdjenoStart}
             plijen={null}
@@ -399,22 +599,72 @@ export function RaidModal({
           </div>
         )}
 
+        {faza === "jahanje" && meta && (
+          <div className="pohod-jahanje px-0 pb-6 pt-0">
+            <div className="pohod-jahanje-platno">
+              <img src={ART.pohodJahanje} alt="" className="pohod-jahanje-art" draggable={false} />
+              <span className="pohod-jahanje-veil" aria-hidden />
+              <span className="pohod-mjesec" aria-hidden />
+              <span className="pohod-tabor-svjetlo" aria-hidden />
+              <div className="pohod-konji-trka" aria-hidden>
+                <span className="pohod-konj pohod-konj-a">
+                  <KonjSilueta boja="#1a100c" />
+                </span>
+                <span className="pohod-konj pohod-konj-b">
+                  <KonjSilueta boja="#c4783a" />
+                </span>
+              </div>
+              <div className="pohod-prasina" aria-hidden />
+              <div className="pohod-kopita" aria-hidden>
+                <span />
+                <span />
+                <span />
+                <span />
+              </div>
+            </div>
+            <p className="mt-3 text-center text-sm font-bold text-ink">Jašeš na {meta.kauba ?? meta.imeIgraca}.</p>
+            <p className="mt-1 text-center text-xs font-bold text-dim">Prašina. Sedlo. Ostava čeka.</p>
+          </div>
+        )}
+
+        {faza === "ceka" && meta && (
+          <div className="px-5 pb-6 pt-2">
+            <p className="text-center text-sm font-bold text-ink">{meta.imeIgraca} čuje kopita.</p>
+            <p className="mt-1 text-center text-xs font-bold text-dim">Stane na ulicu ili pušta šerifa.</p>
+            <div className="pohod-ceka-tacke mt-4 flex justify-center gap-1.5" aria-hidden>
+              <span />
+              <span />
+              <span />
+            </div>
+            <button
+              type="button"
+              onClick={zatvori}
+              className="mt-4 min-h-11 w-full rounded-xl border border-line bg-panel-2 text-xs font-bold tracking-widest text-dim uppercase"
+            >
+              Bježi
+            </button>
+          </div>
+        )}
+
         {faza === "opsada" && meta && (
           <OpsadaPloca
             ime={meta.imeIgraca}
+            rec={susjedPoUid(meta.uid)?.recPohod}
             hrpe={hrpe}
             naPotezu={naPotezu}
             npcHint={npcHint}
+            leaving={leaving}
             utvrdjenoNaStartu={utvrdjenoStart}
+            uzivo={!!meta.uzivo || liveDvoboj}
             onPotez={(p) => void odigraj(p)}
+            onBjezi={liveDvoboj ? zatvori : undefined}
           />
         )}
 
         {faza === "lista" && (
           <>
             <p className="px-4 pb-3 text-xs leading-relaxed text-dim">
-              Tri hrpe. Uzimaš samo s jedne. Tko uzme zadnje, nosi blago. Utvrđeni tabor je zamka
-              — tamo drugi ima pobjedu.
+              Noć. Tri hrpe. Tko uzme zadnji žeton, nosi blago. Jahanje ide prvo. Ophodnja čeka na ulici.
             </p>
             <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
               {ucitava && (
@@ -424,29 +674,45 @@ export function RaidModal({
               )}
               {!ucitava && mete.length === 0 && (
                 <p className="py-8 text-center text-xs font-bold tracking-widest text-dim uppercase">
-                  Nema dostupnih meta
+                  Nema kauboja u sobi
                 </p>
               )}
               <div className="flex flex-col gap-2">
                 {mete.map((item) => {
                   const h = hrpeIzResursa(item.resursi);
-                  const loot = izracunajPlijen(item.resursi, item.igracRazina);
+                  const loot = izracunajPlijen(item.resursi, item.igracRazina, radKonja);
                   const utvrda = jeUtvrdjeno(h);
+                  const susjed = susjedPoUid(item.uid);
+                  const lik = susjed ? serifKaoLik(susjed) : null;
+                  const peer = item.uzivo ? live.cowboys.find((c) => c.id === item.uid) : null;
+                  const ophodnja = item.uzivo ? (peer?.ophodnja ?? 0) : utvrda ? 1 : 0;
+                  const prvi = tkoIdePrvi(jahanje, ophodnja);
                   return (
                     <div
                       key={item.uid}
                       className="flex items-center gap-3 rounded-xl border border-line bg-panel-2 px-3.5 py-3"
                     >
+                      {lik && (
+                        <span className="kauba-chip-avatar shrink-0">
+                          <LikAvatar p={lik} mood={utvrda ? "nered" : "mir"} />
+                        </span>
+                      )}
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-bold text-ink">
-                          {item.imeIgraca}
-                          {item.uzivo && (
+                          {item.kauba ?? item.imeIgraca}
+                          {item.uzivo ? (
                             <span className="ml-1.5 inline-flex items-center gap-1 rounded-full bg-volt/20 px-1.5 py-0.5 text-[9px] font-bold tracking-wider text-volt uppercase">
                               uživo
                             </span>
+                          ) : (
+                            <span className="ml-1.5 inline-flex items-center gap-1 rounded-full bg-gold/15 px-1.5 py-0.5 text-[9px] font-bold tracking-wider text-gold uppercase">
+                              susjed
+                            </span>
                           )}
                         </p>
-                        <p className="text-xs text-dim">Lv {item.igracRazina}</p>
+                        <p className="text-xs text-dim">
+                          {item.serif ? `Šerif ${item.serif}` : `Lv ${item.igracRazina}`}
+                        </p>
                         <HrpeMini hrpe={h} />
                         <span
                           className={cn(
@@ -462,6 +728,16 @@ export function RaidModal({
                           />
                           {utvrda ? "Utvrđeno" : "Ranjivo"}
                         </span>
+                        {prvi === "igrac" && jahanje > 0 && (
+                          <span className="ml-1 inline-flex rounded-md bg-gold/15 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-gold uppercase">
+                            Jašeš prvi
+                          </span>
+                        )}
+                        {prvi === "npc" && (
+                          <span className="ml-1 inline-flex rounded-md bg-ice/15 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-ice uppercase">
+                            Ophodnja
+                          </span>
+                        )}
                       </div>
                       <div className="flex shrink-0 flex-col items-end gap-1.5">
                         <span className="text-xs font-semibold text-stone">
@@ -485,6 +761,34 @@ export function RaidModal({
                           />
                           POHOD
                         </button>
+                        {!item.uzivo && live.cowboys.some((c) => c.connected) && (
+                          <button
+                            type="button"
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              const partner = live.cowboys.find((c) => c.connected);
+                              if (!partner) return;
+                              playSfx("attack");
+                              live.pozoviTrojac(
+                                partner.id,
+                                partner.ime,
+                                {
+                                  uid: item.uid,
+                                  ime: item.kauba ?? item.imeIgraca,
+                                  serif: item.serif ?? "Šerif",
+                                  rec: item.rec ?? "",
+                                },
+                                item.resursi,
+                              );
+                              onZatvori();
+                            }}
+                            className="inline-flex min-h-9 min-w-[6.2rem] items-center justify-center rounded-lg border border-gold/50 bg-gold/15 px-3 text-[10px] font-bold tracking-wide text-gold uppercase"
+                          >
+                            Jato
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -501,18 +805,20 @@ export function RaidModal({
 
 function DebriefIzlaz({
   ime,
+  rec,
   pobjeda,
   utvrdjeno,
   plijen,
   onIzbor,
 }: {
   ime: string;
+  rec?: string;
   pobjeda: boolean;
   utvrdjeno: boolean;
   plijen: Plijen | null;
   onIzbor: (stav: DebriefStav) => void;
 }) {
-  const recap = recapOpsade(ime, pobjeda, utvrdjeno);
+  const recap = rec ?? recapOpsade(ime, pobjeda, utvrdjeno);
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-5 pt-2">
       <p className="mb-3 text-sm leading-relaxed text-ink">{recap}</p>
@@ -536,6 +842,12 @@ function DebriefIzlaz({
                 {formatNum(plijen[k] ?? 0)}
               </span>
             ))}
+        </div>
+      )}
+      {pobjeda && !plijen && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-gold/40 bg-gold/10 p-3">
+          <img src={SYMBOL_ART.gold} alt="" className="village-pixel size-8 shrink-0" draggable={false} />
+          <p className="text-xs leading-relaxed text-gold">Ostava stoji. Nisi uzeo ni vreću — ali si ostao na nogama.</p>
         </div>
       )}
       {!pobjeda && (
@@ -583,29 +895,48 @@ function HrpeMini({ hrpe }: { hrpe: Hrpe }) {
 
 function OpsadaPloca({
   ime,
+  rec,
   hrpe,
   naPotezu,
   npcHint,
+  leaving,
   utvrdjenoNaStartu,
+  uzivo,
   onPotez,
+  onBjezi,
 }: {
   ime: string;
+  rec?: string;
   hrpe: Hrpe;
   naPotezu: "igrac" | "npc";
   npcHint: NimPotez | null;
+  leaving: NimPotez | null;
   utvrdjenoNaStartu: boolean;
+  uzivo?: boolean;
   onPotez: (p: NimPotez) => void;
+  onBjezi?: () => void;
 }) {
   const [hover, setHover] = useState<{ hrpa: number; skini: number } | null>(null);
   const igrac = naPotezu === "igrac";
+  const zbroj = hrpe[0] + hrpe[1] + hrpe[2];
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-4 pt-1">
+      <div className="pohod-duel mb-2 flex items-center justify-between gap-2 rounded-xl border border-line bg-void/50 px-2.5 py-1.5">
+        <p className="text-[11px] font-bold tracking-wide text-gold uppercase">Ti</p>
+        <p className={cn("text-[11px] font-bold tracking-widest uppercase", igrac ? "text-gold pohod-potez-ti" : "text-ice")}>
+          {igrac ? "Ti biraš hrpu" : uzivo ? `${ime} bira` : `${ime} se brani`}
+        </p>
+        <p className="text-[11px] font-bold tracking-wide text-ruby uppercase">{ime}</p>
+      </div>
       <p className="mb-2 text-xs leading-relaxed text-dim" aria-live="polite">
-        {gmUvod(ime, utvrdjenoNaStartu)}{" "}
-        {igrac ? "Dodirni žeton — uzimaš njega i sve iznad." : `${ime} se brani…`}
+        {rec ?? gmUvod(ime, utvrdjenoNaStartu)}{" "}
+        {igrac ? "Dodirni žeton — uzimaš njega i sve iznad." : "Čekaj. Prašina se slegne."}
       </p>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="relative overflow-hidden rounded-xl">
+        <img src={ART.pohodOpsada} alt="" className="pohod-opsada-tlo" draggable={false} />
+        <span className="pohod-prasina-ploca" aria-hidden />
+        <div className="relative z-[1] grid grid-cols-3 gap-2 p-1">
         {HRPA_IME.map((label, hi) => {
           const n = hrpe[hi] ?? 0;
           return (
@@ -629,6 +960,7 @@ function OpsadaPloca({
                   const uzimam =
                     (igrac && hover?.hrpa === hi && skini <= hover.skini) ||
                     (npcHint?.hrpa === hi && skini <= npcHint.skini);
+                  const leti = leaving?.hrpa === hi && skini <= leaving.skini;
                   return (
                     <button
                       key={`${hi}-${fromTop}-${n}`}
@@ -650,6 +982,8 @@ function OpsadaPloca({
                         "nim-token flex size-11 items-center justify-center rounded-full",
                         uzimam && "nim-token-take",
                         npcHint?.hrpa === hi && skini <= (npcHint?.skini ?? 0) && "nim-token-npc",
+                        leti && "nim-token-leti",
+                        zbroj === 1 && n === 1 && "nim-token-zadnji",
                       )}
                     >
                       <img
@@ -666,7 +1000,17 @@ function OpsadaPloca({
             </div>
           );
         })}
+        </div>
       </div>
+      {onBjezi && (
+        <button
+          type="button"
+          onClick={onBjezi}
+          className="mt-3 min-h-11 w-full rounded-xl border border-line bg-panel-2 text-xs font-bold tracking-widest text-dim uppercase"
+        >
+          Bježi
+        </button>
+      )}
     </div>
   );
 }

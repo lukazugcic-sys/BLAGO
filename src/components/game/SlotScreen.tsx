@@ -1,20 +1,24 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useGameStore } from "@/lib/stores/gameStore";
 import { useSlotStore } from "@/lib/stores/slotStore";
 import { useSlotMachine } from "@/lib/hooks/useSlotMachine";
 import { useSeasonalEvent } from "@/lib/hooks/useSeasonalEvent";
 import { SlotReel } from "./SlotReel";
 import { EventBanner } from "./EventBanner";
+import { TjedanTraka } from "./TjedanTraka";
+import { JutroTraka } from "./JutroSheet";
 import { NagradaPikseli } from "./NagradaPikseli";
 import {
   LUCKY_SPIN_INTERVAL,
+  uloziZaMax,
 } from "@/lib/game/constants";
-import { GAMBLE_MAX, izracunajMaxEnergiju } from "@/lib/game/economy";
+import { GAMBLE_MAX, izracunajMaxEnergiju, raspolozenjeKaube, uskoVrtnjaRec } from "@/lib/game/economy";
 import { formatHud } from "@/lib/game/helpers";
 import { Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { playSfx, vibrate } from "@/lib/game/audio";
 import { WinCelebration } from "./WinCelebration";
+import { kaubaOd } from "@/lib/game/ljudi";
 
 const AUTO_HOLD_MS = 480;
 
@@ -22,6 +26,12 @@ export function SlotScreen() {
   const poruka = useGameStore((s) => s.poruka);
   const energija = useGameStore((s) => Math.floor(s.energija));
   const baterija = useGameStore((s) => s.razine.baterija || 0);
+  const gradevine = useGameStore((s) => s.gradevine);
+  const stanovnici = useGameStore((s) => s.stanovnici);
+  const zamjenici = useGameStore((s) => s.zamjenici);
+  const konjiBroj = useGameStore((s) => s.konjiBroj);
+  const konjiDuznost = useGameStore((s) => s.konjiDuznost);
+  const sijenoDo = useGameStore((s) => s.sijenoDo);
   const luckySpinCounter = useGameStore((s) => s.luckySpinCounter);
   const winStreak = useGameStore((s) => s.winStreak);
   const aktivniDogadaj = useSeasonalEvent();
@@ -43,7 +53,13 @@ export function SlotScreen() {
 
   const jeFreeSpin = luckySpinCounter === 1;
   const maxEnergija = izracunajMaxEnergiju(baterija);
-  const puniSe = energija < maxEnergija;
+  const ulozi = useMemo(() => uloziZaMax(maxEnergija), [maxEnergija]);
+  const kauba = useMemo(
+    () => kaubaOd({ gradevine, stanovnici, zamjenici, konjiBroj, konjiDuznost, sijenoDo }),
+    [gradevine, stanovnici, zamjenici, konjiBroj, konjiDuznost, sijenoDo],
+  );
+  const vrtnjaRec = uskoVrtnjaRec(kauba.usko);
+  const moodRec = raspolozenjeKaube(kauba).rec;
   const gumbZakljucan =
     raidAktivan || (!autoVrtnja && (vrti || (!jeFreeSpin && energija < ulog)));
   const gambleOstalo = Math.max(0, GAMBLE_MAX - gambleCount);
@@ -62,6 +78,13 @@ export function SlotScreen() {
     }
     setDrzim(false);
   };
+
+  useEffect(() => {
+    if (!ulozi.includes(ulog)) {
+      const next = [...ulozi].reverse().find((u) => u <= maxEnergija) ?? ulozi[0] ?? 1;
+      setUlog(next);
+    }
+  }, [ulozi, ulog, maxEnergija, setUlog]);
 
   useEffect(() => {
     if (!autoVrtnja) return;
@@ -83,6 +106,30 @@ export function SlotScreen() {
     const t = window.setTimeout(() => void zavrtiMasinu(), 220);
     return () => window.clearTimeout(t);
   }, [autoVrtnja, vrti, dobitakNaCekanju, raidAktivan, ulog, energija, preuzmiDobitak, zavrtiMasinu, setAutoVrtnja]);
+
+  const sretnaAuto = useRef(false);
+  useEffect(() => {
+    if (raidAktivan) {
+      sretnaAuto.current = false;
+      return;
+    }
+    if (autoVrtnja) return;
+    if (jeFreeSpin && !vrti && !dobitakNaCekanju) {
+      sretnaAuto.current = true;
+      const t = window.setTimeout(() => void zavrtiMasinu(), 480);
+      return () => window.clearTimeout(t);
+    }
+    if (sretnaAuto.current && dobitakNaCekanju && !vrti) {
+      const t = window.setTimeout(() => {
+        preuzmiDobitak();
+        sretnaAuto.current = false;
+      }, 900);
+      return () => window.clearTimeout(t);
+    }
+    if (sretnaAuto.current && !jeFreeSpin && !vrti && !dobitakNaCekanju) {
+      sretnaAuto.current = false;
+    }
+  }, [jeFreeSpin, vrti, dobitakNaCekanju, raidAktivan, autoVrtnja, zavrtiMasinu, preuzmiDobitak]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -107,6 +154,8 @@ export function SlotScreen() {
   return (
     <div className="slot-fx-host relative mx-auto flex h-full min-h-0 w-full flex-col overflow-hidden px-3 pb-2 pt-2">
       <WinCelebration />
+      {!imaPlijen && <TjedanTraka />}
+      {!imaPlijen && <div className="mb-2"><JutroTraka /></div>}
       {!imaPlijen && <EventBanner dogadaj={aktivniDogadaj} />}
 
       <p
@@ -182,6 +231,11 @@ export function SlotScreen() {
         </div>
       ) : (
         <div className="flex min-h-0 w-full flex-1 flex-col justify-end gap-2">
+          {vrtnjaRec && (
+            <p className="px-1 text-center text-[11px] font-bold leading-snug text-gold">
+              {moodRec} {vrtnjaRec}
+            </p>
+          )}
           <div className="flex items-center gap-2">
             <div className="h-2 flex-1 overflow-hidden rounded-full border border-xp/20 bg-xp/10">
               <div
@@ -223,7 +277,7 @@ export function SlotScreen() {
           </div>
 
           <div className="flex justify-center gap-2">
-            {[1, 10, 20, 50].map((op) => (
+            {ulozi.map((op) => (
               <button
                 key={op}
                 type="button"
@@ -287,17 +341,12 @@ export function SlotScreen() {
                 ? "zavrti-auto bg-gold"
                 : jeFreeSpin
                   ? "zavrti-wiggle bg-xp shadow-[0_0_24px_color-mix(in_oklab,var(--color-xp)_45%,transparent)]"
-                  : "zavrti-wiggle bg-volt shadow-[0_0_24px_color-mix(in_oklab,var(--color-volt)_45%,transparent)]",
+                  : "zavrti-wiggle bg-energy shadow-[0_0_24px_color-mix(in_oklab,var(--color-energy)_50%,transparent)]",
               gumbZakljucan && "scale-[0.98] opacity-50 shadow-none",
             )}
           >
             <span className={cn("zavrti-hold-fill", drzim && "ide")} />
-            <span
-              className={cn(
-                "absolute left-3 z-10 inline-flex min-h-7 items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-bold tabular-nums",
-                puniSe ? "bg-void/30" : "bg-void/20",
-              )}
-            >
+            <span className="absolute left-3 z-10 inline-flex min-h-7 items-center rounded-full bg-void/35 px-2 py-0.5 text-xs font-bold tabular-nums text-ink">
               {formatHud(energija)}/{formatHud(maxEnergija)}
             </span>
             <span className="relative z-10 px-16">

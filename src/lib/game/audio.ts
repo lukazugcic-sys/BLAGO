@@ -44,20 +44,20 @@ const PLAYLIST: Record<BgmId, string[]> = {
 };
 
 const SFX_GAIN: Record<Sfx, number> = {
-  button: 0.22,
-  spin: 0.28,
-  build: 0.26,
-  collect: 0.32,
-  win: 0.36,
-  jackpot: 0.4,
-  attack: 0.3,
-  skull: 0.32,
+  button: 0.04,
+  spin: 0.06,
+  build: 0.05,
+  collect: 0.07,
+  win: 0.08,
+  jackpot: 0.1,
+  attack: 0.06,
+  skull: 0.07,
 };
 
 const MASTER_GAIN = 0.38;
 const MUSIC_GAIN = 0.22;
-const MUSIC_DUCK = 0.1;
-const FADE_S = 0.45;
+const MUSIC_DUCK = 0.16;
+const FADE_S = 1.35;
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
@@ -73,6 +73,8 @@ let currentTrack: BgmId | null = null;
 let queue: string[] = [];
 let qIndex = 0;
 let duckTimer: number | null = null;
+let musicGen = 0;
+let starting = false;
 const liveSfx: Partial<Record<Sfx, AudioBufferSourceNode>> = {};
 
 function shuffle<T>(items: T[]): T[] {
@@ -175,7 +177,7 @@ async function preload() {
       if (loaded.length) buffers[tip] = loaded;
     }),
   );
-  if (currentTrack) playNext();
+  if (currentTrack && !musicSrc && !starting) playNext(true);
 }
 
 export function unlockAudio() {
@@ -186,10 +188,10 @@ export function unlockAudio() {
 
 if (typeof window !== "undefined") {
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") {
-      const c = ensureCtx();
-      if (c && c.state === "suspended") void c.resume();
-    }
+    if (document.visibilityState !== "visible") return;
+    const c = ensureCtx();
+    if (c && c.state === "suspended") void c.resume();
+    if (currentTrack && !musicSrc && !starting) playNext(true);
   });
 }
 
@@ -204,68 +206,79 @@ export function isMuted() {
   return muted;
 }
 
-function stopLoop(fade = false) {
+function fadeOutCurrent() {
   const src = musicSrc;
   const g = musicFade;
   musicSrc = null;
   musicFade = null;
   if (!src || !ctx) return;
-  if (fade && g) {
-    g.gain.cancelScheduledValues(ctx.currentTime);
-    g.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.08);
-    window.setTimeout(() => {
-      try {
-        src.stop();
-      } catch {
-        /* already stopped */
-      }
-      src.disconnect();
-      g.disconnect();
-    }, FADE_S * 1000);
-    return;
+  const t = ctx.currentTime;
+  if (g) {
+    g.gain.cancelScheduledValues(t);
+    const now = Math.max(0.0001, g.gain.value || 0.0001);
+    g.gain.setValueAtTime(now, t);
+    g.gain.linearRampToValueAtTime(0.0001, t + FADE_S);
   }
-  try {
-    src.stop();
-  } catch {
-    /* already stopped */
-  }
-  src.disconnect();
-  g?.disconnect();
+  window.setTimeout(() => {
+    try {
+      src.stop();
+    } catch {
+      /* already stopped */
+    }
+    src.disconnect();
+    g?.disconnect();
+  }, FADE_S * 1000 + 60);
 }
 
-function playNext() {
+function playNext(cross = false) {
   const c = ensureCtx();
   if (!c || !musicBus || !currentTrack) return;
   const url = peekUrl(0);
   if (!url) return;
+  const gen = musicGen;
+  starting = true;
   void ensureTrack(url).then((buf) => {
-    if (!buf || !currentTrack || !musicBus || !ctx) return;
-    if (peekUrl(0) !== url) return;
-    if (musicSrc) stopLoop(true);
+    starting = false;
+    if (gen !== musicGen) return;
+    if (!buf) {
+      qIndex += 1;
+      playNext(true);
+      return;
+    }
+    if (!currentTrack || !musicBus || !ctx) return;
+    if (musicSrc) fadeOutCurrent();
     const src = ctx.createBufferSource();
     const g = ctx.createGain();
     src.buffer = buf;
     src.loop = false;
-    g.gain.setValueAtTime(0.0001, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(1, ctx.currentTime + FADE_S);
+    const t = ctx.currentTime;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(1, t + (cross ? FADE_S : Math.min(0.7, FADE_S)));
     src.connect(g);
     g.connect(musicBus);
     src.start();
-    src.onended = () => {
-      if (musicSrc !== src) {
-        src.disconnect();
-        g.disconnect();
-        return;
-      }
-      musicSrc = null;
-      musicFade = null;
+    musicSrc = src;
+    musicFade = g;
+    let advanced = false;
+    const advance = () => {
+      if (advanced || gen !== musicGen) return;
+      advanced = true;
       qIndex += 1;
-      playNext();
+      playNext(true);
+    };
+    const lead = Math.min(FADE_S, Math.max(0.5, buf.duration * 0.08));
+    const wait = Math.max(80, (buf.duration - lead) * 1000);
+    const timer = window.setTimeout(advance, wait);
+    src.onended = () => {
+      window.clearTimeout(timer);
+      if (musicSrc === src) {
+        musicSrc = null;
+        musicFade = null;
+        if (!advanced) advance();
+      }
       src.disconnect();
       g.disconnect();
     };
-    musicSrc = src;
-    musicFade = g;
     const next = peekUrl(1);
     if (next) void ensureTrack(next).then(() => keepTracks([url, next]));
     else keepTracks([url]);
@@ -275,11 +288,15 @@ function playNext() {
 export function startBgm(track: BgmId = "igra") {
   ensureCtx();
   void preload();
-  if (currentTrack === track && musicSrc) return;
+  if (currentTrack === track) {
+    if (!musicSrc && !starting) playNext(true);
+    return;
+  }
   currentTrack = track;
+  musicGen += 1;
   queue = shuffle(PLAYLIST[track] ?? []);
   qIndex = 0;
-  playNext();
+  playNext(!!musicSrc);
 }
 
 export function duckMusic(ms = 720) {
@@ -305,7 +322,7 @@ function beep(tones: Tone[]) {
     osc.type = tone.type ?? "triangle";
     osc.frequency.setValueAtTime(tone.freq, t);
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime((tone.gain ?? 0.18) * 0.9, t + 0.012);
+    g.gain.exponentialRampToValueAtTime((tone.gain ?? 0.18) * 0.4, t + 0.012);
     g.gain.exponentialRampToValueAtTime(0.0001, t + tone.dur);
     osc.connect(g);
     g.connect(sfxBus);

@@ -61,3 +61,53 @@ test("every N-position has a move to xor 0", () => {
 test("2019 xor 2020 is 7 (primer example)", () => {
   assert.equal(2019 ^ 2020, 7);
 });
+
+function tkoIdePrvi(jahanje, ophodnja) {
+  if (jahanje > 0) return "igrac";
+  if (ophodnja > 0) return "npc";
+  return "igrac";
+}
+
+test("jahanje ide prvo, ophodnja čeka na ulici", () => {
+  assert.equal(tkoIdePrvi(0, 0), "igrac");
+  assert.equal(tkoIdePrvi(2, 0), "igrac");
+  assert.equal(tkoIdePrvi(0, 2), "npc");
+  assert.equal(tkoIdePrvi(1, 3), "igrac");
+});
+
+function plijenSJarmom(baza, rad) {
+  const k = 1 + Math.max(0, rad) * 0.06;
+  return Math.floor(baza * k);
+}
+
+test("jaram vuče veći plijen", () => {
+  assert.equal(plijenSJarmom(10, 0), 10);
+  assert.ok(plijenSJarmom(10, 2) > 10);
+});
+
+function sljedeciTrojac(tko, saveznikTu = true) {
+  if (tko === "vodja") return saveznikTu ? "saveznik" : "serif";
+  if (tko === "saveznik") return "serif";
+  return "vodja";
+}
+
+test("trojac ide vođa → saveznik → šerif → vođa", () => {
+  assert.equal(sljedeciTrojac("vodja"), "saveznik");
+  assert.equal(sljedeciTrojac("saveznik"), "serif");
+  assert.equal(sljedeciTrojac("serif"), "vodja");
+  assert.equal(sljedeciTrojac("vodja", false), "serif");
+});
+
+function potezIzDelte(prije, poslije) {
+  for (let i = 0; i < 3; i++) {
+    const d = prije[i] - poslije[i];
+    if (d > 0) return { hrpa: i, skini: d };
+  }
+  return null;
+}
+
+test("potez iz delte čita koji je žeton uzet", () => {
+  assert.deepEqual(potezIzDelte([3, 2, 1], [1, 2, 1]), { hrpa: 0, skini: 2 });
+  assert.equal(potezIzDelte([1, 2, 3], [1, 2, 3]), null);
+});
+

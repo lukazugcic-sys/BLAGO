@@ -1,4 +1,4 @@
-import { Dices, Home, ScrollText, Store, Flag } from "lucide-react";
+import { Dices, Home, ScrollText, Store } from "lucide-react";
 import { TABOVI, type TabId } from "@/lib/game/constants";
 import { cn } from "@/lib/utils";
 import { playSfx } from "@/lib/game/audio";
@@ -8,7 +8,6 @@ const ICONS = {
   selo: Home,
   misije: ScrollText,
   trznica: Store,
-  ceh: Flag,
 } as const;
 
 const COLOR: Record<string, string> = {
@@ -16,7 +15,6 @@ const COLOR: Record<string, string> = {
   wood: "bg-wood text-void",
   quest: "bg-quest text-void",
   gold: "bg-gold text-void",
-  clan: "bg-clan text-void",
 };
 
 export function AppNav({

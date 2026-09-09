@@ -39,14 +39,14 @@ export function DailyRewardModal() {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[80] flex items-end justify-center bg-void/80 p-0 sm:items-center sm:p-6"
+      className="modal-pozadina fixed inset-0 z-[80] flex items-end justify-center bg-void/80 p-0 sm:items-center sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-labelledby="daily-title"
       onClick={sakrijDnevnuNagradu}
     >
       <div
-        className="w-full max-w-sm rounded-t-2xl border border-gold/55 bg-panel p-5 shadow-[0_12px_40px_color-mix(in_oklab,var(--color-gold)_22%,transparent)] sm:rounded-2xl"
+        className="modal-ulaz w-full max-w-sm rounded-t-2xl border border-gold/55 bg-panel p-5 shadow-[0_12px_40px_color-mix(in_oklab,var(--color-gold)_22%,transparent)] sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="relative mb-3 h-28 overflow-hidden rounded-xl border border-gold/40">
@@ -117,12 +117,7 @@ export function DailyStreakCard() {
   }, [preuzetoDanas]);
 
   return (
-    <article className="mb-3.5 overflow-hidden rounded-2xl border border-gold/40 bg-panel shadow-panel">
-      <div className="relative h-16 overflow-hidden">
-        <img src={ART.selfie} alt="" className="size-full object-cover object-[center_22%]" draggable={false} />
-        <div className="absolute inset-0 bg-gradient-to-t from-panel to-transparent" />
-      </div>
-      <div className="p-4 pt-2">
+    <article className="mb-3.5 rounded-2xl border border-gold/40 bg-panel p-4 shadow-panel">
       <div className="mb-3 flex items-center gap-2">
         <IconBadge src={SYMBOL_ART.gold} size="sm" />
         <div className="min-w-0 flex-1">
@@ -157,7 +152,6 @@ export function DailyStreakCard() {
           OTVORI
         </button>
       )}
-      </div>
     </article>
   );
 }
@@ -175,7 +169,7 @@ function TjedniKalendar({ streak, claimed }: { streak: number; claimed: boolean 
             key={d.dan}
             className={cn(
               "flex min-h-[5.25rem] flex-col items-center justify-start gap-0.5 rounded-lg border px-0.5 pt-1.5",
-              current && !claimed && "border-gold bg-gold/20",
+              current && !claimed && "nagrada-dan-spreman border-gold bg-gold/20",
               current && claimed && "border-xp bg-xp/15",
               done && !current && "border-xp/40 bg-xp/10",
               locked && "border-line bg-void/40 opacity-70",

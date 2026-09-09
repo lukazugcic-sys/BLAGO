@@ -74,9 +74,9 @@ interface PeerSlot {
   pingSentAt?: number;
 }
 
-const FAST_POLL_MS = 400;
-const IDLE_POLL_MS = 2000;
-const PING_INTERVAL_MS = 2000;
+const FAST_POLL_MS = 800;
+const IDLE_POLL_MS = 6000;
+const PING_INTERVAL_MS = 5000;
 const STALL_MS = 10_000;
 const MAX_RECOVERY_ATTEMPTS = 3;
 const SIGNAL_RETRY_DELAYS_MS = [250, 750];

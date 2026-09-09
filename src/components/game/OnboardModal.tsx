@@ -43,8 +43,8 @@ export function OnboardModal({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[90] flex items-end justify-center bg-void/80 p-4 sm:items-center">
-      <div className="w-full max-w-sm overflow-hidden rounded-3xl border border-gold/40 bg-panel shadow-[0_20px_50px_rgb(0_0_0_/_0.55)]">
+    <div className="modal-pozadina fixed inset-0 z-[90] flex items-end justify-center bg-void/80 p-4 sm:items-center">
+      <div className="modal-ulaz w-full max-w-sm overflow-hidden rounded-3xl border border-gold/40 bg-panel shadow-[0_20px_50px_rgb(0_0_0_/_0.55)]">
         <div className="relative h-28 overflow-hidden">
           <img src={ART.kauba} alt="" className="size-full object-cover object-[center_35%]" draggable={false} />
           <div className="absolute inset-0 bg-gradient-to-t from-panel to-transparent" />

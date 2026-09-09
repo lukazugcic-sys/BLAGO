@@ -24,7 +24,11 @@ export function NagradaPikseli({
             compact ? "text-[10px] leading-none" : "rounded-full bg-void/55 px-1.5 py-1 text-xs",
           )}
         >
-          <IconBadge src={SYMBOL_ART[s.art]} size={compact ? "xs" : "sm"} />
+          <IconBadge
+            src={SYMBOL_ART[s.art]}
+            size={compact ? "xs" : "sm"}
+            className={s.art === "energy" ? "iko-energy" : undefined}
+          />
           {formatNum(s.iznos)}
         </span>
       ))}

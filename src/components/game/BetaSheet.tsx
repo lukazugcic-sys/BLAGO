@@ -6,7 +6,7 @@ import { SAVE_KEYS } from "@/lib/game/persist";
 import { playSfx } from "@/lib/game/audio";
 import { useGameStore } from "@/lib/stores/gameStore";
 import { useSlotStore } from "@/lib/stores/slotStore";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const ALATI: Array<{
   id: "zlato" | "energija" | "dijamanti" | "resursi" | "stitovi" | "popravi";
@@ -20,13 +20,39 @@ const ALATI: Array<{
   { id: "popravi", n: "Popravi zgrade" },
 ];
 
+type ApkMeta = { version: string; versionCode: number; bytes: number; builtAt: string };
+
+function mb(n: number) {
+  return `${Math.max(1, Math.round(n / 1_000_000))} MB`;
+}
+
 export function BetaSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [potvrda, setPotvrda] = useState(false);
   const [autoRez, setAutoRez] = useState<string | null>(null);
+  const [meta, setMeta] = useState<ApkMeta | null>(null);
   const testAlat = useGameStore((s) => s.testAlat);
   const autoTest = useGameStore((s) => s.autoTest);
   const setRaidAktivan = useSlotStore((s) => s.setRaidAktivan);
+
+  useEffect(() => {
+    if (!open) return;
+    let ziv = true;
+    fetch(`/apk-meta.json?t=${Date.now()}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (ziv && d?.version) setMeta(d as ApkMeta);
+      })
+      .catch(() => {});
+    return () => {
+      ziv = false;
+    };
+  }, [open]);
+
   if (!open || typeof document === "undefined") return null;
+
+  const paket = meta?.version ?? APP_VERSION;
+  const tag = `${paket}-${meta?.versionCode ?? 0}`;
+  const svjez = !meta || meta.version === APP_VERSION;
 
   const reset = () => {
     if (!potvrda) {
@@ -40,8 +66,8 @@ export function BetaSheet({ open, onClose }: { open: boolean; onClose: () => voi
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-void/75 p-4 sm:items-center">
-      <div className="max-h-[min(40rem,90dvh)] w-full max-w-sm overflow-y-auto rounded-3xl border border-line bg-panel">
+    <div className="modal-pozadina fixed inset-0 z-[80] flex items-end justify-center bg-void/75 p-4 sm:items-center">
+      <div className="modal-ulaz max-h-[min(40rem,90dvh)] w-full max-w-sm overflow-y-auto rounded-3xl border border-line bg-panel">
         <div className="relative h-20 overflow-hidden">
           <img src={ART.oblaci} alt="" className="size-full object-cover" draggable={false} />
           <div className="absolute inset-0 bg-gradient-to-t from-panel to-transparent" />
@@ -65,9 +91,38 @@ export function BetaSheet({ open, onClose }: { open: boolean; onClose: () => voi
         </div>
         <h2 className="font-display text-xl text-gold">BLAGO beta</h2>
         <p className="mt-2 text-xs font-bold leading-relaxed text-ink/75">
-          Spremanje je na ovom uređaju. Družina radi u istoj sobi. Reci što ne valja
-          — ovo je testna verzija.
+          {svjez ? `Najnoviji paket · ${paket}` : `Igra ${APP_VERSION} · paket se sprema`}
         </p>
+
+        <h3 className="mt-5 text-[10px] font-bold tracking-[0.22em] text-gold uppercase">
+          Preuzmi
+        </h3>
+        <div className="mt-2 grid grid-cols-1 gap-2">
+          <a
+            href={`/BLAGO.apk?v=${tag}`}
+            download="BLAGO.apk"
+            onClick={() => playSfx("button")}
+            className="flex min-h-11 items-center justify-center rounded-xl bg-gold px-2 text-[11px] font-bold tracking-widest text-void uppercase"
+          >
+            APK · {meta ? mb(meta.bytes) : "27 MB"}
+          </a>
+          <a
+            href={`/BLAGO-android.zip?v=${tag}`}
+            download="BLAGO-android.zip"
+            onClick={() => playSfx("button")}
+            className="flex min-h-11 items-center justify-center rounded-xl border border-gold/50 bg-gold/15 px-2 text-[11px] font-bold tracking-widest text-gold uppercase"
+          >
+            APK u ZIP-u · {meta ? mb(meta.bytes) : "27 MB"}
+          </a>
+          <a
+            href="/BLAGO-github.zip"
+            download="BLAGO-github.zip"
+            onClick={() => playSfx("button")}
+            className="flex min-h-11 items-center justify-center rounded-xl border border-line bg-panel-2 px-2 text-[11px] font-bold tracking-widest text-ink uppercase"
+          >
+            Izvor za GitHub · 44 MB
+          </a>
+        </div>
 
         <h3 className="mt-5 text-[10px] font-bold tracking-[0.22em] text-gold uppercase">
           Alati za testiranje

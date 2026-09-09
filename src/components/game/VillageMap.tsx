@@ -1,7 +1,7 @@
 import { useState, type CSSProperties } from "react";
 import { useGameStore } from "@/lib/stores/gameStore";
 import { useSlotStore } from "@/lib/stores/slotStore";
-import { ZGRADE } from "@/lib/game/constants";
+import { ZGRADE, seloNaMaxu } from "@/lib/game/constants";
 import { ART } from "@/lib/game/art";
 import { playSfx } from "@/lib/game/audio";
 import type { TabId } from "@/lib/game/constants";
@@ -35,11 +35,8 @@ export function VillageMap({ onGoto }: { onGoto?: (tab: TabId) => void }) {
   const kvalitetaSela = useGameStore((s) => s.kvalitetaSela);
   const izvrsiPrestige = useGameStore((s) => s.izvrsiPrestige);
   const setRaidAktivan = useSlotStore((s) => s.setRaidAktivan);
-  const gori = ostecenja.pilana || ostecenja.kamenolom || ostecenja.rudnik;
-  const spremanZaPrestige =
-    gradevine.pilana === ZGRADE[0]!.maxLv &&
-    gradevine.kamenolom === ZGRADE[1]!.maxLv &&
-    gradevine.rudnik === ZGRADE[2]!.maxLv;
+  const gori = Object.values(ostecenja).some(Boolean);
+  const spremanZaPrestige = seloNaMaxu(gradevine);
 
   const tap = (id: PinId) => {
     playSfx("button");
@@ -124,7 +121,7 @@ export function VillageMap({ onGoto }: { onGoto?: (tab: TabId) => void }) {
           ) : odabrano === "plaza" ? (
             <div className="rounded-2xl border border-gold/40 bg-panel p-4">
               <p className="text-[11px] font-bold tracking-[0.28em] text-gold uppercase">Trg</p>
-              <p className="mt-1 text-sm font-bold text-ink">Srce sela. Ovdje se slavi krunidba.</p>
+              <p className="mt-1 text-sm font-bold text-ink">Srce sela. Krunidba daje krunjenje za alate.</p>
               {spremanZaPrestige ? (
                 <button
                   type="button"
@@ -138,7 +135,7 @@ export function VillageMap({ onGoto }: { onGoto?: (tab: TabId) => void }) {
                   IZVRŠI KRUNIDBU
                 </button>
               ) : (
-                <p className="mt-2 text-xs font-bold text-dim">Nadogradi sve zgrade na 10 za krunidbu.</p>
+                <p className="mt-2 text-xs font-bold text-dim">Selo mora biti na vrhu. Onda krunidba.</p>
               )}
             </div>
           ) : odabrano === "dvorac" ? (
@@ -158,13 +155,6 @@ export function VillageMap({ onGoto }: { onGoto?: (tab: TabId) => void }) {
                     POHOD
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={() => onGoto?.("ceh")}
-                  className="min-h-11 flex-1 rounded-lg bg-clan text-xs font-bold text-void"
-                >
-                  DRUŽINA
-                </button>
               </div>
             </div>
           ) : (

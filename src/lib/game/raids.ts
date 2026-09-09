@@ -1,8 +1,10 @@
-import { NPC_IMENA } from "./constants";
 import { clamp } from "./helpers";
+import { SUSJEDI } from "./susjedi";
+import { tjedanSad } from "./tjedan";
 import type { Resursi } from "./types";
+import { POSTOTAK_KRADJE, RAID_ZLATO_BAZA, RAID_ZLATO_PO_LV } from "./tuning";
 
-export const POSTOTAK_KRADJE = 0.15;
+export { POSTOTAK_KRADJE };
 export const MAX_HRPA = 6;
 
 export type Plijen = Resursi & { zlato: number };
@@ -19,14 +21,36 @@ function steal(n: number) {
   return Math.max(1, Math.floor(x * POSTOTAK_KRADJE));
 }
 
-export function izracunajPlijen(resursi: Resursi, razina = 1): Plijen {
+export function izracunajPlijen(resursi: Resursi, razina = 1, radKonja = 0): Plijen {
+  const k = 1 + Math.max(0, radKonja) * 0.06;
   return {
-    drvo: steal(resursi.drvo),
-    kamen: steal(resursi.kamen),
-    zeljezo: steal(resursi.zeljezo),
-    zlato: Math.max(10, 10 + razina * 2),
+    drvo: Math.floor(steal(resursi.drvo) * k),
+    kamen: Math.floor(steal(resursi.kamen) * k),
+    zeljezo: Math.floor(steal(resursi.zeljezo) * k),
+    zlato: Math.floor(Math.max(10, RAID_ZLATO_BAZA + razina * RAID_ZLATO_PO_LV) * k),
   };
 }
+
+/** Jahanje tvojih konja. Ophodnja njihovih. Tko jaše prvi, bira hrpu. */
+export function tkoIdePrvi(jahanje: number, ophodnja: number): "igrac" | "npc" {
+  if ((jahanje || 0) > 0) return "igrac";
+  if ((ophodnja || 0) > 0) return "npc";
+  return "igrac";
+}
+
+export function noviPohodId() {
+  return `p-${Date.now().toString(36)}-${Math.floor(Math.random() * 999)}`;
+}
+
+export type TrojacTko = "vodja" | "saveznik" | "serif";
+
+/** Red: vođa, saveznik, šerif. Ako jato ostane samo, šerif ide odmah. */
+export function sljedeciTrojac(tko: TrojacTko, saveznikTu = true): TrojacTko {
+  if (tko === "vodja") return saveznikTu ? "saveznik" : "serif";
+  if (tko === "saveznik") return "serif";
+  return "vodja";
+}
+
 
 export function plijenUkupno(p: Partial<Plijen> | Resursi) {
   const g = "zlato" in p ? (p.zlato ?? 0) : 0;
@@ -77,6 +101,15 @@ export function jeLegalniPotez(h: Hrpe, p: NimPotez): boolean {
   return skini >= 1 && skini <= h[p.hrpa];
 }
 
+/** Koji je potez pretvorio prije → poslije. Za animaciju tuđeg uzimanja. */
+export function potezIzDelte(prije: Hrpe, poslije: Hrpe): NimPotez | null {
+  for (let i = 0; i < 3; i++) {
+    const d = (prije[i] ?? 0) - (poslije[i] ?? 0);
+    if (d > 0) return { hrpa: i as 0 | 1 | 2, skini: d };
+  }
+  return null;
+}
+
 export function pobjednickiPotez(h: Hrpe): NimPotez | null {
   const s = nimZbroj(h);
   if (s === 0) return null;
@@ -119,28 +152,29 @@ function slucajneHrpe(utvrdjeno: boolean): Hrpe {
   return h;
 }
 
-function izmijesaj<T>(izvor: readonly T[]): T[] {
-  const a = [...izvor];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const tmp = a[i]!;
-    a[i] = a[j]!;
-    a[j] = tmp;
-  }
-  return a;
-}
-
 export function dohvatiLokalneMete(n = 5, igracRazina = 1) {
-  const imena = izmijesaj(NPC_IMENA).slice(0, n);
-  const utvrdjeni = Math.floor(Math.random() * Math.max(1, imena.length));
-  return imena.map((ime, i) => {
-    const razina = Math.max(3, igracRazina + Math.floor(Math.random() * 10) - 2);
+  const t = tjedanSad();
+  const red = [...SUSJEDI];
+  if (t.susjed) {
+    const i = red.findIndex((s) => s.uid === t.susjed!.uid);
+    if (i > 0) {
+      const [hit] = red.splice(i, 1);
+      if (hit) red.unshift(hit);
+    }
+  }
+  const susjedi = red.slice(0, Math.max(1, Math.min(n, red.length)));
+  const utvrdjeni = Math.floor(Math.random() * Math.max(1, susjedi.length));
+  return susjedi.map((s, i) => {
+    const razina = Math.max(3, igracRazina + Math.floor(Math.random() * 8) - 2);
     const hrpe = slucajneHrpe(i === utvrdjeni);
     return {
-      uid: `npc-${i}-${ime}`,
-      imeIgraca: ime,
+      uid: s.uid,
+      imeIgraca: s.kauba,
       igracRazina: razina,
       resursi: resursiIzHrpa(hrpe),
+      kauba: s.kauba,
+      serif: s.serif,
+      rec: s.rec,
     };
   });
 }

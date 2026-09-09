@@ -1,25 +1,24 @@
-import { Lock, Trophy } from "lucide-react";
-import { useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useGameStore } from "@/lib/stores/gameStore";
 import { MissionCard } from "./MissionCard";
 import { DailyStreakCard } from "./DailyRewardModal";
+import { JutroPopis } from "./JutroSheet";
 import { NagradaPikseli } from "./NagradaPikseli";
-import { DOSTIGNUCA } from "@/lib/game/constants";
-import { ART } from "@/lib/game/art";
-import { ArtTraka } from "./ArtTraka";
+import { DOSTIGNUCA, napredakDostignuca, snapshotDostignuca } from "@/lib/game/dostignuca";
+import { SYMBOL_ART } from "@/lib/game/art";
+import { IconBadge } from "./IconBadge";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
 
 export function MissionsScreen() {
   const [prikazDostignuca, setPrikazDostignuca] = useState(false);
   const misije = useGameStore((s) => s.misije);
-  const dostignucaDone = useGameStore((s) => s.dostignucaDone);
-  const ukupnoVrtnji = useGameStore((s) => s.ukupnoVrtnji);
-  const ukupnoZlata = useGameStore((s) => s.ukupnoZlata);
-  const prestigeRazina = useGameStore((s) => s.prestigeRazina);
+
+  const spremni = misije.filter((m) => m.trenutno >= m.cilj).length;
+  const red = [...misije].sort((a, b) => Number(b.trenutno >= b.cilj) - Number(a.trenutno >= a.cilj));
 
   return (
     <div className="mx-auto w-full max-w-lg px-3 pb-8 pt-2">
-      <ArtTraka src={ART.misije} label="Zadaci" />
       <div className="mb-3 flex rounded-xl border border-line bg-panel p-1">
         <button
           type="button"
@@ -29,7 +28,7 @@ export function MissionsScreen() {
             !prikazDostignuca ? "bg-ink/10 text-quest" : "text-dim",
           )}
         >
-          ZADACI
+          NALOZI
         </button>
         <button
           type="button"
@@ -39,77 +38,91 @@ export function MissionsScreen() {
             prikazDostignuca ? "bg-ink/10 text-gold" : "text-dim",
           )}
         >
-          DOSTIGNUĆA
+          ZVIJEZDE
         </button>
       </div>
 
       {!prikazDostignuca ? (
         <>
-          <DailyStreakCard />
-          <h2 className="mb-4 ml-1 mt-2 text-sm font-bold tracking-widest text-ink uppercase">
-            Dnevni zadaci
-          </h2>
-          {misije.map((m) => (
-            <MissionCard key={`${m.id}-${m.tip}-${m.cilj}`} misija={m} />
+          <JutroPopis />
+          <div className="mb-2 flex items-end justify-between gap-2">
+            <h2 className="ml-1 text-sm font-bold tracking-widest text-ink uppercase">Nalozi</h2>
+            <p className="text-[11px] font-bold tabular-nums text-quest">
+              {spremni > 0 ? `${spremni} spremno` : `${misije.length} u tijeku`}
+            </p>
+          </div>
+          {red.map((m, i) => (
+            <div key={`${m.id}-${m.tip}-${m.cilj}`} className="hub-kartica" style={{ animationDelay: `${i * 50}ms` }}>
+              <MissionCard misija={m} />
+            </div>
           ))}
+          <DailyStreakCard />
         </>
       ) : (
-        <>
-          <h2 className="mb-4 ml-1 mt-2 text-sm font-bold tracking-widest text-ink uppercase">
-            Dostignuća
-          </h2>
-          <div className="mb-4 grid grid-cols-3 gap-2">
-            <Stat label="Ukupno vrtnji" value={ukupnoVrtnji} />
-            <Stat label="Zlato zarađeno" value={ukupnoZlata} color="text-gold" />
-            <Stat label="Prestige" value={prestigeRazina} color="text-prestige" />
-          </div>
-          {DOSTIGNUCA.map((d) => {
-            const otkljucano = !!dostignucaDone[d.id];
-            return (
-              <article
-                key={d.id}
-                className={cn(
-                  "mb-3.5 rounded-2xl border bg-panel p-5",
-                  otkljucano ? "border-gold bg-gold/10" : "border-line",
-                )}
-              >
-                <div className="mb-3 flex items-center gap-3.5">
-                  <div
-                    className={cn(
-                      "flex size-12 items-center justify-center rounded-lg border",
-                      otkljucano ? "border-gold/50 bg-gold/15" : "border-dim/40 bg-dim/10",
-                    )}
-                  >
-                    {otkljucano ? (
-                      <Trophy className="size-6 text-gold" strokeWidth={2} />
-                    ) : (
-                      <Lock className="size-6 text-dim" strokeWidth={2} />
-                    )}
-                  </div>
-                  <div>
-                    <h3 className={cn("text-base font-bold", otkljucano ? "text-gold" : "text-ink")}>
-                      {d.naziv}
-                    </h3>
-                    <p className="mt-1 text-xs leading-relaxed text-dim">{d.opis}</p>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between gap-2 border-t border-line pt-3.5">
-                  <NagradaPikseli nagrada={d.nagrada} />
-                  <span
-                    className={cn(
-                      "rounded-lg px-4 py-2 text-[11px] font-bold",
-                      otkljucano ? "bg-gold/20 text-gold" : "bg-panel-2 text-dim",
-                    )}
-                  >
-                    {otkljucano ? "OTKLJUCANO" : `CILJ: ${d.cilj}`}
-                  </span>
-                </div>
-              </article>
-            );
-          })}
-        </>
+        <ZvijezdeLista />
       )}
     </div>
+  );
+}
+
+function ZvijezdeLista() {
+  const done = useGameStore((s) => s.dostignucaDone);
+  const ulaz = useGameStore(useShallow(snapshotDostignuca));
+  const broj = DOSTIGNUCA.reduce((a, d) => a + (done[d.id] ? 1 : 0), 0);
+
+  return (
+    <>
+      <div className="mb-3 flex items-end justify-between gap-2">
+        <h2 className="ml-1 text-sm font-bold tracking-widest text-ink uppercase">Zvijezde kaube</h2>
+        <p className="text-[11px] font-bold tabular-nums text-gold">
+          {broj}/{DOSTIGNUCA.length}
+        </p>
+      </div>
+      <div className="mb-3 grid grid-cols-3 gap-2">
+        <Stat label="Kola" value={ulaz.ukupnoVrtnji} />
+        <Stat label="Zlato" value={ulaz.ukupnoZlata} color="text-gold" />
+        <Stat label="Kruna" value={ulaz.prestigeRazina} color="text-prestige" />
+      </div>
+      {DOSTIGNUCA.map((d) => {
+        const otkljucano = !!done[d.id];
+        const n = napredakDostignuca(ulaz, d);
+        const pct = Math.min(100, Math.round((n.trenutno / Math.max(1, n.cilj)) * 100));
+        return (
+          <article
+            key={d.id}
+            className={cn(
+              "mb-2 rounded-xl border bg-panel p-3.5",
+              otkljucano ? "border-gold bg-gold/10" : "border-line",
+            )}
+          >
+            <div className="mb-2 flex items-center gap-3">
+              <IconBadge src={SYMBOL_ART[d.art]} size="md" />
+              <div className="min-w-0 flex-1">
+                <h3 className={cn("text-sm font-bold", otkljucano ? "text-gold" : "text-ink")}>{d.naziv}</h3>
+                <p className="text-xs leading-snug text-dim">{d.opis}</p>
+              </div>
+            </div>
+            <span className="zid-traka mb-2 block h-1.5 overflow-hidden rounded-full bg-void">
+              <span
+                className={cn("block h-full rounded-full", otkljucano ? "bg-gold" : "bg-dim")}
+                style={{ width: `${pct}%` }}
+              />
+            </span>
+            <div className="flex items-center justify-between gap-2">
+              <NagradaPikseli nagrada={d.nagrada} compact />
+              <span
+                className={cn(
+                  "rounded-lg px-3 py-1.5 text-[11px] font-bold",
+                  otkljucano ? "bg-gold/20 text-gold" : "bg-panel-2 text-dim",
+                )}
+              >
+                {otkljucano ? "Stoji" : `${Math.min(n.trenutno, n.cilj)}/${n.cilj}`}
+              </span>
+            </div>
+          </article>
+        );
+      })}
+    </>
   );
 }
 

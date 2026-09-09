@@ -14,6 +14,19 @@ export type SezonalniDogadaj = {
 
 export const SEZONALNI_DOGADAJI: SezonalniDogadaj[] = [
   {
+    id: "nova_godina",
+    naziv: "Nova godina",
+    znak: "vatromet",
+    boja: "#e879f9",
+    opis: "Dijamantska kiša. Bonus dijamanti na svakom dobitku.",
+    pocetakMjesec: 12,
+    pocetakDan: 30,
+    krajMjesec: 1,
+    krajDan: 3,
+    modifikatorBlaga: { gem: 2.5, gold: 1.8, skull: 0.4 },
+    bonusMnozitelj: 2.0,
+  },
+  {
     id: "halloween",
     naziv: "Noć vještica",
     znak: "lubanja",
@@ -38,19 +51,6 @@ export const SEZONALNI_DOGADAJI: SezonalniDogadaj[] = [
     krajDan: 5,
     modifikatorBlaga: { wood: 2.5, gold: 1.5, skull: 0.3 },
     bonusMnozitelj: 1.5,
-  },
-  {
-    id: "nova_godina",
-    naziv: "Nova godina",
-    znak: "vatromet",
-    boja: "#e879f9",
-    opis: "Dijamantska kiša. Bonus dijamanti na svakom dobitku.",
-    pocetakMjesec: 12,
-    pocetakDan: 30,
-    krajMjesec: 1,
-    krajDan: 3,
-    modifikatorBlaga: { gem: 2.5, gold: 1.8, skull: 0.4 },
-    bonusMnozitelj: 2.0,
   },
   {
     id: "ljeto",

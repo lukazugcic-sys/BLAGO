@@ -47,7 +47,7 @@ export function VideoLoop({
           src={poster}
           alt=""
           draggable={false}
-          className="size-full object-cover object-[center_42%]"
+          className="absolute inset-0 size-full object-cover object-[center_42%]"
         />
       ) : null}
       <video
@@ -59,7 +59,7 @@ export function VideoLoop({
         muted
         loop
         playsInline
-        preload="none"
+        preload="metadata"
         poster={poster}
       >
         <source src={src} type="video/mp4" />

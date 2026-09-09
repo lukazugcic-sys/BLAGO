@@ -20,15 +20,14 @@ export const SlotSymbol = memo(function SlotSymbol({
     <span
       className={cn(
         "slot-token relative flex aspect-square w-full items-center justify-center",
+        id === "gold" && "slot-token-gold",
+        id === "energy" && "slot-token-energy",
         spinning && "reel-spinning",
         win && !skullHit && "slot-win",
         skullHit && "slot-skull",
-        !spinning && !win && !skullHit && "token-bob",
-        !(win || skullHit) && "overflow-hidden",
       )}
       style={{
         color: meta.boja,
-        backgroundColor: meta.raritet,
         ["--sym" as string]: meta.boja,
       }}
     >
@@ -39,7 +38,7 @@ export const SlotSymbol = memo(function SlotSymbol({
         height={64}
         draggable={false}
         decoding="async"
-        className="slot-art relative z-[1] size-[90%] object-contain select-none"
+        className="slot-art relative z-[1] object-contain select-none"
       />
       {win && !skullHit && (
         <>

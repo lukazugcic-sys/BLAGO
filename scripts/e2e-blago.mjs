@@ -45,7 +45,7 @@ try {
   }
 
   await page.getByLabel("Kauba").click();
-  await page.getByText("Brončani tabor").waitFor({ state: "visible" });
+  await page.getByText("Krov").first().waitFor({ state: "visible" });
   ok("selo");
 
   await page.getByLabel("Tržnica").click();

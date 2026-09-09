@@ -12,19 +12,23 @@ import { SlotScreen } from "./SlotScreen";
 import { VillageScreen } from "./VillageScreen";
 import { MissionsScreen } from "./MissionsScreen";
 import { ShopScreen } from "./ShopScreen";
-import { SocialHub } from "./SocialHub";
 import { LevelUpToast } from "./LevelUpToast";
+import { PotjernicaToast } from "./PotjernicaToast";
+import { ZvijezdaToast } from "./ZvijezdaToast";
 import { DailyRewardModal } from "./DailyRewardModal";
 import { RaidModal } from "./RaidModal";
 import { ScreenPager } from "./ScreenPager";
-import { type TabId } from "@/lib/game/constants";
+import { type TabId, ZGRADE_SKINOVI, primijeniSkinTemu } from "@/lib/game/constants";
 import { setMuted, unlockAudio, startBgm } from "@/lib/game/audio";
 import { SAVE_KEYS } from "@/lib/game/persist";
 import { ART, CREDITS, preloadArt } from "@/lib/game/art";
 import { LiveShell } from "@/lib/multiplayer";
 import { LiveTicker } from "./LiveTicker";
+import { PohodPozivToast } from "./PohodPozivToast";
+import { PosjetTabor } from "./PosjetTabor";
+import { TrojacModal } from "./TrojacModal";
 import { OnboardModal } from "./OnboardModal";
-import { VideoLoop } from "./VideoLoop";
+import { JutroSheet } from "./JutroSheet";
 import { APP_VERSION } from "@/lib/game/version";
 
 function GameInner({
@@ -44,10 +48,16 @@ function GameInner({
   const raidAktivan = useSlotStore((s) => s.raidAktivan);
   const setRaidAktivan = useSlotStore((s) => s.setRaidAktivan);
   const ukupnoVrtnji = useGameStore((s) => s.ukupnoVrtnji);
+  const aktivniSkin = useGameStore((s) => s.aktivniSkin);
   const [onboard, setOnboard] = useState(false);
   useVillage();
   useMarket();
   useCloudSync();
+
+  useEffect(() => {
+    const skin = ZGRADE_SKINOVI.find((s) => s.id === aktivniSkin) ?? ZGRADE_SKINOVI[0]!;
+    primijeniSkinTemu(skin);
+  }, [aktivniSkin]);
 
   useEffect(() => {
     startBgm(tab === "selo" ? "selo" : "igra");
@@ -64,13 +74,16 @@ function GameInner({
     if (!seen && ukupnoVrtnji === 0) setOnboard(true);
   }, [started, ucitavam, ukupnoVrtnji]);
 
+  useEffect(() => {
+    if (tab === "selo") useGameStore.getState().posjetiKaubu();
+  }, [tab]);
+
   const panes = useMemo(
     () => [
       { id: "automat" as const, node: <SlotScreen /> },
       { id: "selo" as const, node: <VillageScreen /> },
       { id: "misije" as const, node: <MissionsScreen /> },
       { id: "trznica" as const, node: <ShopScreen /> },
-      { id: "ceh" as const, node: <SocialHub /> },
     ],
     [],
   );
@@ -82,7 +95,6 @@ function GameInner({
   return (
     <LiveShell>
     <div className="atmosphere relative flex h-dvh flex-col overflow-hidden text-ink">
-      <div className="sparkle-field" aria-hidden />
       <div
         ref={shellRef}
         className="game-shell relative z-0 mx-auto flex h-dvh w-full max-w-lg flex-1 flex-col"
@@ -99,9 +111,15 @@ function GameInner({
         <AppNav tab={tab} onTab={setTab} />
       </div>
       {!onboard && <DailyRewardModal />}
+      {!onboard && <JutroSheet naTab={setTab} />}
       <OnboardModal open={onboard} onDone={() => setOnboard(false)} />
       <RaidModal vidljiv={raidAktivan} onZatvori={() => setRaidAktivan(false)} />
       <LevelUpToast />
+      <PotjernicaToast />
+      <ZvijezdaToast />
+      <PohodPozivToast />
+      <PosjetTabor />
+      <TrojacModal />
     </div>
     </LiveShell>
   );
@@ -109,18 +127,20 @@ function GameInner({
 
 function Splash({ loading }: { loading: boolean }) {
   return (
-    <div className="splash-scene relative flex h-dvh w-full flex-col overflow-hidden bg-void">
+    <div
+      className="splash-scene relative flex h-full min-h-[100vh] min-h-dvh w-full flex-col overflow-hidden bg-void"
+      style={{ minHeight: "100vh" }}
+    >
       <img
         src={ART.splash}
         alt=""
         className="absolute inset-0 h-full w-full object-cover object-[center_28%]"
+        onError={(e) => {
+          e.currentTarget.style.display = "none";
+        }}
       />
-      <VideoLoop
-        className="absolute inset-0 opacity-35 mix-blend-screen"
-        src={ART.duga}
-      />
-      <div className="splash-veil absolute inset-0" />
-      <div className="relative mt-auto flex flex-col items-center px-6 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-10 text-center">
+      <div className="splash-veil pointer-events-none absolute inset-0 z-[1]" />
+      <div className="relative z-[2] mt-auto flex flex-col items-center px-6 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-10 text-center">
         <p className="text-[11px] font-bold tracking-[0.46em] text-gold uppercase">
           kaubojski automat · beta
         </p>
@@ -182,7 +202,8 @@ export function GameApp() {
     return (
       <button
         type="button"
-        className="block h-dvh w-full bg-void"
+        className="block h-full min-h-[100vh] min-h-dvh w-full bg-void"
+        style={{ minHeight: "100vh" }}
         onPointerDown={start}
         aria-label="Pokreni igru"
       >
