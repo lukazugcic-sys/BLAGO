@@ -12,12 +12,14 @@ import {
   Skull,
   Coins,
   Star,
+  BookOpen,
   Castle,
   Landmark,
   Rocket,
   Home,
   Building2,
   Droplets,
+  CloudRain,
   Cog,
   Target,
   Drumstick,
@@ -26,9 +28,12 @@ import {
   Fence,
   Flag,
   Heart,
+  Leaf,
+  Bath,
   Store,
   Warehouse,
   LandPlot,
+  Beef,
 } from "lucide-react";
 import type {
   Alat,
@@ -67,6 +72,7 @@ export const BLAGO: Record<
   gem: { Ikona: Gem, boja: "#ff5ab4", raritet: "#3a1024", tip: "dijamanti", baza: 1 },
   shield: { Ikona: Shield, boja: "#5ec8ff", raritet: "#102838", tip: "stit", baza: 0 },
   wild: { Ikona: Star, boja: "#5ee06a", raritet: "#0e2a14", tip: "wild", baza: 0 },
+  knjiga: { Ikona: BookOpen, boja: "#e8c36a", raritet: "#2a1a08", tip: "knjiga", baza: 0 },
 };
 
 export const SVO_BLAGO = Object.keys(BLAGO) as SimbolId[];
@@ -81,12 +87,14 @@ export const TEZINE_BLAGA: Record<SimbolId, number> = {
   gem: 1,
   shield: 1,
   wild: 1,
+  knjiga: 0,
 };
 
 export const izgradiTezinskiPool = (mod?: Partial<Record<string, number>>): SimbolId[] => {
   const pool: SimbolId[] = [];
   (Object.keys(TEZINE_BLAGA) as SimbolId[]).forEach((sym) => {
-    const w = Math.max(1, Math.round(TEZINE_BLAGA[sym] * (mod?.[sym] ?? 1) * 2));
+    const w = Math.max(0, Math.round(TEZINE_BLAGA[sym] * (mod?.[sym] ?? 1) * 2));
+    if (w <= 0) return;
     for (let i = 0; i < w; i++) pool.push(sym);
   });
   return pool;
@@ -99,36 +107,24 @@ export const BAZA_TECAJ = {
   dijamant: { kupi: 45, prodaj: 30 },
 };
 
-export const ULOZI = [1, 5, 10, 25] as const;
+export const ULOZI = [1, 2, 3, 5, 10, 15, 25] as const;
 
-/** Četiri čista uloga: 1, oko petine, oko polovice, max. */
-const ULOG_LESTVICA = [1, 2, 3, 5, 10, 15, 20, 25, 30, 40, 50, 75, 100, 150, 200, 250, 500];
-
-function ulogSaLjestvice(cilj: number, cap: number) {
-  let best = 1;
-  let bestD = Infinity;
-  for (const n of ULOG_LESTVICA) {
-    if (n >= cap) break;
-    const d = Math.abs(n - cilj);
-    if (d < bestD || (d === bestD && n > best)) {
-      best = n;
-      bestD = d;
-    }
-  }
-  return Math.max(1, Math.min(best, cap - 1));
-}
+/** Više čistih uloga: sitni, srednji, max. */
+const ULOG_LESTVICA = [1, 2, 3, 5, 8, 10, 15, 20, 25, 30, 40, 50, 75, 100, 150, 200, 250, 500];
 
 export function uloziZaMax(maxE: number): number[] {
   const cap = Math.max(1, Math.floor(maxE));
   if (cap <= 1) return [1];
-  if (cap === 2) return [1, 2];
-  const a = ulogSaLjestvice(Math.round(cap * 0.2), cap);
-  let b = ulogSaLjestvice(Math.round(cap * 0.45), cap);
-  if (b <= a) {
-    const veci = ULOG_LESTVICA.find((n) => n > a && n < cap);
-    if (veci) b = veci;
-  }
-  return [...new Set([1, a, b, cap])].filter((n) => n >= 1 && n <= cap).sort((x, y) => x - y);
+  return [...new Set([...ULOG_LESTVICA.filter((n) => n < cap), cap])].sort((a, b) => a - b);
+}
+
+/** Šest množitelja oko trenutnog uloga, za red iznad ZAVRTi. */
+export function sestUloga(ulozi: number[], ulog: number): number[] {
+  if (ulozi.length <= 6) return ulozi;
+  const i = Math.max(0, ulozi.indexOf(ulog));
+  let start = Math.max(0, i - 2);
+  if (start + 6 > ulozi.length) start = ulozi.length - 6;
+  return ulozi.slice(start, start + 6);
 }
 
 export const ZGRADE: Zgrada[] = [
@@ -238,6 +234,21 @@ export const ZGRADE: Zgrada[] = [
     bazaProizvodnja: 0,
   },
   {
+    id: "cisterna",
+    naziv: "Cisterna",
+    maxLv: 6,
+    ikona: CloudRain,
+    bazaBoja: "#6a9aaa",
+    tip: "cisterna",
+    cijena: (lv) => ({
+      zlato: rast(28, lv),
+      drvo: rast(6, lv),
+      kamen: rast(8, lv),
+      zeljezo: 0,
+    }),
+    bazaProizvodnja: 0,
+  },
+  {
     id: "mlin",
     naziv: "Mlin",
     maxLv: 5,
@@ -299,7 +310,7 @@ export const ZGRADE: Zgrada[] = [
   },
   {
     id: "karte",
-    naziv: "Faro",
+    naziv: "Asovi",
     maxLv: 5,
     ikona: Spade,
     bazaBoja: "#d4a04a",
@@ -344,7 +355,7 @@ export const ZGRADE: Zgrada[] = [
   },
   {
     id: "korali",
-    naziv: "Korali",
+    naziv: "Ispust",
     maxLv: 6,
     ikona: LandPlot,
     bazaBoja: "#c4783a",
@@ -388,6 +399,21 @@ export const ZGRADE: Zgrada[] = [
     bazaProizvodnja: 0,
   },
   {
+    id: "tor",
+    naziv: "Tor",
+    maxLv: 6,
+    ikona: Beef,
+    bazaBoja: "#8a5a28",
+    tip: "tor",
+    cijena: (lv) => ({
+      zlato: rast(36, lv),
+      drvo: rast(12, lv),
+      kamen: lv === 1 ? 0 : rast(6, lv - 1),
+      zeljezo: 0,
+    }),
+    bazaProizvodnja: 0,
+  },
+  {
     id: "ordinacija",
     naziv: "Ordinacija",
     maxLv: 5,
@@ -398,6 +424,36 @@ export const ZGRADE: Zgrada[] = [
       zlato: rast(48, lv),
       drvo: rast(10, lv),
       kamen: rast(8, lv),
+      zeljezo: lv === 1 ? 0 : rast(4, lv - 1),
+    }),
+    bazaProizvodnja: 0,
+  },
+  {
+    id: "travar",
+    naziv: "Travar",
+    maxLv: 6,
+    ikona: Leaf,
+    bazaBoja: "#6a8a38",
+    tip: "travar",
+    cijena: (lv) => ({
+      zlato: rast(32, lv),
+      drvo: rast(8, lv),
+      kamen: lv === 1 ? 0 : rast(4, lv - 1),
+      zeljezo: 0,
+    }),
+    bazaProizvodnja: 0,
+  },
+  {
+    id: "banja",
+    naziv: "Banja",
+    maxLv: 5,
+    ikona: Bath,
+    bazaBoja: "#7aa0a8",
+    tip: "banja",
+    cijena: (lv) => ({
+      zlato: rast(40, lv),
+      drvo: rast(8, lv),
+      kamen: rast(10, lv),
       zeljezo: lv === 1 ? 0 : rast(4, lv - 1),
     }),
     bazaProizvodnja: 0,
@@ -445,17 +501,21 @@ const BAZA_MISIJA: Array<Omit<Misija, "id" | "trenutno" | "zavrseno">> = [
   { opis: "Skupi 1200 zlata", tip: "zlato", cilj: 1200, nagrada: { dijamanti: 3, energija: 6 } },
   { opis: "Izgradi kuću", tip: "kuca", cilj: 1, nagrada: { zlato: 16, drvo: 6 } },
   { opis: "Otvori bunar", tip: "bunar", cilj: 1, nagrada: { energija: 4, kamen: 6 } },
+  { opis: "Otvori cisternu", tip: "cisterna", cilj: 1, nagrada: { energija: 3, kamen: 6 } },
   { opis: "Otvori mlin", tip: "mlin", cilj: 1, nagrada: { dijamanti: 2, energija: 5 } },
   { opis: "Otvori lov", tip: "lov", cilj: 1, nagrada: { drvo: 10, zlato: 16 } },
   { opis: "Otvori mesnicu", tip: "mesnica", cilj: 1, nagrada: { dijamanti: 2, zlato: 20 } },
   { opis: "Otvori pekarnu", tip: "pekara", cilj: 1, nagrada: { dijamanti: 2, zlato: 20 } },
   { opis: "Otvori salun", tip: "salun", cilj: 1, nagrada: { zlato: 24 } },
-  { opis: "Stavi faro stol", tip: "karte", cilj: 1, nagrada: { dijamanti: 3 } },
+  { opis: "Stavi stol za asove", tip: "karte", cilj: 1, nagrada: { dijamanti: 3 } },
   { opis: "Otvori šerifov ured", tip: "ured", cilj: 1, nagrada: { stitovi: 1, dijamanti: 2 } },
   { opis: "Izgradi staju", tip: "staja", cilj: 1, nagrada: { zlato: 20, drvo: 8 } },
-  { opis: "Ogradi korale", tip: "korali", cilj: 1, nagrada: { zlato: 14, drvo: 6 } },
+  { opis: "Ogradi ispust", tip: "korali", cilj: 1, nagrada: { zlato: 14, drvo: 6 } },
   { opis: "Otvori farmu", tip: "farma", cilj: 1, nagrada: { zlato: 16, drvo: 8 } },
+  { opis: "Ogradi tor", tip: "tor", cilj: 1, nagrada: { zlato: 18, drvo: 8 } },
   { opis: "Otvori ordinaciju", tip: "ordinacija", cilj: 1, nagrada: { energija: 4, zlato: 16 } },
+  { opis: "Otvori travara", tip: "travar", cilj: 1, nagrada: { energija: 3, zlato: 12 } },
+  { opis: "Otvori banju", tip: "banja", cilj: 1, nagrada: { energija: 3, zlato: 14 } },
   { opis: "Otvori trgovinu", tip: "trgovina", cilj: 1, nagrada: { zlato: 20 } },
   { opis: "Otvori banku", tip: "banka", cilj: 1, nagrada: { dijamanti: 2, zlato: 20 } },
   { opis: "Otvori pilanu", tip: "pilana", cilj: 1, nagrada: { drvo: 10, zlato: 16 } },
@@ -466,27 +526,47 @@ const BAZA_MISIJA: Array<Omit<Misija, "id" | "trenutno" | "zavrseno">> = [
   { opis: "Kupi alat", tip: "oprema", cilj: 1, nagrada: { dijamanti: 2, energija: 5 } },
   { opis: "Ostvari 3 dobitka", tip: "dobitak", cilj: 3, nagrada: { drvo: 16, kamen: 12 } },
   { opis: "Uhvati sretnu vrtnju", tip: "luckySpin", cilj: 1, nagrada: { dijamanti: 3, energija: 5 } },
-  { opis: "Niz od 3 dobitka", tip: "streak", cilj: 3, nagrada: { dijamanti: 4, energija: 6 } },
+  { opis: "Otvori knjigu u prašini", tip: "knjiga", cilj: 1, nagrada: { dijamanti: 4, zlato: 24 } },
+  { opis: "Uzmi govedo u tor", tip: "govedo", cilj: 1, nagrada: { zlato: 18, drvo: 8 } },
+  { opis: "Skupi kišu s cisterne", tip: "kisa", cilj: 1, nagrada: { energija: 4, kamen: 6 } },
+  { opis: "Sjedni na blackjack", tip: "dvadesetjedan", cilj: 1, nagrada: { zlato: 16 } },
+  { opis: "Trči konja na stazi", tip: "utrka", cilj: 1, nagrada: { zlato: 16, drvo: 6 } },
 ];
 
 const USKO_MISIJA_TIPOVI: Record<string, string[]> = {
   krov: ["kuca", "blok", "ljudi"],
-  jelo: ["lov", "mesnica", "pekara", "farma"],
-  voda: ["bunar", "mlin"],
-  zabava: ["salun", "karte"],
+  jelo: ["lov", "mesnica", "pekara", "farma", "tor", "govedo"],
+  voda: ["bunar", "cisterna", "mlin", "kisa"],
+  zabava: ["salun", "karte", "dvadesetjedan", "knjiga"],
   posao: ["pilana", "kamenolom", "rudnik", "trgovina", "zgrada"],
   red: ["ured", "banka"],
-  konji: ["staja", "korali"],
-  zdravlje: ["ordinacija"],
+  konji: ["staja", "korali", "staza", "utrka"],
+  zdravlje: ["ordinacija", "travar", "banja"],
 };
 
-export const generirajMisiju = (usko?: string | null, zauzeti: string[] = [], ljudi: Stanovnik[] = pocetniLjudi()): Misija => {
+export const generirajMisiju = (
+  usko?: string | null,
+  zauzeti: string[] = [],
+  ljudi: Stanovnik[] = pocetniLjudi(),
+  gradevine?: Gradevine,
+  nedavni: string[] = [],
+): Misija => {
   const prefer = usko && USKO_MISIJA_TIPOVI[usko] ? USKO_MISIJA_TIPOVI[usko] : [];
-  const slobodni = BAZA_MISIJA.filter((s) => !zauzeti.includes(s.tip));
-  const baza = slobodni.length ? slobodni : BAZA_MISIJA;
-  const uski = baza.filter((s) => prefer.includes(s.tip));
-  const pool = uski.length && Math.random() < 0.72 ? uski : baza;
-  const sablon = pool[Math.floor(Math.random() * pool.length)]!;
+  const blok = new Set([...zauzeti, ...nedavni, "streak"]);
+  const zgradaId = new Set(ZGRADE.map((z) => z.id as string));
+  const moze = (s: (typeof BAZA_MISIJA)[number]) => {
+    if (blok.has(s.tip)) return false;
+    if (gradevine && zgradaId.has(s.tip) && s.cilj === 1 && (gradevine[s.tip as keyof Gradevine] || 0) > 0) {
+      return false;
+    }
+    return true;
+  };
+  const slobodni = BAZA_MISIJA.filter(moze);
+  const baza = slobodni.length ? slobodni : BAZA_MISIJA.filter((s) => !blok.has(s.tip) && !zgradaId.has(s.tip));
+  const pad = baza.length ? baza : BAZA_MISIJA.filter((s) => s.tip === "spin" || s.tip === "zlato" || s.tip === "dobitak");
+  const uski = pad.filter((s) => prefer.includes(s.tip));
+  const pool = uski.length && Math.random() < 0.55 ? uski : pad;
+  const sablon = pool[Math.floor(Math.random() * pool.length)] ?? BAZA_MISIJA[0]!;
   const tko = tkoZaNalog(ljudi, sablon.tip);
   return {
     id: Date.now() * 1000 + Math.floor(Math.random() * 100000),
@@ -648,6 +728,14 @@ export function primijeniSkinTemu(skin: Skin) {
   r.style.setProperty("--color-prestige", t.prestige);
   r.style.setProperty("--color-aurora", t.aurora);
   document.body.style.backgroundColor = t.void;
+  postaviBojuPrikaza(t.void);
+}
+
+export function postaviBojuPrikaza(boja: string) {
+  if (typeof document === "undefined") return;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", boja);
+  document.documentElement.style.backgroundColor = boja;
 }
 
 const KLAN_ZADACI_SABLONI: Array<
@@ -684,10 +772,16 @@ const KLAN_ZADACI_SABLONI: Array<
     nagrada: { dijamanti: 12, energija: 8 },
   },
   {
-    opis: "Kupi ili nadogradi 3 komada opreme (klan)",
-    tip: "oprema",
+    opis: "Otvori knjigu tri puta (klan)",
+    tip: "knjiga",
     cilj: 3,
-    nagrada: { dijamanti: 10, zeljezo: 200 },
+    nagrada: { dijamanti: 8, zlato: 40 },
+  },
+  {
+    opis: "Uzmi 4 goveda u tor (klan)",
+    tip: "govedo",
+    cilj: 4,
+    nagrada: { dijamanti: 6, drvo: 20 },
   },
 ];
 

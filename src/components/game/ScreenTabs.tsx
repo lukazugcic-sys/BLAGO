@@ -5,13 +5,20 @@ export function ScreenTabs<T extends string>({
   tabs,
   value,
   onChange,
+  dolje,
 }: {
   tabs: readonly { id: T; label: string }[];
   value: T;
   onChange: (id: T) => void;
+  dolje?: boolean;
 }) {
   return (
-    <div className="mb-3 flex rounded-xl border border-line bg-panel p-1">
+    <div
+      className={cn(
+        "flex rounded-xl border border-line bg-panel p-1",
+        dolje ? "mt-3 mb-0" : "mb-3",
+      )}
+    >
       {tabs.map((t) => {
         const aktivan = value === t.id;
         return (

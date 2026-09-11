@@ -43,7 +43,10 @@ export const BuildingCard = memo(function BuildingCard({ zgrada, compact }: { zg
   const ljudi = useGameStore((s) => s.ljudi);
   const konjiBroj = useGameStore((s) => s.konjiBroj);
   const konjiDuznost = useGameStore((s) => s.konjiDuznost);
+  const govedaBroj = useGameStore((s) => s.govedaBroj);
+  const govedaDuznost = useGameStore((s) => s.govedaDuznost);
   const sijenoDo = useGameStore((s) => s.sijenoDo);
+  const kisaDo = useGameStore((s) => s.kisaDo);
   const pasivniMnozitelj =
     izracunajPasivniMnozitelj(igracRazina, prestigeRazina) * izracunajTokMnozitelj(kvalitetaSela);
   const lv = gradevine[zgrada.id] || 0;
@@ -88,7 +91,7 @@ export const BuildingCard = memo(function BuildingCard({ zgrada, compact }: { zg
 
   const cPopravak = popravakCijena(lv);
   const mozePopraviti = zlato >= cPopravak.zlato && resursi.drvo >= cPopravak.drvo;
-  const kauba = kaubaOd({ gradevine, stanovnici, zamjenici, konjiBroj, konjiDuznost, sijenoDo });
+  const kauba = kaubaOd({ gradevine, stanovnici, zamjenici, konjiBroj, konjiDuznost, sijenoDo, kisaDo, govedaBroj, govedaDuznost });
   const radE = kauba.rad * kauba.efikasnost;
   const trenutnaProizvodnja = (lv * zgrada.bazaProizvodnja * pasivniMnozitelj * radE).toFixed(1);
   const ljudiN = Math.max(0, Math.floor(kauba.ljudi));
@@ -109,7 +112,7 @@ export const BuildingCard = memo(function BuildingCard({ zgrada, compact }: { zg
             ? zakljucan
               ? zakljucan
               : lv > 0
-                ? `Faro stol · zabava ${lv * POKRICE.karte}`
+                ? `Stol za asove · zabava ${lv * POKRICE.karte}`
                 : "Stol za pogađanje karata"
             : zgrada.id === "bunar"
               ? lv > 0
@@ -121,6 +124,12 @@ export const BuildingCard = memo(function BuildingCard({ zgrada, compact }: { zg
                   : lv > 0
                     ? `Voda ${lv * POKRICE.mlin} · kolo +${(lv * MLIN_ENERGIJA).toFixed(1)} energije / ${tickSec}s`
                     : `Voda za ${POKRICE.mlin} ljudi · kolo`
+              : zgrada.id === "cisterna"
+                ? zakljucan
+                  ? zakljucan
+                  : lv > 0
+                    ? `Kiša ${lv * POKRICE.cisterna} · krov hvata`
+                    : `Kiša za ${POKRICE.cisterna} ljudi. Bez krova prazna.`
               : zgrada.id === "lov" || zgrada.id === "mesnica" || zgrada.id === "pekara"
                 ? zakljucan
                   ? zakljucan
@@ -155,12 +164,30 @@ export const BuildingCard = memo(function BuildingCard({ zgrada, compact }: { zg
                     : lv > 0
                       ? `Hrana ${lv * POKRICE.farma} · žito pije iz bunara`
                       : `Hrana za ${POKRICE.farma} ljudi. Bez bunara žito vene.`
+                : zgrada.id === "tor"
+                  ? zakljucan
+                    ? zakljucan
+                    : lv > 0
+                      ? `Krdo ${kauba.govedaBroj}/${kauba.govedaKap} · firma u toru`
+                      : `Tor za ${POKRICE.tor} grla. Prvo farma. Koža je tijesna.`
                 : zgrada.id === "ordinacija"
                   ? zakljucan
                     ? zakljucan
                     : lv > 0
                       ? `Liječi ${Math.min(ljudiN, lv * POKRICE.ordinacija)}/${ljudiN || 0}${ljudiN < 10 ? " · tabor još diše" : ""}`
                       : `Ordinacija za ${POKRICE.ordinacija} ljudi. Rana ne čeka.`
+                : zgrada.id === "travar"
+                  ? zakljucan
+                    ? zakljucan
+                    : lv > 0
+                      ? `Trava ${lv * POKRICE.travar} · raste uz žito`
+                      : `Trava za ${POKRICE.travar} ljudi. Bez farme vene.`
+                : zgrada.id === "banja"
+                  ? zakljucan
+                    ? zakljucan
+                    : lv > 0
+                      ? `Kupelj ${lv * POKRICE.banja} · pije bunar`
+                      : `Kupelj za ${POKRICE.banja} ljudi. Prvo bunar ili cisternu.`
                 : zgrada.id === "trgovina"
                   ? zakljucan
                     ? zakljucan
@@ -171,8 +198,8 @@ export const BuildingCard = memo(function BuildingCard({ zgrada, compact }: { zg
                   ? zakljucan
                     ? zakljucan
                     : lv > 0
-                      ? `Seif ${bankaKap(lv)} · kamata. Pohod ne dira seif.`
-                      : "Seif za zlato. Šerif čuva banku."
+                      ? `Sef ${bankaKap(lv)} · kamata. Pohod ne dira sef.`
+                      : "Sef za zlato. Šerif čuva banku."
                 : lv > 0
                   ? `+${trenutnaProizvodnja} / ${tickSec}s · ${kauba.zaposleni}/${kauba.poslovi} rade`
                   : "Nema posla dok ne sagradiš";

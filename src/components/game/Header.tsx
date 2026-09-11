@@ -1,14 +1,16 @@
-import { Volume2, VolumeX, Maximize2, Minimize2, Crown } from "lucide-react";
-import { useState } from "react";
+import { Volume2, VolumeX, Maximize2, Minimize2, Crown, User, Settings } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useGameStore } from "@/lib/stores/gameStore";
 import { useLive } from "@/lib/multiplayer";
 import { AnimatedStat } from "./AnimatedStat";
 import { AuthChip } from "./AuthChip";
 import { BetaSheet } from "./BetaSheet";
-import { izracunajMaxStitova, izracunajPotrebniXp } from "@/lib/game/economy";
+import { izracunajPotrebniXp } from "@/lib/game/economy";
 import { formatHud } from "@/lib/game/helpers";
 import { SYMBOL_ART } from "@/lib/game/art";
 import { IconBadge } from "./IconBadge";
+import { cn } from "@/lib/utils";
+import { playSfx } from "@/lib/game/audio";
 
 export function Header({
   muted,
@@ -34,22 +36,32 @@ export function Header({
   const drvo = useGameStore((s) => Math.floor(s.resursi.drvo));
   const kamen = useGameStore((s) => Math.floor(s.resursi.kamen));
   const zeljezo = useGameStore((s) => Math.floor(s.resursi.zeljezo));
-  const stitovi = useGameStore((s) => s.stitovi);
-  const oklop = useGameStore((s) => s.razine.oklop || 0);
   const preuzetoDanas = useGameStore((s) => s.preuzetoDanas);
   const otvoriDnevnuNagradu = useGameStore((s) => s.otvoriDnevnuNagradu);
+  const stitovi = useGameStore((s) => s.stitovi);
   const live = useLive();
   const online = live.cowboys.filter((c) => c.connected).length;
   const [beta, setBeta] = useState(false);
+  const [karta, setKarta] = useState(false);
 
-  const maxStitova = izracunajMaxStitova(oklop);
   const potrebanXp = izracunajPotrebniXp(igracRazina);
   const xpPct = Math.min(100, (xp / Math.max(1, potrebanXp)) * 100);
 
+  useEffect(() => {
+    if (!karta) return;
+    const zatvori = (e: PointerEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t?.closest?.(".kru-okvir") || t?.closest?.(".karta-izbornik")) return;
+      setKarta(false);
+    };
+    window.addEventListener("pointerdown", zatvori);
+    return () => window.removeEventListener("pointerdown", zatvori);
+  }, [karta]);
+
   return (
-    <header className="z-10 shrink-0 border-b border-line bg-void/92 px-2.5 pb-1.5 pt-[max(0.3rem,env(safe-area-inset-top))]">
+    <header className="z-20 shrink-0 border-b border-line bg-void/92 px-2.5 pb-1.5 pt-[max(0.3rem,env(safe-area-inset-top))]">
       <div className="mb-1.5 flex items-center gap-1.5">
-        <div className="xp-nivo relative flex size-8 shrink-0 items-center justify-center text-xs font-bold text-void">
+        <div className="kru-sivi relative flex size-8 shrink-0 items-center justify-center text-xs font-bold text-ink">
           {igracRazina}
           {(prestigeRazina > 0 || krunjenja > 0) && (
             <span className="absolute -right-0.5 -top-0.5 flex size-3.5 items-center justify-center rounded-full bg-prestige text-[7px] font-bold text-void">
@@ -74,69 +86,90 @@ export function Header({
             </span>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-0.5">
+        <div className="kru-stit" aria-label="Štitovi">
+          {stitovi}
+        </div>
+        <div className="kru-okvir relative">
           <button
             type="button"
-            onClick={() => setBeta(true)}
-            className="flex h-8 items-center gap-1 rounded-full border border-gold/45 bg-gold/15 px-2 text-[9px] font-bold tracking-wider text-gold uppercase"
-            aria-label="Beta info"
+            aria-label="Izbornik"
+            aria-expanded={karta}
+            onClick={() => {
+              playSfx("button");
+              setKarta((v) => !v);
+            }}
+            className="kru-sivi kru-sredina"
           >
-            <span
-              className={
-                live.joined && online > 0
-                  ? "size-1.5 rounded-full bg-volt"
-                  : live.joined
-                    ? "size-1.5 rounded-full bg-gold"
-                    : "size-1.5 rounded-full bg-dim"
-              }
-            />
-            beta
-            {online > 0 ? ` ${online}` : ""}
+            <Settings className="kru-bijeli-zup size-3.5" strokeWidth={2.4} />
+            <span className="kru-zupcanik" aria-hidden />
           </button>
           {!preuzetoDanas && (
             <button
               type="button"
               onClick={otvoriDnevnuNagradu}
               aria-label="Dnevna nagrada"
-              className="relative flex size-8 items-center justify-center rounded-full border border-gold/55 bg-gold/20"
+              className="kru-dan"
             >
               <IconBadge src={SYMBOL_ART.gold} size="xs" />
-              <span className="absolute right-0.5 top-0.5 size-1.5 rounded-full bg-gold" />
             </button>
           )}
-          <button
-            type="button"
-            onClick={onToggleMute}
-            aria-label={muted ? "Uključi zvuk" : "Isključi zvuk"}
-            className="flex size-8 items-center justify-center rounded-full border border-line bg-panel-2 text-dim"
-          >
-            {muted ? <VolumeX className="size-3.5" /> : <Volume2 className="size-3.5" />}
-          </button>
-          {canNativeFs && (
-            <button
-              type="button"
-              onClick={onToggleFullscreen}
-              aria-label={nativeFs ? "Izlaz iz punog ekrana" : "Puni ekran"}
-              className="flex size-8 items-center justify-center rounded-full border border-gold/40 bg-gold/15 text-gold"
-            >
-              {nativeFs ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
-            </button>
+          {karta && (
+            <div className="karta-izbornik">
+              <p className="mb-2 text-[10px] font-bold tracking-[0.22em] text-gold uppercase">Karta</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setBeta(true);
+                  setKarta(false);
+                }}
+                className="karta-red"
+                aria-label="Beta info"
+              >
+                <span
+                  className={
+                    live.joined && online > 0
+                      ? "size-1.5 rounded-full bg-volt"
+                      : "size-1.5 rounded-full bg-gold"
+                  }
+                />
+                Beta{online > 0 ? ` · ${online}` : ""}
+              </button>
+              <button
+                type="button"
+                onClick={onToggleMute}
+                className="karta-red"
+                aria-label={muted ? "Uključi zvuk" : "Isključi zvuk"}
+              >
+                {muted ? <VolumeX className="size-3.5" /> : <Volume2 className="size-3.5" />}
+                {muted ? "Bez zvuka" : "Zvuk"}
+              </button>
+              {canNativeFs && (
+                <button
+                  type="button"
+                  onClick={onToggleFullscreen}
+                  className="karta-red"
+                  aria-label={nativeFs ? "Izlaz iz punog ekrana" : "Puni ekran"}
+                >
+                  {nativeFs ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
+                  {nativeFs ? "Uži ekran" : "Puni ekran"}
+                </button>
+              )}
+              <div className="karta-red">
+                <User className="size-3.5" />
+                <span className="min-w-0 flex-1">Profil</span>
+                <AuthChip />
+              </div>
+            </div>
           )}
-          <AuthChip />
         </div>
       </div>
 
-      <div className="flex gap-1.5">
-        <div className="grid min-w-0 flex-[2] grid-cols-2 gap-1">
-          <Chip value={zlato} icon={SYMBOL_ART.gold} />
-          <Chip value={dijamanti} icon={SYMBOL_ART.gem} />
-        </div>
-        <div className="grid min-w-0 flex-[4] grid-cols-4 gap-1">
-          <Chip value={drvo} icon={SYMBOL_ART.wood} />
-          <Chip value={kamen} icon={SYMBOL_ART.stone} />
-          <Chip value={zeljezo} icon={SYMBOL_ART.iron} />
-          <Chip value={stitovi} icon={SYMBOL_ART.shield} suffix={`/${maxStitova}`} />
-        </div>
+      <div className="grid grid-cols-5 gap-1">
+        <Chip value={zlato} icon={SYMBOL_ART.gold} />
+        <Chip value={dijamanti} icon={SYMBOL_ART.gem} />
+        <Chip value={drvo} icon={SYMBOL_ART.wood} />
+        <Chip value={kamen} icon={SYMBOL_ART.stone} />
+        <Chip value={zeljezo} icon={SYMBOL_ART.iron} />
       </div>
       <BetaSheet open={beta} onClose={() => setBeta(false)} />
     </header>
@@ -146,21 +179,18 @@ export function Header({
 function Chip({
   value,
   icon,
-  suffix,
 }: {
   value: number;
   icon: string;
-  suffix?: string;
 }) {
   return (
     <AnimatedStat
       value={value}
-      className="flex h-8 min-w-0 items-center justify-center gap-1 rounded-full border border-line bg-panel px-1.5"
+      className="flex h-8 min-w-0 items-center justify-center gap-1 rounded-full border border-line bg-panel px-1"
     >
       <IconBadge src={icon} size="xs" />
       <span className="text-[11px] font-bold tabular-nums leading-none text-ink">
         {formatHud(value)}
-        {suffix ?? ""}
       </span>
     </AnimatedStat>
   );

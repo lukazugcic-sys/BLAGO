@@ -38,6 +38,9 @@ import {
   GAMBLE_WIN_P,
   KONJ_HRANA,
   KONJ_VODA,
+  BANJA_VODA,
+  GOVEDO_HRANA,
+  GOVEDO_VODA,
 } from "./tuning";
 
 export {
@@ -64,6 +67,7 @@ export const PRAZNE_GRADEVINE: Gradevine = {
   salun: 0,
   karte: 0,
   bunar: 0,
+  cisterna: 0,
   mlin: 0,
   lov: 0,
   mesnica: 0,
@@ -73,7 +77,10 @@ export const PRAZNE_GRADEVINE: Gradevine = {
   korali: 0,
   staza: 0,
   farma: 0,
+  tor: 0,
   ordinacija: 0,
+  travar: 0,
+  banja: 0,
   trgovina: 0,
   banka: 0,
 };
@@ -87,6 +94,7 @@ export const PRAZNA_OSTECENJA: { [K in keyof Gradevine]: boolean } = {
   salun: false,
   karte: false,
   bunar: false,
+  cisterna: false,
   mlin: false,
   lov: false,
   mesnica: false,
@@ -96,7 +104,10 @@ export const PRAZNA_OSTECENJA: { [K in keyof Gradevine]: boolean } = {
   korali: false,
   staza: false,
   farma: false,
+  tor: false,
   ordinacija: false,
+  travar: false,
+  banja: false,
   trgovina: false,
   banka: false,
 };
@@ -111,6 +122,16 @@ export const izracunajMaxEnergiju = (baterija: number) =>
 
 export const capEnergija = (e: number, baterija: number) =>
   Math.max(0, Math.min(izracunajMaxEnergiju(baterija), e));
+
+/** Regen i bunar ne diraju višak iz munje. Munja i bonus smiju prijeći max. */
+export function dodajEnergiju(e: number, gain: number, baterija: number, preko = false) {
+  const next = Math.max(0, e + gain);
+  if (gain <= 0) return next;
+  if (preko) return next;
+  const max = izracunajMaxEnergiju(baterija);
+  if (e >= max) return e;
+  return Math.min(max, next);
+}
 
 /** 4.5s at rank 0, faster with Volt-remen, floor 2s. */
 export const izracunajEnergijaRegenMs = (baterija: number) =>
@@ -138,12 +159,19 @@ export type KaubaPotrebe = {
 export type KaubaUsko = keyof KaubaPotrebe;
 
 export type KonjDuznostId = "jahanje" | "ophodnja" | "rad" | "rodeo";
+export type GovedoDuznostId = "pasa" | "tjeranje" | "klanje";
 
 export const KONJ_DUZNOSTI: Array<{ id: KonjDuznostId; naziv: string; rec: string; poruka: string }> = [
   { id: "jahanje", naziv: "Jahanje", rec: "Sedlo na ulici. To je kauba.", poruka: "Na uzdu." },
   { id: "ophodnja", naziv: "Ophodnja", rec: "Šerif jaše. Ulica šuti.", poruka: "Jaše ophodnju." },
   { id: "rad", naziv: "Jaram", rec: "Plug i kamen. Konj vuče.", poruka: "U jaram." },
   { id: "rodeo", naziv: "Rodeo", rec: "Salun pun. Konji skaču. Nered raste.", poruka: "U arenu." },
+];
+
+export const GOVEDO_DUZNOSTI: Array<{ id: GovedoDuznostId; naziv: string; rec: string; poruka: string }> = [
+  { id: "pasa", naziv: "Paša", rec: "Krdo na žitu. Firma diše.", poruka: "Na pašu." },
+  { id: "tjeranje", naziv: "Tjeranje", rec: "Goniči jašu. Krdo ide na trg.", poruka: "Na trg." },
+  { id: "klanje", naziv: "Klanje", rec: "Mesnica čeka. Gazda kima.", poruka: "Na klanje." },
 ];
 
 export type KaubaUtjecaj = {
@@ -155,12 +183,17 @@ export type KaubaUtjecaj = {
 };
 
 export type KaubaDuznost = Record<KonjDuznostId, number>;
+export type GovedoDuznost = Record<GovedoDuznostId, number>;
 
 export type KaubaExtra = {
   red?: number;
   konjiBroj?: number;
   duznost?: Partial<KaubaDuznost>;
   sijeno?: boolean;
+  kisa?: boolean;
+  govedaBroj?: number;
+  govedaDuznost?: Partial<GovedoDuznost>;
+  celija?: number;
 };
 
 export type KaubaStanje = {
@@ -180,6 +213,9 @@ export type KaubaStanje = {
   konjiKap: number;
   duznost: KaubaDuznost;
   radKonja: number;
+  govedaBroj: number;
+  govedaKap: number;
+  govedaDuznost: GovedoDuznost;
 };
 
 export const POTREBE_META: Array<{
@@ -187,14 +223,14 @@ export const POTREBE_META: Array<{
   naziv: string;
   zgrade: Array<keyof Gradevine>;
 }> = [
-  { id: "krov", naziv: "Krov", zgrade: ["kuca", "blok"] },
-  { id: "jelo", naziv: "Hrana", zgrade: ["lov", "mesnica", "pekara", "farma"] },
+  { id: "krov", naziv: "Smještaj", zgrade: ["kuca", "blok"] },
+  { id: "jelo", naziv: "Hrana", zgrade: ["lov", "mesnica", "pekara", "farma", "tor"] },
   { id: "zabava", naziv: "Zabava", zgrade: ["salun", "karte"] },
-  { id: "voda", naziv: "Voda", zgrade: ["bunar", "mlin"] },
+  { id: "voda", naziv: "Voda", zgrade: ["bunar", "cisterna", "mlin"] },
   { id: "posao", naziv: "Posao", zgrade: ["pilana", "kamenolom", "rudnik", "trgovina"] },
-  { id: "red", naziv: "Red", zgrade: ["ured", "banka"] },
+  { id: "red", naziv: "Zakon", zgrade: ["ured", "banka"] },
   { id: "konji", naziv: "Konji", zgrade: ["staja", "korali", "staza"] },
-  { id: "zdravlje", naziv: "Lijek", zgrade: ["ordinacija"] },
+  { id: "zdravlje", naziv: "Zdravlje", zgrade: ["ordinacija", "travar", "banja"] },
 ];
 
 export function hubZaZgradu(id: keyof Gradevine): KaubaUsko | null {
@@ -210,11 +246,15 @@ export function zgradaUvjet(id: keyof Gradevine, g: Gradevine): string | null {
   if (id === "pekara" && (g.lov || 0) < 1) return "Prvo lov";
   if (id === "karte" && (g.salun || 0) < 1) return "Prvo salun";
   if (id === "mlin" && (g.bunar || 0) < 1) return "Prvo bunar";
+  if (id === "cisterna" && (g.kuca || 0) < 1) return "Prvo kuću";
   if (id === "staja" && (g.kuca || 0) < 1) return "Prvo kuću";
   if (id === "korali" && (g.staja || 0) < 1) return "Prvo staju";
-  if (id === "staza" && (g.korali || 0) < 1) return "Prvo korale";
+  if (id === "staza" && (g.korali || 0) < 1) return "Prvo ispust";
   if (id === "farma" && (g.kuca || 0) < 1) return "Prvo kuću";
+  if (id === "tor" && (g.farma || 0) < 1) return "Prvo farmu";
   if (id === "ordinacija" && (g.kuca || 0) < 1) return "Prvo kuću";
+  if (id === "travar" && (g.kuca || 0) < 1) return "Prvo kuću";
+  if (id === "banja" && (g.bunar || 0) < 1 && (g.cisterna || 0) < 1) return "Prvo bunar ili cisternu";
   if (id === "trgovina" && (g.kuca || 0) < 2) return "Prvo dvije kuće";
   if (id === "banka" && (g.ured || 0) < 1) return "Prvo ured";
   return null;
@@ -244,8 +284,22 @@ export function konjaKap(g: Gradevine) {
   );
 }
 
+export function govedaKap(g: Gradevine) {
+  return Math.max(0, (g.tor || 0) * POKRICE.tor);
+}
+
+/** 0 ispod 75% tora, 1 kad je tor pun. Firma puca. */
+export function krdoTijesno(broj: number, kap: number) {
+  if (kap <= 0 || broj <= 0) return 0;
+  return Math.max(0, Math.min(1, (broj / kap - 0.75) / 0.25));
+}
+
 export function praznaDuznost(): KaubaDuznost {
   return { jahanje: 0, ophodnja: 0, rad: 0, rodeo: 0 };
+}
+
+export function praznaGovedoDuznost(): GovedoDuznost {
+  return { pasa: 0, tjeranje: 0, klanje: 0 };
 }
 
 export function normalizirajDuznost(broj: number, raw?: Partial<KaubaDuznost> | null): KaubaDuznost {
@@ -277,6 +331,34 @@ export function normalizirajDuznost(broj: number, raw?: Partial<KaubaDuznost> | 
   return d;
 }
 
+export function normalizirajGovedo(broj: number, raw?: Partial<GovedoDuznost> | null): GovedoDuznost {
+  const n = Math.max(0, Math.floor(broj));
+  const d = praznaGovedoDuznost();
+  if (n <= 0) return d;
+  d.pasa = Math.max(0, Math.floor(raw?.pasa ?? 0));
+  d.tjeranje = Math.max(0, Math.floor(raw?.tjeranje ?? 0));
+  d.klanje = Math.max(0, Math.floor(raw?.klanje ?? 0));
+  let zbroj = d.pasa + d.tjeranje + d.klanje;
+  if (zbroj <= 0) {
+    d.pasa = n;
+    return d;
+  }
+  if (zbroj !== n) {
+    const ids = GOVEDO_DUZNOSTI.map((x) => x.id);
+    if (zbroj > n) {
+      for (const id of [...ids].reverse()) {
+        const skini = Math.min(d[id], zbroj - n);
+        d[id] -= skini;
+        zbroj -= skini;
+        if (zbroj <= n) break;
+      }
+    } else {
+      d.pasa += n - zbroj;
+    }
+  }
+  return d;
+}
+
 export function izracunajEfikasnost(sreca: number) {
   const k = Math.max(0, Math.min(100, sreca));
   return 0.55 + (0.45 * k) / 100;
@@ -289,8 +371,17 @@ export function izracunajKauba(g: Gradevine, ljudi: number, extra?: KaubaExtra):
   const konjiBroj = Math.max(0, Math.min(konjiKapN, Math.floor(extra?.konjiBroj ?? konjiKapN)));
   const duznost = normalizirajDuznost(konjiBroj, extra?.duznost);
   const sijeno = !!extra?.sijeno;
+  const kisa = !!extra?.kisa;
+  const govedaKapN = govedaKap(g);
+  const govedaBroj = Math.max(0, Math.min(govedaKapN, Math.floor(extra?.govedaBroj ?? 0)));
+  const govedaDuznost = normalizirajGovedo(govedaBroj, extra?.govedaDuznost);
 
   let voda = (g.bunar || 0) * POKRICE.bunar + (g.mlin || 0) * POKRICE.mlin;
+  const krovK = n <= 0 ? 1 : Math.min(1, kapacitet / Math.max(1, n));
+  if ((g.cisterna || 0) > 0) {
+    const cisternaBaza = (g.cisterna || 0) * POKRICE.cisterna;
+    voda += cisternaBaza * (0.55 + 0.45 * krovK) * (kisa ? 1.4 : 1);
+  }
   let jelo =
     (g.lov || 0) * POKRICE.lov +
     (g.mesnica || 0) * POKRICE.mesnica +
@@ -308,6 +399,9 @@ export function izracunajKauba(g: Gradevine, ljudi: number, extra?: KaubaExtra):
   };
 
   const vodaOmjer = n <= 0 ? 1 : Math.min(1, voda / Math.max(1, n));
+  if ((g.cisterna || 0) > 0) {
+    veza("krov", "voda", krovK >= 0.5 ? 1 : -1, 0.16 + 0.22 * krovK, kisa ? "Kiša pada. Cisterna puna." : "Krov hvata kišu.");
+  }
   const farmBase = (g.farma || 0) * POKRICE.farma;
   if (farmBase > 0) {
     const farmAdj = farmBase * (0.55 + 0.45 * vodaOmjer) - farmBase;
@@ -357,6 +451,59 @@ export function izracunajKauba(g: Gradevine, ljudi: number, extra?: KaubaExtra):
   if ((g.trgovina || 0) > 0 && konjiBroj > 0) {
     posao += (g.trgovina || 0) * 1.1;
     veza("konji", "posao", 1, 0.18, "Vreće idu na konju.");
+  }
+
+  const gPije = govedaBroj * GOVEDO_VODA;
+  if (gPije > 0) {
+    voda = Math.max(0, voda - gPije);
+    veza("jelo", "voda", -1, Math.min(1, gPije / Math.max(4, n || 4)), "Krdo pije bunar.");
+  }
+  const pasaNaZitu = govedaDuznost.pasa > 0 && (g.farma || 0) > 0;
+  const gJede = govedaBroj * GOVEDO_HRANA * (pasaNaZitu ? 0.45 : 1);
+  if (gJede > 0) {
+    jelo = Math.max(0, jelo - gJede);
+    veza("jelo", "jelo", -1, Math.min(1, gJede / Math.max(4, n || 4)), pasaNaZitu ? "Paša na žitu. Kuhinja mirna." : "Krdo jede iz kuhinje. Koža je tijesna.");
+  }
+  if (govedaDuznost.pasa > 0) {
+    const pasaJelo = govedaDuznost.pasa * 0.65 * ((g.farma || 0) > 0 ? 1 : 0.55);
+    jelo += pasaJelo;
+    veza("jelo", "jelo", 1, Math.min(1, 0.14 + govedaDuznost.pasa * 0.04), "Paša puni kotao.");
+  }
+  if (govedaDuznost.klanje > 0) {
+    const klanjeJelo = govedaDuznost.klanje * 1.35 * ((g.mesnica || 0) > 0 ? 1 : 0.5);
+    jelo += klanjeJelo;
+    veza("jelo", "jelo", 1, Math.min(1, 0.16 + govedaDuznost.klanje * 0.05), (g.mesnica || 0) > 0 ? "Mesnica reže. Kotao pun." : "Klanje bez mesnice. Meso se kvari.");
+  }
+  if (govedaDuznost.tjeranje > 0 && duznost.jahanje > 0) {
+    posao += govedaDuznost.tjeranje * 0.45;
+    veza("konji", "jelo", 1, Math.min(1, 0.12 + govedaDuznost.tjeranje * 0.04), "Goniči jašu krdo na trg.");
+  } else if (govedaDuznost.tjeranje > 0) {
+    veza("konji", "jelo", -1, 0.22, "Bez konja krdo ne ide.");
+  }
+  const tijesno = krdoTijesno(govedaBroj, govedaKapN);
+  if (tijesno > 0) {
+    zabava *= 1 - 0.18 * tijesno;
+    red *= 1 - 0.14 * tijesno;
+    zdravlje *= 1 - 0.08 * tijesno;
+    veza("jelo", "zabava", -1, 0.14 + 0.16 * tijesno, "Koža je tijesna. Tor puca.");
+    veza("jelo", "red", -1, 0.1 + 0.12 * tijesno, "Gazda viče. Referent šuti.");
+  }
+
+  const farmK = n <= 0 ? 1 : Math.min(1, ((g.farma || 0) * POKRICE.farma) / Math.max(1, n));
+  if ((g.travar || 0) > 0) {
+    const travarBaza = (g.travar || 0) * POKRICE.travar;
+    zdravlje += travarBaza * (0.62 + 0.38 * farmK);
+    veza("jelo", "zdravlje", farmK >= 0.5 ? 1 : -1, 0.16 + 0.2 * farmK, "Trava raste uz žito.");
+  }
+  if ((g.banja || 0) > 0) {
+    const pijeBanja = (g.banja || 0) * BANJA_VODA;
+    voda = Math.max(0, voda - pijeBanja);
+    veza("zdravlje", "voda", -1, Math.min(1, pijeBanja / Math.max(4, n || 4)), "Banja pije bunar.");
+    const vodaBanja = n <= 0 ? 1 : Math.min(1, voda / Math.max(1, n));
+    zdravlje += (g.banja || 0) * POKRICE.banja * (0.4 + 0.6 * vodaBanja);
+    zabava += (g.banja || 0) * 1.4;
+    veza("voda", "zdravlje", vodaBanja >= 0.5 ? 1 : -1, 0.18 + 0.22 * vodaBanja, "Topla voda pere prašinu.");
+    veza("zdravlje", "zabava", 1, Math.min(1, 0.1 + (g.banja || 0) * 0.04), "Banja topi prašinu.");
   }
 
   const gosti = Math.min(n, (g.salun || 0) * POKRICE.salun + (g.karte || 0) * POKRICE.karte * 0.5);
@@ -433,7 +580,7 @@ export function izracunajKauba(g: Gradevine, ljudi: number, extra?: KaubaExtra):
     veza("red", "zabava", -1, 0.24, "Bez reda salun se zatvara.");
   }
   if ((g.banka || 0) > 0) {
-    veza("red", "posao", potrebe.red >= 0.6 ? 1 : -1, 0.14 + 0.12 * potrebe.red, "Seif diše dok šerif jaše.");
+    veza("red", "posao", potrebe.red >= 0.6 ? 1 : -1, 0.14 + 0.12 * potrebe.red, "Sef diše dok šerif jaše.");
   }
 
   const sreca = Math.round(
@@ -480,6 +627,9 @@ export function izracunajKauba(g: Gradevine, ljudi: number, extra?: KaubaExtra):
     konjiKap: konjiKapN,
     duznost,
     radKonja,
+    govedaBroj,
+    govedaKap: govedaKapN,
+    govedaDuznost,
   };
   stanje.tok = izracunajSelidbuDelta(stanje);
   return stanje;
@@ -568,13 +718,13 @@ export function raspolozenjeKaube(kauba: KaubaStanje): SeloMood {
   if (n <= 0) return { id: "pusto", rec: "Pusto. Samo vjetar.", usko: "krov" };
   const u = kauba.usko;
   if (u === "jelo") return { id: "glad", rec: "Želudac vrije.", usko: "jelo" };
-  if (u === "voda") return { id: "susa", rec: "Bunar je suh.", usko: "voda" };
+  if (u === "voda") return { id: "susa", rec: "Nema kapi.", usko: "voda" };
   if (u === "krov") return { id: "krov", rec: "Nema krova za sve.", usko: "krov" };
   if (u === "zabava") return { id: "tiho", rec: "Ulica je tiha.", usko: "zabava" };
   if (u === "posao") return { id: "dokolica", rec: "Ruke vise.", usko: "posao" };
   if (u === "red") return { id: "nered", rec: "Nema reda u kaubi.", usko: "red" };
   if (u === "konji") return { id: "pjeske", rec: "Kauboj pješke nije kauboj.", usko: "konji" };
-  if (u === "zdravlje") return { id: "bolesno", rec: "Kauba kašlje. Nema doktora.", usko: "zdravlje" };
+  if (u === "zdravlje") return { id: "bolesno", rec: "Kauba kašlje. Nema lijeka.", usko: "zdravlje" };
   if (kauba.sreca >= 78 && kauba.potrebe.zabava >= 0.8) {
     return { id: "zurka", rec: "U salunu svira.", usko: "zabava" };
   }
@@ -599,11 +749,11 @@ export function uskoVrtnjaRec(u: KaubaUsko | null): string | null {
   if (!u) return null;
   if (u === "krov") return "Vrtnja ide u drvo za kuće.";
   if (u === "jelo") return "Vrtnja ide u drvo i zlato za hranu.";
-  if (u === "voda") return "Vrtnja ide u kamen za bunar.";
+  if (u === "voda") return "Vrtnja ide u kamen za bunar i cisternu.";
   if (u === "zabava") return "Vrtnja ide u zlato za salun.";
   if (u === "red") return "Vrtnja ide u štit za ured.";
-  if (u === "konji") return "Vrtnja ide u drvo za staju i korale.";
-  if (u === "zdravlje") return "Vrtnja ide u zlato za ordinaciju.";
+  if (u === "konji") return "Vrtnja ide u drvo za staju i ispust.";
+  if (u === "zdravlje") return "Vrtnja ide u zlato za lijek.";
   return "Vrtnja ide u željezo za posao.";
 }
 

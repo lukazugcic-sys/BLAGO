@@ -26,7 +26,7 @@ export function ScreenPager({
   const [dx, setDx] = useState(0);
   const [anim, setAnim] = useState(true);
   const skipClick = useRef(false);
-  const [mounted, setMounted] = useState(() => new Set<number>([0]));
+  const [mounted, setMounted] = useState(() => new Set<number>([0, 1, 2, 3]));
 
   idxRef.current = idx;
   const n = panes.length;
@@ -42,17 +42,12 @@ export function ScreenPager({
   useEffect(() => {
     setMounted((prev) => {
       const next = keepAround(idx);
-      prev.forEach((i) => {
-        if (i === idx) next.add(i);
-      });
+      prev.forEach((i) => next.add(i));
       return next;
     });
-    const t = window.setTimeout(() => setMounted(new Set([idx])), 560);
-    return () => window.clearTimeout(t);
-    // n is panes.length; keepAround uses current n from closure
+    // Keep neighbors mounted so swipe/scroll does not remount heavy panes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx, n]);
-
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
@@ -173,16 +168,18 @@ export function ScreenPager({
       <div
         className={cn("flex h-full", anim && "pager-track", (!anim || dx !== 0) && "will-change-transform")}
         style={{
-          width: w ? w * panes.length : "100%",
-          transform: `translate3d(${tx}px, 0, 0)`,
+          width: w ? w * n : `${n * 100}%`,
+          transform: w
+            ? `translate3d(${tx}px, 0, 0)`
+            : `translate3d(-${idx * (100 / Math.max(1, n))}%, 0, 0)`,
           transition: anim ? undefined : "none",
         }}
       >
         {panes.map((p, i) => (
           <div
             key={p.id}
-            className="h-full shrink-0 overflow-y-auto overflow-x-hidden overscroll-contain [contain:layout_paint]"
-            style={{ width: w || "100%" }}
+            className="h-full shrink-0 overflow-y-auto overflow-x-hidden overscroll-contain"
+            style={{ width: w || `${100 / Math.max(1, n)}%` }}
             aria-hidden={i !== idx}
             {...(i !== idx ? { inert: true } : {})}
           >

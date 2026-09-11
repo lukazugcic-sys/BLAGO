@@ -3,7 +3,7 @@ import { useGameStore } from "@/lib/stores/gameStore";
 import { ART } from "@/lib/game/art";
 import { playSfx, vibrate } from "@/lib/game/audio";
 import { FARO_MIN } from "@/lib/game/tuning";
-import { trciUtrku, utrkaIsplata, type UtrkaKonj } from "@/lib/game/utrka";
+import { trciUtrku, utrkaIsplata, utrkaMjesto, type UtrkaKonj } from "@/lib/game/utrka";
 import { KonjSilueta } from "./KonjSilueta";
 import { cn } from "@/lib/utils";
 
@@ -32,7 +32,8 @@ export function UtrkaStaza() {
   const maxUlog = Math.max(0, zlato);
   const ulogSad = Math.min(maxUlog, Math.max(faza === "ulog" ? FARO_MIN : 0, ulogRaw));
   const sijeno = sijenoDo > Date.now();
-  const dobit = utrkaIsplata(ulogSad, true);
+  const dobit = utrkaIsplata(ulogSad, 1);
+  const drugi = utrkaIsplata(ulogSad, 2);
   const maxB = pobjednik?.brzina ?? 1;
 
   if (staza < 1 || gori || konjiBroj < 1) return null;
@@ -50,6 +51,7 @@ export function UtrkaStaza() {
       zlato: s.zlato - u,
       poruka: "Kopita. Prašina. Staza.",
     }));
+    useGameStore.getState().azurirajMisiju("utrka");
     const r = trciUtrku({ jahanje, sijeno, stazaLv: staza });
     setRed(r.red);
     setPobjednik(r.pobjednik);
@@ -57,9 +59,9 @@ export function UtrkaStaza() {
     playSfx("attack");
     const maxMs = 2380;
     window.setTimeout(() => {
-      const ok = r.pobjednik.tvoj;
-      if (ok) {
-        const nagrada = utrkaIsplata(u, true);
+      const mjesto = utrkaMjesto(r.red);
+      const nagrada = utrkaIsplata(u, mjesto);
+      if (mjesto === 1) {
         playSfx("win");
         vibrate(28);
         useGameStore.setState((s) => ({
@@ -67,6 +69,12 @@ export function UtrkaStaza() {
           poruka: `Tvoj prvi. +${nagrada - u} zlata.`,
         }));
         useGameStore.getState().azurirajMisiju("zlato", nagrada - u);
+      } else if (mjesto === 2) {
+        playSfx("button");
+        useGameStore.setState((s) => ({
+          zlato: s.zlato + nagrada,
+          poruka: `Drugi. Ulog se vratio.`,
+        }));
       } else {
         playSfx("skull");
         useGameStore.setState({ poruka: `${r.pobjednik.ime} prvi. Tvoj jede prašinu.` });
@@ -100,8 +108,10 @@ export function UtrkaStaza() {
                 : faza === "kraj" && pobjednik
                   ? pobjednik.tvoj
                     ? "Tvoj prvi. Uzmi vreću."
-                    : `${pobjednik.ime} prvi.`
-                  : `Četiri grla. Tvoj protiv tri. Ulog ${ulogSad}, prvi nosi ${dobit}.`}
+                    : red && utrkaMjesto(red) === 2
+                      ? "Drugi. Ulog stoji."
+                      : `${pobjednik.ime} prvi.`
+                  : `Četiri grla. Jahanje nosi, staza uči. Ulog ${ulogSad}. Prvi ${dobit}, drugi ${drugi}.`}
             </p>
           </div>
           {faza === "kraj" && (

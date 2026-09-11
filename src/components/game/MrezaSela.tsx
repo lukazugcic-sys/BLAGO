@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import { useGameStore } from "@/lib/stores/gameStore";
 import { useSlotStore } from "@/lib/stores/slotStore";
 import { izgradiMrezu, vezeZa, type MrezaCvor } from "@/lib/game/mreza";
@@ -11,32 +11,35 @@ import type { Gradevine } from "@/lib/game/types";
 
 const HUB_XY: Record<KaubaUsko, { x: number; y: number }> = {
   red: { x: 50, y: 16 },
-  krov: { x: 18, y: 32 },
-  jelo: { x: 18, y: 62 },
-  zabava: { x: 50, y: 84 },
-  posao: { x: 82, y: 62 },
-  voda: { x: 82, y: 32 },
-  konji: { x: 82, y: 84 },
-  zdravlje: { x: 18, y: 84 },
+  krov: { x: 22, y: 32 },
+  voda: { x: 78, y: 32 },
+  jelo: { x: 22, y: 58 },
+  posao: { x: 78, y: 58 },
+  zdravlje: { x: 22, y: 82 },
+  zabava: { x: 50, y: 82 },
+  konji: { x: 78, y: 82 },
 };
 
-const HUB_LABEL: Record<KaubaUsko, string> = {
-  red: "top",
-  krov: "left",
-  jelo: "left",
-  zabava: "bottom",
-  posao: "right",
-  voda: "right",
-  konji: "right",
-  zdravlje: "left",
-};
+const OBRUC: Array<[KaubaUsko, KaubaUsko]> = [
+  ["red", "krov"],
+  ["red", "voda"],
+  ["krov", "jelo"],
+  ["voda", "posao"],
+  ["jelo", "zdravlje"],
+  ["posao", "konji"],
+  ["zdravlje", "zabava"],
+  ["zabava", "konji"],
+  ["krov", "voda"],
+  ["jelo", "posao"],
+  ["red", "zabava"],
+];
 
 function krivulja(x1: number, y1: number, x2: number, y2: number, predznak: 1 | -1) {
   const mx = (x1 + x2) / 2;
   const my = (y1 + y2) / 2;
   const dx = x2 - x1;
   const dy = y2 - y1;
-  const k = predznak * 0.16;
+  const k = predznak * 0.14;
   return `M ${x1} ${y1} Q ${mx - dy * k} ${my + dx * k} ${x2} ${y2}`;
 }
 
@@ -91,10 +94,13 @@ export function MrezaSela({
   const zamjenici = useGameStore((s) => s.zamjenici);
   const konjiBroj = useGameStore((s) => s.konjiBroj);
   const konjiDuznost = useGameStore((s) => s.konjiDuznost);
+  const govedaBroj = useGameStore((s) => s.govedaBroj);
+  const govedaDuznost = useGameStore((s) => s.govedaDuznost);
   const sijenoDo = useGameStore((s) => s.sijenoDo);
+  const kisaDo = useGameStore((s) => s.kisaDo);
   const kauba = useMemo(
-    () => kaubaOd({ gradevine, stanovnici, zamjenici, konjiBroj, konjiDuznost, sijenoDo }),
-    [gradevine, stanovnici, zamjenici, konjiBroj, konjiDuznost, sijenoDo],
+    () => kaubaOd({ gradevine, stanovnici, zamjenici, konjiBroj, konjiDuznost, sijenoDo, kisaDo, govedaBroj, govedaDuznost }),
+    [gradevine, stanovnici, zamjenici, konjiBroj, konjiDuznost, sijenoDo, kisaDo, govedaBroj, govedaDuznost],
   );
   const utjecaji = useMemo(() => spojiUtjecaje(kauba.utjecaji), [kauba.utjecaji]);
 
@@ -117,6 +123,16 @@ export function MrezaSela({
 
   const [fokus, setFokus] = useState<PregledId>(fokusHub ?? "selo");
   const [smijeTok, setSmijeTok] = useState(true);
+  const [zum, setZum] = useState(1);
+  const [ofs, setOfs] = useState({ x: 0, y: 0 });
+  const geste = useRef({
+    pointers: new Map<number, { x: number; y: number }>(),
+    startDist: 0,
+    startZum: 1,
+    startOfs: { x: 0, y: 0 },
+    last: { x: 0, y: 0 },
+    tap: 0,
+  });
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -171,10 +187,66 @@ export function MrezaSela({
     setFokus(c.id);
   };
 
+  const resetZum = () => {
+    setZum(1);
+    setOfs({ x: 0, y: 0 });
+  };
+
+  const naPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    const g = geste.current;
+    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+    g.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (g.pointers.size === 2) {
+      const pts = [...g.pointers.values()];
+      const dx = pts[0]!.x - pts[1]!.x;
+      const dy = pts[0]!.y - pts[1]!.y;
+      g.startDist = Math.hypot(dx, dy) || 1;
+      g.startZum = zum;
+      g.startOfs = { ...ofs };
+    } else {
+      g.last = { x: e.clientX, y: e.clientY };
+      g.startOfs = { ...ofs };
+      const sad = Date.now();
+      if (sad - g.tap < 280) resetZum();
+      g.tap = sad;
+    }
+  };
+
+  const naPointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    const g = geste.current;
+    if (!g.pointers.has(e.pointerId)) return;
+    g.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (g.pointers.size >= 2) {
+      const pts = [...g.pointers.values()];
+      const dx = pts[0]!.x - pts[1]!.x;
+      const dy = pts[0]!.y - pts[1]!.y;
+      const dist = Math.hypot(dx, dy) || 1;
+      const next = Math.max(1, Math.min(2.4, g.startZum * (dist / g.startDist)));
+      setZum(next);
+      if (next <= 1.02) setOfs({ x: 0, y: 0 });
+    } else if (zum > 1.02 && g.pointers.size === 1) {
+      const dx = e.clientX - g.last.x;
+      const dy = e.clientY - g.last.y;
+      g.last = { x: e.clientX, y: e.clientY };
+      setOfs((o) => {
+        const lim = 80 * (zum - 1);
+        return {
+          x: Math.max(-lim, Math.min(lim, o.x + dx)),
+          y: Math.max(-lim, Math.min(lim, o.y + dy)),
+        };
+      });
+    }
+  };
+
+  const naPointerUp = (e: PointerEvent<HTMLDivElement>) => {
+    geste.current.pointers.delete(e.pointerId);
+  };
+
   if (!selo) return null;
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-line bg-panel">
+    <section className={cn(velika ? "mreza-rub" : "overflow-hidden rounded-2xl border border-line bg-panel")}>
       <header className="flex items-center justify-between gap-3 px-3 pt-2.5">
         <h2 className="text-xs font-bold tracking-widest text-dim uppercase">Tok kaube</h2>
         <p className="text-xs font-bold tabular-nums text-gold">
@@ -184,13 +256,23 @@ export function MrezaSela({
       <div
         className={cn("mreza-platno relative overflow-hidden", velika && "mreza-hero")}
         data-lock-pan
-        onPointerDown={(e) => e.stopPropagation()}
+        onPointerDown={naPointerDown}
+        onPointerMove={naPointerMove}
+        onPointerUp={naPointerUp}
+        onPointerCancel={naPointerUp}
         style={{
           backgroundImage: `linear-gradient(180deg, color-mix(in oklab, var(--color-void) 42%, transparent), color-mix(in oklab, var(--color-void) 70%, #0e2a28)), url(${ART.seloPoster})`,
           backgroundSize: "cover",
           backgroundPosition: "center 58%",
         }}
       >
+        {zum > 1.02 && (
+          <p className="mreza-zum-rec">Zum ×{zum.toFixed(1)} · dvaput za nulu</p>
+        )}
+        <div
+          className="mreza-zum-platno"
+          style={{ transform: `translate(${ofs.x}px, ${ofs.y}px) scale(${zum})` }}
+        >
         <svg viewBox="0 0 100 100" className="absolute inset-0 size-full" aria-hidden>
           <defs>
             <marker id="mreza-pos" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto">
@@ -200,24 +282,40 @@ export function MrezaSela({
               <path d="M0 0 L8 4 L0 8 z" className="fill-ruby" />
             </marker>
           </defs>
+          {OBRUC.map(([od, dest]) => {
+            const a = HUB_XY[od];
+            const b = HUB_XY[dest];
+            const ima = utjecaji.some((u) => (u.od === od && u.do === dest) || (u.od === dest && u.do === od));
+            if (ima) return null;
+            return (
+              <path
+                key={`obruc-${od}-${dest}`}
+                d={krivulja(a.x, a.y, b.x, b.y, 1)}
+                className="mreza-veza stroke-gold"
+                strokeWidth={0.45}
+                opacity={0.28}
+              />
+            );
+          })}
           {hubovi.map((h) => {
             const xy = HUB_XY[h.id];
             const puls = h.zgrade.some((z) => pulsIds.includes(`${z.id}>selo`));
             const ziva = aktivniSelo || fokus === h.id;
-            const d = krivulja(xy.x, xy.y, 50, 50, h.doprinos >= 0 ? 1 : -1);
+            const plus = h.doprinos >= 0;
+            const d = krivulja(xy.x, xy.y, 50, 50, plus ? 1 : -1);
             return (
               <path
                 key={`veza-${h.id}`}
                 d={d}
                 className={cn(
                   "mreza-veza",
-                  h.doprinos >= 0 ? "stroke-volt" : "stroke-ruby",
+                  plus ? "stroke-volt" : "stroke-ruby",
                   ziva && smijeTok && "mreza-veza-tok",
                   puls && smijeTok && "mreza-veza-puls",
                 )}
                 strokeWidth={0.7 + Math.min(1.4, Math.abs(h.doprinos) / 28)}
-                markerEnd={h.doprinos >= 0 ? "url(#mreza-pos)" : "url(#mreza-neg)"}
-                opacity={ziva ? 0.95 : 0.28}
+                markerEnd={plus ? "url(#mreza-pos)" : "url(#mreza-neg)"}
+                opacity={ziva ? 0.95 : 0.38}
               />
             );
           })}
@@ -237,7 +335,7 @@ export function MrezaSela({
                 )}
                 strokeWidth={0.55 + Math.min(1.1, u.jacina)}
                 markerEnd={u.predznak > 0 ? "url(#mreza-pos)" : "url(#mreza-neg)"}
-                opacity={ziva ? 0.9 : 0.18}
+                opacity={ziva ? 0.9 : 0.35}
               />
             );
           })}
@@ -249,7 +347,7 @@ export function MrezaSela({
           aria-label={`${selo.naziv}, kvaliteta ${selo.kvaliteta}`}
           onClick={odaberiSelo}
           className={cn(
-            "mreza-cvor mreza-selo absolute z-[2] size-14 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full border-2 bg-panel-2",
+            "mreza-cvor mreza-selo absolute z-[2] size-12 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full border-2 bg-panel-2",
             aktivniSelo ? "mreza-cvor-fokus border-gold" : "border-line",
           )}
           style={{ left: "50%", top: "50%" }}
@@ -261,7 +359,6 @@ export function MrezaSela({
           const xy = HUB_XY[h.id];
           const odabran = fokus === h.id;
           const prazno = h.zgrade.every((z) => z.kvaliteta === 0);
-          const strana = HUB_LABEL[h.id];
           return (
             <button
               key={h.id}
@@ -269,12 +366,12 @@ export function MrezaSela({
               aria-pressed={odabran}
               aria-label={h.naziv}
               onClick={() => odaberiHub(h.id)}
-              className="mreza-cvor absolute z-[2] size-11 -translate-x-1/2 -translate-y-1/2"
+              className="mreza-cvor absolute z-[2] size-10 -translate-x-1/2 -translate-y-1/2"
               style={{ left: `${xy.x}%`, top: `${xy.y}%` }}
             >
               <span
                 className={cn(
-                  "flex size-11 items-center justify-center overflow-hidden rounded-full border bg-void/80",
+                  "flex size-10 items-center justify-center overflow-hidden rounded-full border bg-void/80",
                   odabran && "mreza-cvor-fokus border-gold",
                   !odabran && "border-line",
                   prazno && "opacity-70",
@@ -284,9 +381,8 @@ export function MrezaSela({
               </span>
               <span
                 className={cn(
-                  "mreza-ime",
-                  `mreza-ime-${strana}`,
-                  odabran ? "bg-gold text-void" : "bg-void/80 text-ink",
+                  "mreza-ime mreza-ime-unutra",
+                  odabran ? "bg-gold text-void" : "bg-void/85 text-ink",
                 )}
               >
                 {h.naziv}
@@ -294,7 +390,40 @@ export function MrezaSela({
             </button>
           );
         })}
+        </div>
       </div>
+
+      {velika && (
+        <ul className="mreza-okomito px-3 py-2">
+          {hubovi.map((h) => (
+            <li key={h.id}>
+              <button
+                type="button"
+                onClick={() => odaberiHub(h.id)}
+                className={cn(
+                  "mreza-ok-red",
+                  fokus === h.id && "mreza-ok-red-on",
+                )}
+              >
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block text-[11px] font-bold tracking-wide text-gold uppercase">{h.naziv}</span>
+                  <span className="block text-[10px] font-bold text-dim">
+                    {h.zgrade.length === 1
+                      ? "1 zgrada"
+                      : h.zgrade.length >= 2 && h.zgrade.length <= 4
+                        ? `${h.zgrade.length} zgrade`
+                        : `${h.zgrade.length} zgrada`}{" "}
+                    · {h.kvaliteta}
+                  </span>
+                </span>
+                <span className="w-20 shrink-0">
+                  <KvalitetnaTraka n={h.kvaliteta} />
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {extra.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 border-t border-line px-3 py-2">

@@ -10,10 +10,9 @@ import { ArtTraka } from "./ArtTraka";
 import type { TrznicaId } from "@/lib/game/types";
 import { cn } from "@/lib/utils";
 import { playSfx, vibrate } from "@/lib/game/audio";
-import { TjedanTraka } from "./TjedanTraka";
 import { sajamCijena, tjedanSad } from "@/lib/game/tjedan";
 
-const MNOZ = [1, 10, 30, 50] as const;
+const MNOZ = [1, 10, 30, 50, 100] as const;
 const HOLD_MS = 420;
 const REPEAT_MS = 170;
 
@@ -43,10 +42,9 @@ export function ShopScreen() {
   const kupiSkin = useGameStore((s) => s.kupiSkin);
 
   return (
-    <div className="mx-auto w-full max-w-lg px-3 pb-8 pt-2">
+    <div className="mx-auto flex h-full min-h-0 w-full max-w-lg flex-col px-3 pt-2">
+      <div className="min-h-0 flex-1 overflow-y-auto pb-2">
       <ArtTraka src={sekcija === "izgled" ? ART.vinograd : ART.trznica} label="Tržnica" />
-      {sekcija === "burza" && <TjedanTraka ceker />}
-      <ScreenTabs tabs={TABS} value={sekcija} onChange={setSekcija} />
 
       {sekcija === "alati" && <UpgradesScreen embedded />}
 
@@ -54,13 +52,13 @@ export function ShopScreen() {
         <>
           <div className="mb-3 ml-1 flex items-end justify-between gap-2">
             <div>
-              <h2 className="text-sm font-bold tracking-widest text-ink uppercase">Mjenjačnica</h2>
-              <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold text-dim">
-                {zlato}
-                <IconBadge src={SYMBOL_ART.gold} size="xs" />
-              </p>
+            <h2 className="text-sm font-bold tracking-widest text-ink uppercase">Mjenjačnica</h2>
+            <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold text-dim">
+              {zlato}
+              <IconBadge src={SYMBOL_ART.gold} size="xs" />
+            </p>
             </div>
-            <div className="flex gap-1">
+            <div className="flex flex-wrap justify-end gap-1">
               {MNOZ.map((n) => (
                 <button
                   key={n}
@@ -239,6 +237,10 @@ export function ShopScreen() {
           })}
         </>
       )}
+      </div>
+      <div className="shrink-0 pb-[0.35rem]">
+        <ScreenTabs tabs={TABS} value={sekcija} onChange={setSekcija} dolje />
+      </div>
     </div>
   );
 }

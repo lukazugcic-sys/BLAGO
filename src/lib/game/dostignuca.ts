@@ -28,7 +28,7 @@ export const DOSTIGNUCA: Dostignuce[] = [
   { id: "spin100", naziv: "Sto kola", opis: "Ruka zna ručicu.", tip: "spin", cilj: 100, nagrada: { dijamanti: 10, energija: 6 }, art: "gold" },
   { id: "spin500", naziv: "Petsto kola", opis: "Prašina na ručici. Ti ostaješ.", tip: "spin", cilj: 500, nagrada: { dijamanti: 25 }, art: "gold" },
   { id: "zlato5000", naziv: "Puna torba", opis: "Pet tisuća zlata iz dobitaka.", tip: "ukupnoZlato", cilj: 5000, nagrada: { energija: 8 }, art: "gold" },
-  { id: "zlato50000", naziv: "Seif diše", opis: "Pedeset tisuća iz kola.", tip: "ukupnoZlato", cilj: 50000, nagrada: { dijamanti: 20 }, art: "gem" },
+  { id: "zlato50000", naziv: "Sef diše", opis: "Pedeset tisuća iz kola.", tip: "ukupnoZlato", cilj: 50000, nagrada: { dijamanti: 20 }, art: "gem" },
   { id: "prestige1", naziv: "Prva kruna", opis: "Krunidba. Kauba kreće ispočetka.", tip: "prestige", cilj: 1, nagrada: { dijamanti: 25 }, art: "gem" },
   { id: "gradnja5", naziv: "Pet katova", opis: "Jedna zgrada na petom katu.", tip: "gradnja", cilj: 5, nagrada: { zlato: 80, kamen: 40 }, art: "wood" },
   { id: "pohod1", naziv: "Prvi pohod", opis: "Uzmi zadnji žeton. Ostava je tvoja.", tip: "pohod", cilj: 1, nagrada: { zlato: 40 }, art: "skull" },

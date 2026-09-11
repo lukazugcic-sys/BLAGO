@@ -8,7 +8,7 @@ type Sfx =
   | "button"
   | "build"
   | "skull";
-export type BgmId = "igra" | "selo";
+export type BgmId = "igra" | "selo" | "bonus";
 
 /** 1925 PD 78s for BGM. Saloon-piano tones for every cue. */
 const FILES: Record<Sfx, string[]> = {
@@ -40,6 +40,14 @@ const PLAYLIST: Record<BgmId, string[]> = {
     "/music/pd/tennessee.mp3",
     "/music/rags/oldetimey.mp3",
     "/music/rags/breaktime.mp3",
+  ],
+  bonus: [
+    "/music/pd/milenberg.mp3",
+    "/music/pd/dinah.mp3",
+    "/music/rags/maple.mp3",
+    "/music/pd/yessir.mp3",
+    "/music/pd/ukulele.mp3",
+    "/music/pd/alabamy.mp3",
   ],
 };
 
@@ -251,6 +259,8 @@ function playNext(cross = false) {
     const g = ctx.createGain();
     src.buffer = buf;
     src.loop = false;
+    const rate = currentTrack === "bonus" ? 1.2 : 1;
+    src.playbackRate.value = rate;
     const t = ctx.currentTime;
     g.gain.setValueAtTime(0.0001, t);
     g.gain.linearRampToValueAtTime(1, t + (cross ? FADE_S : Math.min(0.7, FADE_S)));
@@ -267,7 +277,7 @@ function playNext(cross = false) {
       playNext(true);
     };
     const lead = Math.min(FADE_S, Math.max(0.5, buf.duration * 0.08));
-    const wait = Math.max(80, (buf.duration - lead) * 1000);
+    const wait = Math.max(80, (buf.duration / rate - lead) * 1000);
     const timer = window.setTimeout(advance, wait);
     src.onended = () => {
       window.clearTimeout(timer);

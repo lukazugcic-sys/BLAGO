@@ -11,7 +11,8 @@ export type SimbolId =
   | "energy"
   | "gem"
   | "shield"
-  | "wild";
+  | "wild"
+  | "knjiga";
 
 export type Nagrada = {
   zlato?: number;
@@ -76,6 +77,7 @@ export type Gradevine = {
   salun: number;
   karte: number;
   bunar: number;
+  cisterna: number;
   mlin: number;
   lov: number;
   mesnica: number;
@@ -85,9 +87,20 @@ export type Gradevine = {
   korali: number;
   staza: number;
   farma: number;
+  tor: number;
   ordinacija: number;
+  travar: number;
+  banja: number;
   trgovina: number;
   banka: number;
+};
+
+export type KaravanaPutId = "staza" | "noc" | "rijeka";
+
+export type KaravanaCin = {
+  id: string;
+  rec: string;
+  opcije: Array<{ id: string; rec: string }>;
 };
 
 export type Karavana = {
@@ -98,6 +111,9 @@ export type Karavana = {
   teret: Resursi;
   vozacId: string;
   vozacIme: string;
+  put?: KaravanaPutId;
+  cin?: KaravanaCin | null;
+  cinRijesen?: boolean;
 };
 
 export type Gradnja = {
@@ -129,7 +145,7 @@ export type Zgrada = {
   maxLv: number;
   ikona: LucideIcon;
   bazaBoja: string;
-  tip: "resurs" | "kuca" | "blok" | "salun" | "bunar" | "mlin" | "lov" | "mesnica" | "pekara" | "karte" | "ured" | "staja" | "korali" | "staza" | "farma" | "ordinacija" | "trgovina" | "banka";
+  tip: "resurs" | "kuca" | "blok" | "salun" | "bunar" | "cisterna" | "mlin" | "lov" | "mesnica" | "pekara" | "karte" | "ured" | "staja" | "korali" | "staza" | "farma" | "tor" | "ordinacija" | "travar" | "banja" | "trgovina" | "banka";
   cijena: (lv: number) => {
     zlato: number;
     drvo: number;

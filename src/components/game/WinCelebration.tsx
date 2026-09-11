@@ -14,14 +14,14 @@ type Particle = {
 };
 
 const HOLD: Record<Exclude<SlotFx, null>, number> = {
-  jackpot: 3200,
-  skull: 1600,
-  win: 1300,
+  jackpot: 1700,
+  skull: 1200,
+  win: 780,
 };
 const FADE: Record<Exclude<SlotFx, null>, number> = {
-  jackpot: 720,
-  skull: 280,
-  win: 280,
+  jackpot: 420,
+  skull: 220,
+  win: 220,
 };
 
 export function WinCelebration() {
@@ -47,10 +47,10 @@ export function WinCelebration() {
     if (!tip) return [];
     const skull = tip === "skull";
     const jack = tip === "jackpot";
-    const count = jack ? 28 : skull ? 20 : 16;
+    const count = jack ? 9 : skull ? 10 : 7;
     return Array.from({ length: count }, (_, i) => {
       const angle = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.45;
-      const dist = (jack ? 130 : skull ? 86 : 92) + Math.random() * 120;
+      const dist = (jack ? 88 : skull ? 70 : 72) + Math.random() * 70;
       const fall = skull ? 40 + Math.random() * 120 : jack ? -16 + Math.random() * 36 : -30;
       const kinds: Particle["kind"][] = skull
         ? i % 3 === 0
@@ -88,7 +88,7 @@ export function WinCelebration() {
 
   const rain = useMemo(() => {
     if (!tip || tip === "skull") return [];
-    const n = tip === "jackpot" ? 12 : 8;
+    const n = tip === "jackpot" ? 4 : 3;
     return Array.from({ length: n }, (_, i) => ({
       id: i,
       left: 6 + ((i * 17) % 88),
@@ -117,7 +117,7 @@ export function WinCelebration() {
     >
       {tip === "jackpot" && (
         <video
-          className="absolute inset-0 size-full object-cover opacity-55 mix-blend-screen"
+          className="absolute inset-0 size-full object-cover opacity-[0.22] mix-blend-screen"
           autoPlay
           muted
           playsInline

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { BLAGO } from "@/lib/game/constants";
 import { useSlotStore } from "@/lib/stores/slotStore";
 import { SlotSymbol } from "./SlotSymbol";
@@ -27,7 +27,7 @@ function ReelCol({
   useEffect(() => {
     if (was.current && !spinning) {
       setLand(true);
-      const t = window.setTimeout(() => setLand(false), 340);
+      const t = window.setTimeout(() => setLand(false), 560);
       was.current = spinning;
       return () => window.clearTimeout(t);
     }
@@ -47,11 +47,14 @@ function ReelCol({
 export function SlotReel({ compact = false }: { compact?: boolean }) {
   const simboli = useSlotStore((s) => s.simboli);
   const dobitnaPolja = useSlotStore((s) => s.dobitnaPolja);
+  const expandPolja = useSlotStore((s) => s.expandPolja);
   const dobitneLinije = useSlotStore((s) => s.dobitneLinije);
   const spinningCols = useSlotStore((s) => s.spinningCols);
   const winCelebration = useSlotStore((s) => s.winCelebration);
   const dobitakNaCekanju = useSlotStore((s) => s.dobitakNaCekanju);
-  const hasWinAnywhere = dobitnaPolja.length > 0;
+  const winSet = useMemo(() => new Set(dobitnaPolja), [dobitnaPolja]);
+  const expandSet = useMemo(() => new Set(expandPolja), [expandPolja]);
+  const hasWinAnywhere = winSet.size > 0;
   const skullHit =
     winCelebration === "skull" || (hasWinAnywhere && simboli[dobitnaPolja[0]!] === "skull");
 
@@ -70,20 +73,23 @@ export function SlotReel({ compact = false }: { compact?: boolean }) {
             {[0, 1, 2].map((row) => {
               const idx = row * 5 + col;
               const simbolId = simboli[idx] ?? "gold";
-              const isWin = dobitnaPolja.includes(idx);
+              const isWin = winSet.has(idx);
+              const isExpand = expandSet.has(idx);
               const isSkullCell = isWin && simbolId === "skull";
-              const dim = !isWin && hasWinAnywhere;
+              const dim = !isWin && !isExpand && hasWinAnywhere;
               return (
                 <div
                   key={idx}
                   className={cn("relative", dim && "opacity-30")}
                   title={BLAGO[simbolId].tip}
+                  style={isExpand ? { ["--expand-d" as string]: `${row * 70}ms` } : undefined}
                 >
                   <SlotSymbol
                     id={simbolId}
                     win={isWin && !isSkullCell}
                     skullHit={isSkullCell}
                     spinning={spinningCols[col]}
+                    expanding={isExpand}
                   />
                   {isWin && !isSkullCell && (
                     <>

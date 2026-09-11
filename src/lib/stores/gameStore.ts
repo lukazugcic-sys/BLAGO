@@ -11,6 +11,7 @@ import { DOSTIGNUCA, napredakDostignuca, snapshotDostignuca } from "@/lib/game/d
 import {
   izracunajMaxEnergiju,
   capEnergija,
+  dodajEnergiju,
   popravakCijena,
   izracunajMaxStitova,
   izracunajPasivniMnozitelj,
@@ -29,11 +30,17 @@ import {
   RESOURCE_TICK_MS,
   MAX_OFFLINE_MS,
   konjaKap,
+  govedaKap,
   normalizirajDuznost,
+  normalizirajGovedo,
   praznaDuznost,
+  praznaGovedoDuznost,
   KONJ_DUZNOSTI,
+  GOVEDO_DUZNOSTI,
   type KonjDuznostId,
   type KaubaDuznost,
+  type GovedoDuznost,
+  type GovedoDuznostId,
 } from "@/lib/game/economy";
 import { loadJSON, saveJSON, SAVE_KEYS } from "@/lib/game/persist";
 import { playSfx, vibrate } from "@/lib/game/audio";
@@ -63,6 +70,8 @@ import type {
   TrznicaId,
   ResursId,
   Zgrada,
+  KaravanaPutId,
+  SimbolId,
 } from "@/lib/game/types";
 import { MAX_KRONIKA, parsirajKroniku } from "@/lib/game/kronika";
 import {
@@ -109,9 +118,10 @@ import {
 } from "@/lib/game/dogadaji";
 import { sajamCijena, tjedanKljuc, tjedanSad } from "@/lib/game/tjedan";
 import { napraviJutarnji, parsirajJutro, jutroGotovo, jutroSveUzeto, type JutarnjiPosao, type JutarnjiId } from "@/lib/game/jutro";
-import { alatCijena, alatLv, ALAT_MAX, parsirajKrunjenja, type AlatId, START, LEVEL_UP_GEMS, SHIELD_ROLL_P, TRGOVINA_CIJENA, TRGOVINA_BAZA, BUNAR_ENERGIJA, MLIN_ENERGIJA, KONJ_CIJENA_ZLATO, KONJ_CIJENA_DRVO, SIJENO_ZLATO, SIJENO_MS } from "@/lib/game/tuning";
-import { susjedPoUid, vrijemeKaravanaMs, karavanaIsplata } from "@/lib/game/susjedi";
+import { alatCijena, alatLv, ALAT_MAX, parsirajKrunjenja, type AlatId, START, LEVEL_UP_GEMS, SHIELD_ROLL_P, TRGOVINA_CIJENA, TRGOVINA_BAZA, BUNAR_ENERGIJA, MLIN_ENERGIJA, KONJ_CIJENA_ZLATO, KONJ_CIJENA_DRVO, SIJENO_ZLATO, SIJENO_MS, GOVEDO_CIJENA_ZLATO, GOVEDO_CIJENA_DRVO, GOVEDO_TJERAJ, GOVEDO_KLANJE, GOVEDO_KLANJE_MESNICA, KISA_ZLATO, KISA_MS } from "@/lib/game/tuning";
+import { susjedPoUid, vrijemeKaravanaMs, karavanaIsplata, izaberiKaravanaCin } from "@/lib/game/susjedi";
 import { izgradiMrezu, kvSelaIzMreze, type MrezaUlaz } from "@/lib/game/mreza";
+import { jeExpandZnak, KNJIGA_SKUP_CILJ } from "@/lib/game/knjiga";
 
 const PRAZNI_KLAN: Klan = {
   naziv: null,
@@ -189,6 +199,16 @@ export type GameState = {
   konjiBroj: number;
   konjiDuznost: KaubaDuznost;
   sijenoDo: number;
+  kisaDo: number;
+  govedaBroj: number;
+  govedaDuznost: GovedoDuznost;
+  knjigaSkup: number;
+  besplatneVrtnje: number;
+  besplatneExpand: SimbolId | null;
+  besplatneUlog: number;
+  serifCin: number;
+  celijaBroj: number;
+  zadnjiNalozi: string[];
 
   setPoruka: (poruka: string) => void;
   clearLevelUp: () => void;
@@ -210,11 +230,16 @@ export type GameState = {
   preuzmiNagraduMisije: (id: number, nagrada: Nagrada) => void;
   nadogradiZgradu: (zgrada: Zgrada) => void;
   zavrsiGradnju: () => void;
-  posaljiKaravanu: (ciljUid: string, teret: Resursi) => void;
+  posaljiKaravanu: (ciljUid: string, teret: Resursi, put?: KaravanaPutId) => void;
   zavrsiKaravanu: () => void;
+  rijesiKaravanaCin: (opcija: string) => void;
   dajLiku: (id: string) => void;
+  preimenujLika: (id: string, ime: string) => void;
+  dajCasu: (id: string) => void;
   rijesiDogadaj: (opcija: string) => void;
-  lijeci: () => void;
+  strpajCeliju: () => void;
+  pustiCeliju: () => void;
+  lijeci: (odakle?: "ordinacija" | "travar" | "banja") => void;
   bankaSpremi: (n: number) => void;
   bankaUzmi: (n: number) => void;
   trgovinaKupi: (res: ResursId) => void;
@@ -223,6 +248,12 @@ export type GameState = {
   prodajKonja: () => void;
   pomakniKonja: (od: KonjDuznostId, na: KonjDuznostId) => void;
   kupiSijeno: () => void;
+  kupiGovedo: (n?: number) => void;
+  prodajGovedo: () => void;
+  pomakniGovedo: (od: GovedoDuznostId, na: GovedoDuznostId) => void;
+  tjerajGovedo: () => void;
+  koljiGovedo: () => void;
+  skupiKisu: () => void;
   uhvatiPotjernicu: (opts: { lucky?: boolean; linije?: number; jackpot?: boolean }) => void;
   skloniPotjernicu: () => void;
   uzmiSajamCeker: () => void;
@@ -336,6 +367,16 @@ const pocetnoStanje = {
   konjiBroj: 0,
   konjiDuznost: praznaDuznost(),
   sijenoDo: 0,
+  kisaDo: 0,
+  govedaBroj: 0,
+  govedaDuznost: praznaGovedoDuznost(),
+  knjigaSkup: 0,
+  besplatneVrtnje: 0,
+  besplatneExpand: null as SimbolId | null,
+  besplatneUlog: 1,
+  serifCin: 0,
+  celijaBroj: 0,
+  zadnjiNalozi: [] as string[],
 };
 
 function mrezaUlaz(s: {
@@ -378,6 +419,7 @@ type GameBlob = {
   razine?: Partial<Razine>;
   stitovi?: number;
   misije?: Misija[];
+  zadnjiNalozi?: string[];
   tecaj?: Tecaj;
   trend?: Trend;
   luckySpinCounter?: number;
@@ -411,6 +453,15 @@ type GameBlob = {
   konjiBroj?: number;
   konjiDuznost?: Partial<KaubaDuznost>;
   sijenoDo?: number;
+  kisaDo?: number;
+  govedaBroj?: number;
+  govedaDuznost?: Partial<GovedoDuznost>;
+  knjigaSkup?: number;
+  besplatneVrtnje?: number;
+  besplatneExpand?: string | null;
+  besplatneUlog?: number;
+  serifCin?: number;
+  celijaBroj?: number;
 };
 
 function spojSkinove(aktivni: string, spremljeni?: string[]) {
@@ -485,7 +536,8 @@ function parsirajZamjenike(raw: unknown): Zamjenik[] {
 function parsirajDogadaj(raw: unknown): KaubaDogadaj | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
-  if (r.tip !== "stranac" && r.tip !== "dvoboj" && r.tip !== "salun") return null;
+  const tipovi = ["stranac", "dvoboj", "salun", "krdo", "konj", "kisa", "trgovac", "svadba", "posta", "cirkus"] as const;
+  if (!tipovi.includes(r.tip as (typeof tipovi)[number])) return null;
   if (typeof r.rec !== "string" || typeof r.t !== "number") return null;
   const opcije = Array.isArray(r.opcije)
     ? r.opcije
@@ -496,9 +548,11 @@ function parsirajDogadaj(raw: unknown): KaubaDogadaj | null {
   if (!opcije.length) return null;
   return {
     id: typeof r.id === "string" ? r.id : `d-${r.t}`,
-    tip: r.tip,
-    rec: r.rec.slice(0, 80),
+    tip: r.tip as KaubaDogadaj["tip"],
+    rec: r.rec.slice(0, 120),
     t: r.t,
+    naslov: typeof r.naslov === "string" ? r.naslov.slice(0, 32) : undefined,
+    serifIme: typeof r.serifIme === "string" ? r.serifIme.slice(0, 18) : undefined,
     opcije,
   };
 }
@@ -521,7 +575,24 @@ function parsirajKaravanu(raw: unknown): Karavana | null {
     },
     vozacId: typeof r.vozacId === "string" ? r.vozacId : "",
     vozacIme: typeof r.vozacIme === "string" ? r.vozacIme.slice(0, 18) : "Mile",
+    put: r.put === "noc" || r.put === "rijeka" || r.put === "staza" ? r.put : undefined,
+    cin: parsirajKaravanaCin(r.cin),
+    cinRijesen: !!r.cinRijesen,
   };
+}
+
+function parsirajKaravanaCin(raw: unknown): Karavana["cin"] {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  if (typeof r.id !== "string" || typeof r.rec !== "string") return null;
+  const opcije = Array.isArray(r.opcije)
+    ? r.opcije
+        .filter((x): x is Record<string, unknown> => !!x && typeof x === "object")
+        .map((x) => ({ id: String(x.id ?? ""), rec: String(x.rec ?? "") }))
+        .filter((x) => x.id && x.rec)
+    : [];
+  if (!opcije.length) return null;
+  return { id: r.id, rec: r.rec.slice(0, 80), opcije };
 }
 
 function capRazine(r: Razine): Razine {
@@ -549,6 +620,19 @@ function parsirajKonje(d: { konjiBroj?: number }, g: Gradevine) {
 function parsirajDuznost(raw: unknown, broj: number): KaubaDuznost {
   if (!raw || typeof raw !== "object") return normalizirajDuznost(broj);
   return normalizirajDuznost(broj, raw as Partial<KaubaDuznost>);
+}
+
+function parsirajGoveda(d: { govedaBroj?: number }, g: Gradevine) {
+  const kap = govedaKap(g);
+  if (typeof d.govedaBroj === "number" && Number.isFinite(d.govedaBroj)) {
+    return Math.max(0, Math.min(kap, Math.floor(d.govedaBroj)));
+  }
+  return 0;
+}
+
+function parsirajGovedoDuznost(raw: unknown, broj: number): GovedoDuznost {
+  if (!raw || typeof raw !== "object") return normalizirajGovedo(broj);
+  return normalizirajGovedo(broj, raw as Partial<GovedoDuznost>);
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -588,6 +672,15 @@ export const useGameStore = create<GameState>((set, get) => ({
           konjiBroj: parsirajKonje(d, { ...get().gradevine, ...(d.gradevine ?? {}) }),
           konjiDuznost: parsirajDuznost(d.konjiDuznost, parsirajKonje(d, { ...get().gradevine, ...(d.gradevine ?? {}) })),
           sijenoDo: num(d.sijenoDo, 0),
+          kisaDo: num(d.kisaDo, 0),
+          govedaBroj: parsirajGoveda(d, { ...get().gradevine, ...(d.gradevine ?? {}) }),
+          govedaDuznost: parsirajGovedoDuznost(d.govedaDuznost, parsirajGoveda(d, { ...get().gradevine, ...(d.gradevine ?? {}) })),
+          knjigaSkup: Math.max(0, Math.min(KNJIGA_SKUP_CILJ - 1, Math.floor(num(d.knjigaSkup, 0)))),
+          besplatneVrtnje: Math.max(0, Math.floor(num(d.besplatneVrtnje, 0))),
+          besplatneExpand: jeExpandZnak(d.besplatneExpand) ? d.besplatneExpand : null,
+          besplatneUlog: Math.max(1, Math.floor(num(d.besplatneUlog, 1))),
+          serifCin: Math.max(0, Math.floor(num(d.serifCin, 0))),
+          celijaBroj: Math.max(0, Math.min(3, Math.floor(num(d.celijaBroj, 0)))),
           gradnje: parsirajGradnje(d.gradnje, d.gradnja),
           karavana: parsirajKaravanu(d.karavana),
           potjernice: d.potjernice && typeof d.potjernice === "object" ? d.potjernice : get().potjernice,
@@ -600,6 +693,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           razine: capRazine({ ...get().razine, ...(d.razine ?? {}) }),
           stitovi: num(d.stitovi, get().stitovi),
           misije: d.misije && d.misije.length > 0 ? d.misije : get().misije,
+          zadnjiNalozi: Array.isArray(d.zadnjiNalozi) ? d.zadnjiNalozi.filter((x): x is string => typeof x === "string").slice(0, 8) : get().zadnjiNalozi,
           tecaj: { ...BAZA_TECAJ, ...(d.tecaj ?? {}) },
           trend: { drvo: 0, kamen: 0, zeljezo: 0, dijamant: 0, ...(d.trend as Partial<Trend> | undefined) },
           luckySpinCounter: num(d.luckySpinCounter, get().luckySpinCounter),
@@ -676,6 +770,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       razine: s.razine,
       stitovi: s.stitovi,
       misije: s.misije,
+      zadnjiNalozi: s.zadnjiNalozi,
       tecaj: s.tecaj,
       trend: s.trend,
       luckySpinCounter: s.luckySpinCounter,
@@ -708,6 +803,15 @@ export const useGameStore = create<GameState>((set, get) => ({
       konjiBroj: s.konjiBroj,
       konjiDuznost: s.konjiDuznost,
       sijenoDo: s.sijenoDo,
+      kisaDo: s.kisaDo,
+      govedaBroj: s.govedaBroj,
+      govedaDuznost: s.govedaDuznost,
+      knjigaSkup: s.knjigaSkup,
+      besplatneVrtnje: s.besplatneVrtnje,
+      besplatneExpand: s.besplatneExpand,
+      besplatneUlog: s.besplatneUlog,
+      serifCin: s.serifCin,
+      celijaBroj: s.celijaBroj,
     };
     saveJSON(SAVE_KEYS.game, payload);
   },
@@ -741,6 +845,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       ostecenja: { ...get().ostecenja, ...(d.ostecenja ?? {}) },
       razine: { ...get().razine, ...(d.razine ?? {}) },
       misije: d.misije && d.misije.length > 0 ? d.misije : get().misije,
+      zadnjiNalozi: Array.isArray(d.zadnjiNalozi) ? d.zadnjiNalozi.filter((x): x is string => typeof x === "string").slice(0, 8) : get().zadnjiNalozi,
       tecaj: { ...BAZA_TECAJ, ...((d.tecaj as Tecaj | undefined) ?? {}) },
       trend: { drvo: 0, kamen: 0, zeljezo: 0, dijamant: 0, ...((d.trend as Partial<Trend> | undefined) ?? {}) },
       luckySpinCounter: num(d.luckySpinCounter, get().luckySpinCounter),
@@ -773,6 +878,15 @@ export const useGameStore = create<GameState>((set, get) => ({
       konjiBroj: parsirajKonje(d, { ...get().gradevine, ...(d.gradevine ?? {}) }),
       konjiDuznost: parsirajDuznost((d as { konjiDuznost?: unknown }).konjiDuznost, parsirajKonje(d, { ...get().gradevine, ...(d.gradevine ?? {}) })),
       sijenoDo: num((d as { sijenoDo?: unknown }).sijenoDo, get().sijenoDo),
+      kisaDo: num((d as { kisaDo?: unknown }).kisaDo, get().kisaDo),
+      govedaBroj: parsirajGoveda(d, { ...get().gradevine, ...(d.gradevine ?? {}) }),
+      govedaDuznost: parsirajGovedoDuznost((d as { govedaDuznost?: unknown }).govedaDuznost, parsirajGoveda(d, { ...get().gradevine, ...(d.gradevine ?? {}) })),
+      knjigaSkup: Math.max(0, Math.min(KNJIGA_SKUP_CILJ - 1, Math.floor(num((d as { knjigaSkup?: unknown }).knjigaSkup, get().knjigaSkup)))),
+      besplatneVrtnje: Math.max(0, Math.floor(num((d as { besplatneVrtnje?: unknown }).besplatneVrtnje, get().besplatneVrtnje))),
+      besplatneExpand: jeExpandZnak((d as { besplatneExpand?: unknown }).besplatneExpand) ? (d as { besplatneExpand: SimbolId }).besplatneExpand : get().besplatneExpand,
+      besplatneUlog: Math.max(1, Math.floor(num((d as { besplatneUlog?: unknown }).besplatneUlog, get().besplatneUlog))),
+      serifCin: Math.max(0, Math.floor(num((d as { serifCin?: unknown }).serifCin, get().serifCin))),
+      celijaBroj: Math.max(0, Math.min(3, Math.floor(num((d as { celijaBroj?: unknown }).celijaBroj, get().celijaBroj)))),
       zadnjiResursTick: get().zadnjiResursTick || ticksNow,
       zadnjaEnergijaTick: get().zadnjaEnergijaTick || ticksNow,
       kronika: d.kronika ? parsirajKroniku(d.kronika) : get().kronika,
@@ -789,6 +903,13 @@ export const useGameStore = create<GameState>((set, get) => ({
     get().osvjeziJutro();
     if (get().gradnje.some((g) => nowMs() >= g.kraj)) get().zavrsiGradnju();
     if (get().karavana && nowMs() >= get().karavana!.kraj) get().zavrsiKaravanu();
+    {
+      const k = get().karavana;
+      const r = nowMs();
+      if (k && !k.cin && !k.cinRijesen && k.kraj > k.start && (r - k.start) / (k.kraj - k.start) >= 0.42) {
+        set({ karavana: { ...k, cin: izaberiKaravanaCin() } });
+      }
+    }
     const s = get();
     const now = nowMs();
     let lastR = tickMemR || s.zadnjiResursTick || now;
@@ -801,6 +922,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (rTicks <= 0 && eTicks <= 0) {
       const capped = capEnergija(s.energija, s.razine.baterija || 0);
       if (capped !== s.energija) set({ energija: capped });
+      const k = get().karavana;
+      const r = nowMs();
+      if (k && !k.cin && !k.cinRijesen && k.kraj > k.start && (r - k.start) / Math.max(1, k.kraj - k.start) >= 0.42) {
+        set({ karavana: { ...k, cin: izaberiKaravanaCin() } });
+      }
       return;
     }
 
@@ -956,13 +1082,13 @@ export const useGameStore = create<GameState>((set, get) => ({
         const g = s.gradevine;
         const radi =
           (p.hub === "posao" && (g.pilana || 0) + (g.kamenolom || 0) + (g.rudnik || 0) + (g.trgovina || 0) > 0) ||
-          (p.hub === "jelo" && (g.lov || 0) + (g.mesnica || 0) + (g.pekara || 0) + (g.farma || 0) > 0) ||
-          (p.hub === "voda" && (g.bunar || 0) + (g.mlin || 0) > 0) ||
+          (p.hub === "jelo" && (g.lov || 0) + (g.mesnica || 0) + (g.pekara || 0) + (g.farma || 0) + (g.tor || 0) > 0) ||
+          (p.hub === "voda" && (g.bunar || 0) + (g.mlin || 0) + (g.cisterna || 0) > 0) ||
           (p.hub === "zabava" && (g.salun || 0) + (g.karte || 0) > 0) ||
           (p.hub === "krov" && (g.kuca || 0) + (g.blok || 0) > 0) ||
           (p.hub === "red" && (g.ured || 0) + (g.banka || 0) > 0) ||
           (p.hub === "konji" && (g.staja || 0) + (g.korali || 0) + (g.staza || 0) > 0) ||
-          (p.hub === "zdravlje" && (g.ordinacija || 0) > 0);
+          (p.hub === "zdravlje" && (g.ordinacija || 0) + (g.travar || 0) + (g.banja || 0) > 0);
         let next = radi ? dodajXpLiku(p, n) : p;
         if (shieldRoll && (p.posao === "Šerif" || p.posao === "Zamjenik")) next = dodajXpLiku(next, 3);
         const rec = recNoviBuff(p, next);
@@ -999,11 +1125,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (
       rTicks > 0 &&
       smijeNoviDogadaj(after.zadnjiDogadaj, nowMs(), !!after.dogadaj) &&
-      Math.random() < Math.min(0.22, 0.08 * rTicks)
+      Math.random() < Math.min(0.07, 0.03 * rTicks)
     ) {
       const tko = serif(after.ljudi);
       const tip = izaberiDogadajTip(after.gradevine, kauba.sreca, nowMs());
-      set({ dogadaj: napraviDogadaj(tip, tko?.ime ?? "Boro") });
+      const cin = (after.gradevine.ured || 0) > 0 ? after.serifCin : -1;
+      set({ dogadaj: napraviDogadaj(tip, tko?.ime ?? "Boro", nowMs(), cin) });
     }
   },
 
@@ -1164,16 +1291,19 @@ export const useGameStore = create<GameState>((set, get) => ({
     set((state) => {
       const kauba = kaubaOd(state);
       const zauzeti = state.misije.filter((m) => m.id !== id).map((m) => m.tip);
+      const stara = state.misije.find((m) => m.id === id);
+      const nalozi = stara?.tip
+        ? [stara.tip, ...state.zadnjiNalozi.filter((t) => t !== stara.tip)].slice(0, 8)
+        : state.zadnjiNalozi;
       return {
-        misije: state.misije.map((m) => (m.id === id ? generirajMisiju(kauba.usko, zauzeti, state.ljudi) : m)),
+        zadnjiNalozi: nalozi,
+        misije: state.misije.map((m) =>
+          m.id === id ? generirajMisiju(kauba.usko, zauzeti, state.ljudi, state.gradevine, nalozi) : m,
+        ),
         ljudi: state.ljudi.map((p) => {
-          const stara = state.misije.find((x) => x.id === id);
           return stara?.likId === p.id ? dodajXpLiku(p, 8) : p;
         }),
-        poruka: (() => {
-          const stara = state.misije.find((x) => x.id === id);
-          return stara?.likIme ? `${stara.likIme}: hvala. Nalog je gotov.` : "Nalog je gotov.";
-        })(),
+        poruka: stara?.likIme ? `${stara.likIme}: hvala. Nalog je gotov.` : "Nalog je gotov.",
       };
     });
     get().primiNagradu(nagrada);
@@ -1335,7 +1465,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     get().osvjeziProtok(gotove.map((g) => `z:${g.zgrada}>selo`));
   },
 
-  posaljiKaravanu: (ciljUid, teret) => {
+  posaljiKaravanu: (ciljUid, teret, put) => {
     const s = get();
     if (s.karavana) {
       set({ poruka: `${s.karavana.vozacIme} je već na putu.` });
@@ -1362,12 +1492,14 @@ export const useGameStore = create<GameState>((set, get) => ({
       set({ poruka: "Nema tko da vozi." });
       return;
     }
+    const putId: KaravanaPutId = put === "noc" || put === "rijeka" ? put : "staza";
     const traje = vrijemeKaravanaMs(
       kolicina,
       vozacLik.razina,
       susjed.uid,
       imaBuff(vozacLik, "brzina"),
       tkoJaše(s.ljudi, s.gradevine, s.ostecenja, s.konjiDuznost).has(vozacLik.id),
+      putId,
     );
     playSfx("build");
     set({
@@ -1388,6 +1520,9 @@ export const useGameStore = create<GameState>((set, get) => ({
         },
         vozacId: vozacLik.id,
         vozacIme: vozacLik.ime,
+        put: putId,
+        cin: null,
+        cinRijesen: false,
       },
       poruka: `${vozacLik.ime} ide u ${susjed.kauba}.`,
     });
@@ -1488,22 +1623,41 @@ export const useGameStore = create<GameState>((set, get) => ({
     playSfx((ishod.zlato ?? 0) >= 0 ? "collect" : "skull");
     const dok = doktor(s.ljudi);
     let ljudi = s.ljudi;
-    if (ishod.ozljeda && dok && (s.gradevine.ordinacija || 0) > 0) {
+    const liječiSe =
+      (s.gradevine.ordinacija || 0) + (s.gradevine.travar || 0) + (s.gradevine.banja || 0) > 0;
+    if (ishod.ozljeda && dok && liječiSe) {
       ljudi = ljudi.map((p) => (p.id === dok.id ? dodajXpLiku(p, 6) : p));
     }
+    if (ishod.serifXp) {
+      const tko = serif(ljudi);
+      if (tko) ljudi = ljudi.map((p) => (p.id === tko.id ? dodajXpLiku(p, 8) : p));
+    }
+    const ostecenja = { ...s.ostecenja };
+    if (ishod.ostecenje && (s.gradevine[ishod.ostecenje] || 0) > 0) {
+      ostecenja[ishod.ostecenje] = true;
+    }
+    if (ishod.popravi) ostecenja[ishod.popravi] = false;
+    const celijaBroj = Math.max(0, Math.min(3, s.celijaBroj + (ishod.celija ?? 0)));
+    const kisaDo = ishod.kisa ? Math.max(s.kisaDo, Date.now()) + KISA_MS : s.kisaDo;
+    const kvalitetaSela = Math.max(0, Math.min(100, s.kvalitetaSela + (ishod.kvaliteta ?? 0)));
     set({
       dogadaj: null,
       zadnjiDogadaj: nowMs(),
+      serifCin: (s.gradevine.ured || 0) > 0 ? s.serifCin + 1 : s.serifCin,
       zlato: s.zlato + (ishod.zlato ?? 0),
-      energija: capEnergija(s.energija + (ishod.energija ?? 0), s.razine.baterija || 0),
+      energija: dodajEnergiju(s.energija, ishod.energija ?? 0, s.razine.baterija || 0),
       stitovi: Math.min(izracunajMaxStitova(s.razine.oklop || 0), s.stitovi + (ishod.stitovi ?? 0)),
       ljudi,
+      ostecenja,
+      celijaBroj,
+      kisaDo,
+      kvalitetaSela,
       poruka: ishod.rec,
       kronika: [
         {
           id: `k-${Date.now()}`,
           t: Date.now(),
-          metaIme: d.tip === "stranac" ? "Stranac" : d.tip === "dvoboj" ? "Dvoboj" : "Salun",
+          metaIme: d.naslov ?? (d.tip === "stranac" ? "Stranac" : d.tip === "dvoboj" ? "Dvoboj" : "Šerif"),
           pobjeda: (ishod.zlato ?? 0) >= 0 && !ishod.ozljeda,
           stav: null,
           vrsta: "dogadaj" as const,
@@ -1515,38 +1669,60 @@ export const useGameStore = create<GameState>((set, get) => ({
     get().dodajXp(3);
   },
 
-  lijeci: () => {
+  lijeci: (odakle = "ordinacija") => {
     const s = get();
-    if ((s.gradevine.ordinacija || 0) < 1 || s.ostecenja.ordinacija) {
-      set({ poruka: "Nema ordinacije." });
+    const mjesto = odakle === "travar" || odakle === "banja" ? odakle : "ordinacija";
+    const cijena = mjesto === "travar" ? 5 : mjesto === "banja" ? 6 : 8;
+    const energija = mjesto === "ordinacija" ? 3 : 2;
+    const sansa = mjesto === "ordinacija" ? 0.45 : mjesto === "travar" ? 0.28 : 0.22;
+    if ((s.gradevine[mjesto] || 0) < 1 || s.ostecenja[mjesto]) {
+      set({
+        poruka: mjesto === "travar" ? "Nema travara." : mjesto === "banja" ? "Nema banje." : "Nema ordinacije.",
+      });
       return;
     }
-    if (s.zlato < 8) {
+    if (s.zlato < cijena) {
       set({ poruka: "NEDOSTAJE ZLATO" });
       return;
     }
-    const tko = doktor(s.ljudi);
+    const tko =
+      mjesto === "travar"
+        ? s.ljudi.find((p) => p.posao === "Travarica") ?? doktor(s.ljudi)
+        : doktor(s.ljudi);
+    const glagol = tko?.spol === "m" ? "ubrao" : "ubrala";
     playSfx("collect");
     let ljudi = s.ljudi;
     const bolesni = [...ljudi].filter((p) => (p.mane ?? []).length > 0);
-    if (bolesni.length && Math.random() < 0.45) {
+    if (bolesni.length && Math.random() < sansa) {
       const meta = bolesni[Math.floor(Math.random() * bolesni.length)]!;
       ljudi = ljudi.map((p) => (p.id === meta.id ? { ...p, mane: p.mane.slice(0, -1) } : p));
       if (tko) ljudi = ljudi.map((p) => (p.id === tko.id ? dodajXpLiku(p, 8) : p));
+      const rec =
+        mjesto === "travar"
+          ? `${tko?.ime ?? "Zora"} je ${glagol} travu. ${meta.ime} diše lakše.`
+          : mjesto === "banja"
+            ? `Prašina sišla s ${meta.ime}.`
+            : `${tko?.ime ?? "Doktor"} je skinuo tegobu s ${meta.ime}.`;
       set({
-        zlato: s.zlato - 8,
-        energija: capEnergija(s.energija + 3, s.razine.baterija || 0),
+        zlato: s.zlato - cijena,
+        energija: dodajEnergiju(s.energija, energija, s.razine.baterija || 0),
         ljudi,
-        poruka: `${tko?.ime ?? "Doktor"} je skinuo tegobu s ${meta.ime}.`,
+        poruka: rec,
       });
       return;
     }
     if (tko) ljudi = ljudi.map((p) => (p.id === tko.id ? dodajXpLiku(p, 5) : p));
+    const rec =
+      mjesto === "travar"
+        ? `${tko?.ime ?? "Zora"} je ${glagol} travu. Kauba diše lakše.`
+        : mjesto === "banja"
+          ? "Topla voda. Prašina sišla s kože."
+          : `${tko?.ime ?? "Doktor"} je zavio ruku. Kauba diše lakše.`;
     set({
-      zlato: s.zlato - 8,
-      energija: capEnergija(s.energija + 3, s.razine.baterija || 0),
+      zlato: s.zlato - cijena,
+      energija: dodajEnergiju(s.energija, energija, s.razine.baterija || 0),
       ljudi,
-      poruka: `${tko?.ime ?? "Doktor"} je zavio ruku. Kauba diše lakše.`,
+      poruka: rec,
     });
   },
 
@@ -1682,6 +1858,290 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
   },
 
+  rijesiKaravanaCin: (opcija) => {
+    const s = get();
+    const k = s.karavana;
+    if (!k?.cin) return;
+    let zlato = 0;
+    let kasni = 0;
+    let rec = "Put ide dalje.";
+    if (k.cin.id === "zasjeda") {
+      if (opcija === "plati") {
+        if (s.zlato < 8) {
+          set({ poruka: "Nema 8g." });
+          return;
+        }
+        zlato = -8;
+        rec = "Baciše vreću. Put je čist.";
+      } else if (opcija === "pucaj") {
+        if (Math.random() < 0.45) rec = "Pucanj. Gusari bježe.";
+        else {
+          kasni = 8000;
+          rec = "Pucanj. Točak puca. Sporije.";
+        }
+      } else if (Math.random() < 0.4) rec = "Konj prođe. Prašina u očima.";
+      else {
+        zlato = -6;
+        rec = "Uhvatili. Uzeše 6g.";
+      }
+    } else if (k.cin.id === "most") {
+      if (opcija === "obidji") {
+        kasni = 10000;
+        rec = "Obišli. Duže, suho.";
+      } else if (Math.random() < 0.7) rec = "Most drži. Ide dalje.";
+      else {
+        kasni = 14000;
+        rec = "Daska puca. Vuku kola.";
+      }
+    } else if (k.cin.id === "sajam") {
+      if (opcija === "trguj") {
+        if (s.zlato < 6) {
+          set({ poruka: "Nema 6g." });
+          return;
+        }
+        zlato = 4 + Math.floor(Math.random() * 8);
+        rec = `Trgovac kima. +${zlato + 6}g.`;
+      } else rec = "Mašu i idu. Sajam ostaje.";
+    }
+    if (zlato < 0 && s.zlato < Math.abs(zlato)) {
+      set({ poruka: "Nema zlata." });
+      return;
+    }
+    playSfx(zlato >= 0 ? "collect" : "button");
+    set({
+      zlato: s.zlato + zlato,
+      karavana: {
+        ...k,
+        cin: null,
+        cinRijesen: true,
+        kraj: k.kraj + Math.max(0, kasni),
+      },
+      poruka: rec,
+    });
+  },
+
+  preimenujLika: (id, ime) => {
+    const novo = ime.replace(/\s+/g, " ").trim().slice(0, 14);
+    if (novo.length < 2) {
+      set({ poruka: "Ime je kratko." });
+      return;
+    }
+    const s = get();
+    const tko = s.ljudi.find((p) => p.id === id) ?? s.segrti.find((p) => p.id === id) ?? s.zamjenici.find((p) => p.id === id);
+    if (!tko) return;
+    playSfx("button");
+    set({
+      ljudi: s.ljudi.map((p) => (p.id === id ? { ...p, ime: novo } : p)),
+      segrti: s.segrti.map((p) => (p.id === id ? { ...p, ime: novo } : p)),
+      zamjenici: s.zamjenici.map((p) => (p.id === id ? { ...p, ime: novo } : p)),
+      poruka: `${tko.ime} sad je ${novo}.`,
+    });
+  },
+
+  dajCasu: (id) => {
+    const s = get();
+    if (s.zlato < 2) {
+      set({ poruka: "Nema zlata za kocku." });
+      return;
+    }
+    const tko = s.ljudi.find((p) => p.id === id) ?? s.segrti.find((p) => p.id === id) ?? s.zamjenici.find((p) => p.id === id);
+    if (!tko) return;
+    const kocka = 1 + Math.floor(Math.random() * 6);
+    const dobit = kocka >= 5 ? 4 : kocka >= 3 ? 2 : 0;
+    const rec =
+      kocka >= 5
+        ? `${tko.ime} baci ${kocka}. Tvoje. +4g.`
+        : kocka >= 3
+          ? `${tko.ime} baci ${kocka}. Stoji.`
+          : `${tko.ime} baci ${kocka}. Prašina u oku.`;
+    playSfx(dobit >= 4 ? "collect" : "button");
+    set({
+      zlato: s.zlato - 2 + dobit,
+      ljudi: s.ljudi.map((p) => (p.id === id ? dodajXpLiku(p, 5) : p)),
+      segrti: s.segrti.map((p) => (p.id === id ? { ...dodajXpLiku(p, 5), skola: p.skola, spreman: p.spreman } : p)),
+      zamjenici: s.zamjenici.map((p) => (p.id === id ? { ...dodajXpLiku(p, 5), spreman: p.spreman } : p)),
+      poruka: rec,
+    });
+    get().dodajXp(1);
+  },
+
+  strpajCeliju: () => {
+    const s = get();
+    if ((s.gradevine.ured || 0) < 1 || s.ostecenja.ured) {
+      set({ poruka: "Nema ureda." });
+      return;
+    }
+    if (s.celijaBroj >= 3) {
+      set({ poruka: "Ćelija puna." });
+      return;
+    }
+    playSfx("button");
+    const n = s.celijaBroj + 1;
+    set({
+      celijaBroj: n,
+      poruka: n === 1 ? "Jedan iza rešetaka." : `${n} iza rešetaka. Zakon diše.`,
+    });
+  },
+
+  pustiCeliju: () => {
+    const s = get();
+    if (s.celijaBroj < 1) {
+      set({ poruka: "Ćelija prazna." });
+      return;
+    }
+    const kazna = s.celijaBroj * 8;
+    playSfx("collect");
+    set({
+      zlato: s.zlato + kazna,
+      celijaBroj: 0,
+      poruka: `Pustili. Kazna +${kazna} zlata.`,
+    });
+  },
+
+  kupiGovedo: (n = 1) => {
+    const s = get();
+    const kap = govedaKap(s.gradevine);
+    const kolicina = Math.max(1, Math.floor(n));
+    if (s.ostecenja.tor) {
+      set({ poruka: "Tor gori. Krdo ne ulazi." });
+      return;
+    }
+    if (kap < 1) {
+      set({ poruka: "Prvo tor." });
+      return;
+    }
+    if (s.govedaBroj >= kap) {
+      set({ poruka: "Tor pun. Koža je tijesna." });
+      return;
+    }
+    const uzmi = Math.min(kolicina, kap - s.govedaBroj);
+    const zlato = GOVEDO_CIJENA_ZLATO * uzmi;
+    const drvo = GOVEDO_CIJENA_DRVO * uzmi;
+    if (s.zlato < zlato || s.resursi.drvo < drvo) {
+      set({ poruka: "NEDOSTAJU RESURSI" });
+      return;
+    }
+    playSfx("collect");
+    const broj = s.govedaBroj + uzmi;
+    const duznost = { ...s.govedaDuznost, pasa: s.govedaDuznost.pasa + uzmi };
+    set({
+      zlato: s.zlato - zlato,
+      resursi: { ...s.resursi, drvo: s.resursi.drvo - drvo },
+      govedaBroj: broj,
+      govedaDuznost: normalizirajGovedo(broj, duznost),
+      poruka: uzmi === 1 ? `Govedo ušlo. ${broj}/${kap} u toru.` : `${uzmi} grla ušlo. ${broj}/${kap} u toru.`,
+    });
+    get().azurirajMisiju("govedo", uzmi);
+    get().azurirajKlanZadatak("govedo", uzmi);
+  },
+
+  prodajGovedo: () => {
+    const s = get();
+    if (s.govedaBroj < 1) {
+      set({ poruka: "Nema krda." });
+      return;
+    }
+    playSfx("collect");
+    const broj = s.govedaBroj - 1;
+    set({
+      zlato: s.zlato + 6,
+      govedaBroj: broj,
+      govedaDuznost: normalizirajGovedo(broj, s.govedaDuznost),
+      poruka: broj < 1 ? "Tor prazan." : `Govedo otišlo. Ostalo ${broj}.`,
+    });
+  },
+
+  pomakniGovedo: (od, na) => {
+    const s = get();
+    if (od === na || s.govedaDuznost[od] < 1) return;
+    playSfx("button");
+    const duznost = {
+      ...s.govedaDuznost,
+      [od]: s.govedaDuznost[od] - 1,
+      [na]: s.govedaDuznost[na] + 1,
+    };
+    set({
+      govedaDuznost: normalizirajGovedo(s.govedaBroj, duznost),
+      poruka: GOVEDO_DUZNOSTI.find((x) => x.id === na)?.poruka ?? "Krdo",
+    });
+  },
+
+  tjerajGovedo: () => {
+    const s = get();
+    if (s.govedaBroj < 1) {
+      set({ poruka: "Nema krda." });
+      return;
+    }
+    if (s.konjiDuznost.jahanje < 1) {
+      set({ poruka: "Bez konja krdo ne ide." });
+      return;
+    }
+    const n = Math.min(Math.max(1, s.govedaDuznost.tjeranje || 1), s.govedaBroj);
+    const plata = n * GOVEDO_TJERAJ;
+    const broj = s.govedaBroj - n;
+    playSfx("collect");
+    const gazda = s.ljudi.find((p) => p.posao === "Gazda") ?? s.ljudi.find((p) => p.posao === "Referent" || p.posao === "Gonič");
+    let ljudi = s.ljudi;
+    if (gazda) ljudi = ljudi.map((p) => (p.id === gazda.id ? dodajXpLiku(p, 6) : p));
+    set({
+      zlato: s.zlato + plata,
+      govedaBroj: broj,
+      govedaDuznost: normalizirajGovedo(broj, s.govedaDuznost),
+      ljudi,
+      poruka: `${gazda?.ime ?? "Gazda"} otjerao ${n}. +${plata} zlata. Firma diše.`,
+    });
+    get().azurirajMisiju("zlato", plata);
+  },
+
+  koljiGovedo: () => {
+    const s = get();
+    if (s.govedaBroj < 1) {
+      set({ poruka: "Nema krda." });
+      return;
+    }
+    const broj = s.govedaBroj - 1;
+    const extra = (s.gradevine.mesnica || 0) > 0 && !s.ostecenja.mesnica ? GOVEDO_KLANJE_MESNICA : 0;
+    const plata = GOVEDO_KLANJE + extra;
+    playSfx("collect");
+    const mesar = s.ljudi.find((p) => p.posao === "Mesarica") ?? s.ljudi.find((p) => p.posao === "Gazda");
+    let ljudi = s.ljudi;
+    if (mesar) ljudi = ljudi.map((p) => (p.id === mesar.id ? dodajXpLiku(p, 5) : p));
+    set({
+      zlato: s.zlato + plata,
+      govedaBroj: broj,
+      govedaDuznost: normalizirajGovedo(broj, s.govedaDuznost),
+      ljudi,
+      poruka: extra
+        ? `Mesnica reže. +${plata} zlata. Kotao pun.`
+        : `Klanje. +${plata} zlata. Bez mesnice meso je tanko.`,
+    });
+  },
+
+  skupiKisu: () => {
+    const s = get();
+    if ((s.gradevine.cisterna || 0) < 1 || s.ostecenja.cisterna) {
+      set({ poruka: "Nema cisterne." });
+      return;
+    }
+    if (s.zlato < KISA_ZLATO) {
+      set({ poruka: "NEDOSTAJE ZLATO" });
+      return;
+    }
+    playSfx("collect");
+    const tko = s.ljudi.find((p) => p.posao === "Cisternar") ?? s.ljudi.find((p) => p.hub === "voda");
+    const doKad = Math.max(s.kisaDo, Date.now()) + KISA_MS;
+    let ljudi = s.ljudi;
+    if (tko) ljudi = ljudi.map((p) => (p.id === tko.id ? dodajXpLiku(p, 4) : p));
+    const glagol = tko?.spol === "z" ? "skupila" : "skupio";
+    set({
+      zlato: s.zlato - KISA_ZLATO,
+      kisaDo: doKad,
+      ljudi,
+      poruka: `${tko?.ime ?? "Karlo"} je ${glagol} kišu. Cisterna diše.`,
+    });
+    get().azurirajMisiju("kisa");
+  },
+
   trgovinaKupi: (res) => {
     const s = get();
     const lv = s.gradevine.trgovina || 0;
@@ -1726,10 +2186,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({
       potjernice: album,
       potjerniceSetovi: noviSetovi,
-      novaPotjernica: p.id,
+      novaPotjernica: duplikat ? s.novaPotjernica : p.id,
       zlato: s.zlato + (duplikat ? 4 : 0) + extraZlato,
       dijamanti: s.dijamanti + extraGem,
-      poruka: duplikat ? `Duplikat: ${p.ime}. +4 zlata.${setRec}` : `Potjernica: ${p.ime}.${setRec}`,
+      poruka: duplikat
+        ? `Plakat već visi. +4 zlata.${setRec}`
+        : `Šerif: plakat. ${p.ime}. Traži se.${setRec}`,
     });
     get().provjeriDostignuca();
   },
@@ -1884,11 +2346,21 @@ export const useGameStore = create<GameState>((set, get) => ({
       zadnjiDogadaj: 0,
       bankaZlato: 0,
       faroKrupije: null,
+      serifCin: 0,
+      celijaBroj: 0,
       gradnje: [],
       karavana: null,
       konjiBroj: 0,
       konjiDuznost: praznaDuznost(),
       sijenoDo: 0,
+      kisaDo: 0,
+      govedaBroj: 0,
+      govedaDuznost: praznaGovedoDuznost(),
+      knjigaSkup: 0,
+      besplatneVrtnje: 0,
+      besplatneExpand: null,
+      besplatneUlog: 1,
+      zadnjiNalozi: [],
       winStreak: 0,
       luckySpinCounter: LUCKY_SPIN_INTERVAL,
       poruka: `KRUNIDBA! +1 krunjenje. Množitelj ×${izracunajPrestigeMnozitelj(noviPrestige).toFixed(2)}`,
@@ -2303,7 +2775,15 @@ export function startLocalPersist() {
       s.dogadaj === prev.dogadaj &&
       s.zadnjiDogadaj === prev.zadnjiDogadaj &&
       s.bankaZlato === prev.bankaZlato &&
-      s.faroKrupije === prev.faroKrupije
+      s.faroKrupije === prev.faroKrupije &&
+      s.kisaDo === prev.kisaDo &&
+      s.govedaBroj === prev.govedaBroj &&
+      s.govedaDuznost === prev.govedaDuznost &&
+      s.knjigaSkup === prev.knjigaSkup &&
+      s.besplatneVrtnje === prev.besplatneVrtnje &&
+      s.serifCin === prev.serifCin &&
+      s.celijaBroj === prev.celijaBroj &&
+      s.zadnjiNalozi === prev.zadnjiNalozi
     ) {
       return;
     }

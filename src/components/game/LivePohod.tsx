@@ -10,7 +10,6 @@ import { SYMBOL_ART } from "@/lib/game/art";
 import { cn } from "@/lib/utils";
 import { SUSJEDI, serifKaoLik } from "@/lib/game/susjedi";
 import { LikAvatar } from "./LikAvatar";
-import { TjedanTraka } from "./TjedanTraka";
 import { tjedanSad } from "@/lib/game/tjedan";
 import { hrpeIzResursa, jeTerminal } from "@/lib/game/raids";
 
@@ -147,8 +146,6 @@ export function LivePohod() {
           </button>
         ))}
       </div>
-
-      <TjedanTraka />
 
       {live.pohod && live.pohod.faza !== "kraj" && (
         <div className="live-duel-traka rounded-xl border border-ruby/50 bg-ruby/10 px-3 py-2">

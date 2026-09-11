@@ -1,7 +1,9 @@
 import { create } from "zustand";
 import type { Dobitak, SimbolId } from "@/lib/game/types";
+import { prazanDobitak } from "@/lib/game/knjiga";
 
 export type SlotFx = null | "win" | "jackpot" | "skull";
+export type KnjigaFaza = null | "uvod" | "igra" | "kraj";
 
 type SlotState = {
   simboli: SimbolId[];
@@ -17,6 +19,9 @@ type SlotState = {
   raidAktivan: boolean;
   gambleCount: number;
   autoVrtnja: boolean;
+  knjigaFaza: KnjigaFaza;
+  expandPolja: number[];
+  knjigaLonac: Dobitak;
   setSimboli: (simboli: SimbolId[]) => void;
   setVrti: (vrti: boolean) => void;
   setSpinningCols: (spinningCols: boolean[]) => void;
@@ -29,6 +34,9 @@ type SlotState = {
   setRaidAktivan: (raidAktivan: boolean) => void;
   setGambleCount: (gambleCount: number) => void;
   setAutoVrtnja: (autoVrtnja: boolean) => void;
+  setKnjigaFaza: (knjigaFaza: KnjigaFaza) => void;
+  setExpandPolja: (expandPolja: number[]) => void;
+  setKnjigaLonac: (knjigaLonac: Dobitak) => void;
 };
 
 export const useSlotStore = create<SlotState>((set) => ({
@@ -45,6 +53,9 @@ export const useSlotStore = create<SlotState>((set) => ({
   raidAktivan: false,
   gambleCount: 0,
   autoVrtnja: false,
+  knjigaFaza: null,
+  expandPolja: [],
+  knjigaLonac: prazanDobitak(),
 
   setSimboli: (simboli) => set({ simboli }),
   setVrti: (vrti) => set({ vrti }),
@@ -67,4 +78,7 @@ export const useSlotStore = create<SlotState>((set) => ({
     set({ raidAktivan, ...(raidAktivan ? { autoVrtnja: false } : {}) }),
   setGambleCount: (gambleCount) => set({ gambleCount }),
   setAutoVrtnja: (autoVrtnja) => set({ autoVrtnja }),
+  setKnjigaFaza: (knjigaFaza) => set({ knjigaFaza }),
+  setExpandPolja: (expandPolja) => set({ expandPolja }),
+  setKnjigaLonac: (knjigaLonac) => set({ knjigaLonac }),
 }));

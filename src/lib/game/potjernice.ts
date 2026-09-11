@@ -65,10 +65,10 @@ export function baciPotjernicu(
   album: Record<string, number>,
   opts: { lucky?: boolean; linije?: number; jackpot?: boolean },
 ): Potjernica | null {
-  let sansa = 0.035;
-  if (opts.lucky) sansa = 0.07;
-  if ((opts.linije ?? 0) >= 3) sansa += 0.015;
-  if (opts.jackpot) sansa = 0.12;
+  let sansa = 0.012;
+  if (opts.lucky) sansa = 0.028;
+  if ((opts.linije ?? 0) >= 3) sansa += 0.008;
+  if (opts.jackpot) sansa = 0.045;
   if (Math.random() > sansa) return null;
 
   const nedostaje = POTJERNICE.filter((p) => (album[p.id] ?? 0) === 0);

@@ -21,6 +21,7 @@ export type CloudPayload = {
   ostecenja: Record<string, boolean>;
   razine: Record<string, number>;
   misije: Misija[];
+  zadnjiNalozi?: string[];
   tecaj: Record<string, { kupi: number; prodaj: number }>;
   trend: Record<string, number>;
   luckySpinCounter: number;
@@ -44,6 +45,15 @@ export type CloudPayload = {
   konjiBroj?: number;
   konjiDuznost?: Record<string, number>;
   sijenoDo?: number;
+  kisaDo?: number;
+  govedaBroj?: number;
+  govedaDuznost?: Record<string, number>;
+  knjigaSkup?: number;
+  besplatneVrtnje?: number;
+  besplatneExpand?: string | null;
+  besplatneUlog?: number;
+  serifCin?: number;
+  celijaBroj?: number;
   gradnje?: Gradnja[];
   gradnja?: Gradnja | null;
   karavana?: Karavana | null;

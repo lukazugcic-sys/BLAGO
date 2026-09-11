@@ -12,19 +12,15 @@ import { SlotScreen } from "./SlotScreen";
 import { VillageScreen } from "./VillageScreen";
 import { MissionsScreen } from "./MissionsScreen";
 import { ShopScreen } from "./ShopScreen";
-import { LevelUpToast } from "./LevelUpToast";
-import { PotjernicaToast } from "./PotjernicaToast";
-import { ZvijezdaToast } from "./ZvijezdaToast";
 import { DailyRewardModal } from "./DailyRewardModal";
 import { RaidModal } from "./RaidModal";
 import { ScreenPager } from "./ScreenPager";
-import { type TabId, ZGRADE_SKINOVI, primijeniSkinTemu } from "@/lib/game/constants";
+import { type TabId, ZGRADE_SKINOVI, primijeniSkinTemu, postaviBojuPrikaza } from "@/lib/game/constants";
 import { setMuted, unlockAudio, startBgm } from "@/lib/game/audio";
 import { SAVE_KEYS } from "@/lib/game/persist";
 import { ART, CREDITS, preloadArt } from "@/lib/game/art";
 import { LiveShell } from "@/lib/multiplayer";
-import { LiveTicker } from "./LiveTicker";
-import { PohodPozivToast } from "./PohodPozivToast";
+import { ObavijestSloj } from "./ObavijestSloj";
 import { PosjetTabor } from "./PosjetTabor";
 import { TrojacModal } from "./TrojacModal";
 import { OnboardModal } from "./OnboardModal";
@@ -45,6 +41,7 @@ function GameInner({
   const [tab, setTab] = useState<TabId>("automat");
   const shellRef = useRef<HTMLDivElement>(null);
   const { native, canNative, toggle: toggleFs } = useFullscreen(shellRef);
+  const knjigaFaza = useSlotStore((s) => s.knjigaFaza);
   const raidAktivan = useSlotStore((s) => s.raidAktivan);
   const setRaidAktivan = useSlotStore((s) => s.setRaidAktivan);
   const ukupnoVrtnji = useGameStore((s) => s.ukupnoVrtnji);
@@ -57,11 +54,19 @@ function GameInner({
   useEffect(() => {
     const skin = ZGRADE_SKINOVI.find((s) => s.id === aktivniSkin) ?? ZGRADE_SKINOVI[0]!;
     primijeniSkinTemu(skin);
-  }, [aktivniSkin]);
+    const t = skin.tema;
+    const boja =
+      tab === "automat" ? t.energy : tab === "misije" ? t.quest : tab === "trznica" ? t.gold : t.void;
+    postaviBojuPrikaza(boja);
+  }, [aktivniSkin, tab]);
 
   useEffect(() => {
+    if (knjigaFaza === "uvod" || knjigaFaza === "igra" || knjigaFaza === "kraj") {
+      startBgm("bonus");
+      return;
+    }
     startBgm(tab === "selo" ? "selo" : "igra");
-  }, [tab]);
+  }, [tab, knjigaFaza]);
 
   useEffect(() => {
     startLocalPersist();
@@ -89,15 +94,19 @@ function GameInner({
   );
 
   if (!started || ucitavam) {
-    return <Splash loading={started && ucitavam} />;
+    return (
+      <div className="fixed inset-0 bg-void">
+        <Splash loading={started && ucitavam} />
+      </div>
+    );
   }
 
   return (
     <LiveShell>
-    <div className="atmosphere relative flex h-dvh flex-col overflow-hidden text-ink">
+    <div className="atmosphere fixed inset-0 flex flex-col overflow-hidden text-ink">
       <div
         ref={shellRef}
-        className="game-shell relative z-0 mx-auto flex h-dvh w-full max-w-lg flex-1 flex-col"
+        className="game-shell relative z-0 mx-auto flex h-full min-h-0 w-full max-w-lg flex-1 flex-col"
       >
         <Header
           muted={muted}
@@ -106,18 +115,14 @@ function GameInner({
           canNativeFs={canNative}
           onToggleFullscreen={() => void toggleFs()}
         />
-        <LiveTicker />
         <ScreenPager tab={tab} onTab={setTab} panes={panes} />
         <AppNav tab={tab} onTab={setTab} />
+        <ObavijestSloj />
       </div>
       {!onboard && <DailyRewardModal />}
       {!onboard && <JutroSheet naTab={setTab} />}
       <OnboardModal open={onboard} onDone={() => setOnboard(false)} />
       <RaidModal vidljiv={raidAktivan} onZatvori={() => setRaidAktivan(false)} />
-      <LevelUpToast />
-      <PotjernicaToast />
-      <ZvijezdaToast />
-      <PohodPozivToast />
       <PosjetTabor />
       <TrojacModal />
     </div>
@@ -126,26 +131,39 @@ function GameInner({
 }
 
 function Splash({ loading }: { loading: boolean }) {
+  const slova = ["B", "L", "A", "G", "O"];
   return (
-    <div
-      className="splash-scene relative flex h-full min-h-[100vh] min-h-dvh w-full flex-col overflow-hidden bg-void"
-      style={{ minHeight: "100vh" }}
-    >
+    <div className="splash-scene relative flex h-full w-full flex-col overflow-hidden bg-void">
       <img
         src={ART.splash}
         alt=""
-        className="absolute inset-0 h-full w-full object-cover object-[center_28%]"
+        className="splash-still"
         onError={(e) => {
           e.currentTarget.style.display = "none";
         }}
       />
+      <div className="splash-kolo" aria-hidden>
+        <span className="slot-zakovica slot-zakovica-tl" />
+        <span className="slot-zakovica slot-zakovica-tr" />
+        <span className="slot-zakovica slot-zakovica-bl" />
+        <span className="slot-zakovica slot-zakovica-br" />
+        <span className="slot-lampa slot-lampa-l" />
+        <span className="slot-lampa slot-lampa-d" />
+        <span className="splash-prasina" />
+      </div>
       <div className="splash-veil pointer-events-none absolute inset-0 z-[1]" />
       <div className="relative z-[2] mt-auto flex flex-col items-center px-6 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-10 text-center">
-        <p className="text-[11px] font-bold tracking-[0.46em] text-gold uppercase">
+        <p className="splash-rec text-[11px] font-bold tracking-[0.46em] text-gold uppercase">
           kaubojski automat · beta
         </p>
-        <h1 className="wordmark wordmark-bounce relative mt-2 text-6xl tracking-[0.2em]">BLAGO</h1>
-        <p className="relative mt-2 text-sm font-bold tracking-[0.32em] text-ink/90 uppercase">
+        <h1 className="wordmark splash-ime relative mt-2 text-6xl tracking-[0.2em]" aria-label="BLAGO">
+          {slova.map((s, i) => (
+            <span key={s} className="splash-slovo" style={{ animationDelay: `${120 + i * 90}ms` }}>
+              {s}
+            </span>
+          ))}
+        </h1>
+        <p className="splash-rec relative mt-2 text-sm font-bold tracking-[0.32em] text-ink/90 uppercase" style={{ animationDelay: "0.7s" }}>
           Vrti · Gradi · Traži blago
         </p>
         {loading ? (
@@ -202,8 +220,7 @@ export function GameApp() {
     return (
       <button
         type="button"
-        className="block h-full min-h-[100vh] min-h-dvh w-full bg-void"
-        style={{ minHeight: "100vh" }}
+        className="fixed inset-0 block h-full w-full bg-void"
         onPointerDown={start}
         aria-label="Pokreni igru"
       >

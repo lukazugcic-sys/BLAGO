@@ -1,4 +1,5 @@
 import { dopuniLika, type Stanovnik } from "./ljudi";
+import type { KaravanaCin, KaravanaPutId } from "./types";
 
 export type Susjed = {
   uid: string;
@@ -91,24 +92,76 @@ export function karavanaCilj(uid: string) {
   return KARAVANA_CILJ.find((c) => c.uid === uid) ?? KARAVANA_CILJ[0]!;
 }
 
-export function vrijemeKaravanaMs(kolicina: number, razina: number, uid: string, brzina = false, naKonju = false) {
+export const KARAVANA_PUTOVI: Array<{
+  id: KaravanaPutId;
+  naziv: string;
+  rec: string;
+  vrijeme: number;
+  plata: number;
+  rizik: number;
+}> = [
+  { id: "staza", naziv: "Staza", rec: "Prašina i točak.", vrijeme: 1, plata: 1.35, rizik: 0.08 },
+  { id: "noc", naziv: "Noć", rec: "Tiho. Brže. Gusari u sjeni.", vrijeme: 0.7, plata: 1.7, rizik: 0.22 },
+  { id: "rijeka", naziv: "Rijeka", rec: "Gat i konop. Sporije, plaća.", vrijeme: 1.38, plata: 2.05, rizik: 0.12 },
+];
+
+export function karavanaPut(id?: string) {
+  return KARAVANA_PUTOVI.find((p) => p.id === id) ?? KARAVANA_PUTOVI[0]!;
+}
+
+const PUT_CINOVI: KaravanaCin[] = [
+  {
+    id: "zasjeda",
+    rec: "Prašina se diže. Netko čeka na stazi.",
+    opcije: [
+      { id: "plati", rec: "Baci 8g" },
+      { id: "jasi", rec: "Jasi kroz" },
+      { id: "pucaj", rec: "Pucaj" },
+    ],
+  },
+  {
+    id: "most",
+    rec: "Most je truo. Voda huči ispod.",
+    opcije: [
+      { id: "obidji", rec: "Obiđi" },
+      { id: "kroz", rec: "Kroz most" },
+    ],
+  },
+  {
+    id: "sajam",
+    rec: "Sajam na raskršću. Trgovac maše.",
+    opcije: [
+      { id: "trguj", rec: "Trguj 6g" },
+      { id: "idi", rec: "Idi dalje" },
+    ],
+  },
+];
+
+export function izaberiKaravanaCin(rng = Math.random): KaravanaCin {
+  return PUT_CINOVI[Math.floor(rng() * PUT_CINOVI.length)] ?? PUT_CINOVI[0]!;
+}
+
+export function vrijemeKaravanaMs(kolicina: number, razina: number, uid: string, brzina = false, naKonju = false, putId: KaravanaPutId = "staza") {
   const c = karavanaCilj(uid);
+  const put = karavanaPut(putId);
   const sec = Math.min(80, c.sec + Math.max(1, kolicina) * 0.32);
-  return Math.round((sec * 1000) / ((1 + Math.max(0, razina - 1) * 0.08) * (brzina ? 1.16 : 1) * (naKonju ? 1.18 : 1)));
+  return Math.round((sec * 1000 * put.vrijeme) / ((1 + Math.max(0, razina - 1) * 0.08) * (brzina ? 1.16 : 1) * (naKonju ? 1.18 : 1)));
 }
 
 export function karavanaIsplata(
   teret: { drvo: number; kamen: number; zeljezo: number },
   sajam: boolean,
   uid: string,
+  putId: KaravanaPutId = "staza",
 ) {
   const c = karavanaCilj(uid);
+  const put = karavanaPut(putId);
   const ukupno = teret.drvo + teret.kamen + teret.zeljezo;
   const hoce = teret[c.hoce];
   const udio = ukupno > 0 ? hoce / ukupno : 0;
-  const baza = teret.drvo * 1.05 + teret.kamen * 1.32 + teret.zeljezo * 2;
-  const zlato = Math.max(4, Math.floor(baza * (1 + udio * 0.4) * c.mnoz * (sajam ? 1.15 : 1)));
-  const natrag = Math.max(0, Math.floor(hoce * 0.22));
+  const baza = teret.drvo * 2.85 + teret.kamen * 5.4 + teret.zeljezo * 14;
+  const zlato = Math.max(8, Math.floor(baza * (1 + udio * 0.55) * c.mnoz * put.plata * (sajam ? 1.18 : 1)));
+  const natrag = Math.max(0, Math.floor(hoce * 0.28));
   const out = { zlato, drvo: 0, kamen: 0, zeljezo: 0 };
   if (c.vraca !== "zlato" && natrag > 0) out[c.vraca] = natrag;
   else if (c.vraca === "zlato") out.zlato += Math.floor(hoce * 0.45);

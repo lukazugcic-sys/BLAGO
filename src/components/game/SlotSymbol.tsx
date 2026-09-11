@@ -9,11 +9,13 @@ export const SlotSymbol = memo(function SlotSymbol({
   win,
   skullHit,
   spinning,
+  expanding,
 }: {
   id: SimbolId;
   win?: boolean;
   skullHit?: boolean;
   spinning?: boolean;
+  expanding?: boolean;
 }) {
   const meta = BLAGO[id];
   return (
@@ -22,7 +24,9 @@ export const SlotSymbol = memo(function SlotSymbol({
         "slot-token relative flex aspect-square w-full items-center justify-center",
         id === "gold" && "slot-token-gold",
         id === "energy" && "slot-token-energy",
+        id === "knjiga" && "slot-knjiga",
         spinning && "reel-spinning",
+        expanding && "slot-expand",
         win && !skullHit && "slot-win",
         skullHit && "slot-skull",
       )}
@@ -50,6 +54,12 @@ export const SlotSymbol = memo(function SlotSymbol({
         <>
           <span className="slot-skull-vein" aria-hidden />
           <span className="slot-skull-flash" aria-hidden />
+        </>
+      )}
+      {id === "knjiga" && (
+        <>
+          <span className="slot-znacka-sjaj" aria-hidden />
+          <span className="slot-znacka-zraka" aria-hidden />
         </>
       )}
       <span className="slot-token-shine" aria-hidden />

@@ -36,10 +36,10 @@ export function LevelUpToast() {
 
   return (
     <div
-      className="level-toast pointer-events-none absolute top-3 right-4 left-4 z-50 overflow-hidden rounded-xl border border-xp/70 bg-panel px-4 py-3 text-center shadow-[0_8px_28px_color-mix(in_oklab,var(--color-xp)_40%,transparent)] transition-[opacity,transform] duration-300"
+      className="level-toast pointer-events-none relative z-50 overflow-hidden rounded-xl border border-xp/70 bg-panel px-4 py-3 text-center shadow-[0_8px_28px_color-mix(in_oklab,var(--color-xp)_40%,transparent)] transition-[opacity,transform] duration-300"
       style={{
         opacity: visible ? 1 : 0,
-        transform: visible ? "translateY(0) scale(1)" : "translateY(-140px) scale(0.92)",
+        transform: visible ? "translateY(0) scale(1)" : "translateY(16px) scale(0.92)",
       }}
     >
       <span className="level-zrake" aria-hidden />

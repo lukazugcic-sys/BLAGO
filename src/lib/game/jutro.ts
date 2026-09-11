@@ -17,19 +17,19 @@ export type JutarnjiPosao = {
 };
 
 const REC_KATA = [
-  (n: number) => `Meso nestaje. Zavrti ${n} puta.`,
-  (n: number) => `Lov je prazan. Zavrti ${n} puta.`,
-  (n: number) => `Kotao čeka. Zavrti ${n} puta.`,
+  (n: number) => `Knjiga čeka. Zavrti ${n} puta.`,
+  (n: number) => `Kolo je gladno. Zavrti ${n} puta.`,
+  (n: number) => `Prašina. Zavrti ${n} puta.`,
 ];
 const REC_IVO = [
-  (n: number) => `Krov čeka. Donesi ${n} drva.`,
-  (n: number) => `Greda je kratka. Donesi ${n} drva.`,
-  (n: number) => `Čekić je spreman. Donesi ${n} drva.`,
+  (n: number) => `Tor treba dasku. Donesi ${n} drva.`,
+  (n: number) => `Cisterna čeka gredu. Donesi ${n} drva.`,
+  (n: number) => `Krov i tor. Donesi ${n} drva.`,
 ];
 const REC_BORO = [
-  () => "Netko hoda oko bunara. Posjeti tabor.",
-  () => "Trag u prašini. Posjeti tabor.",
-  () => "Pljačka njuši. Posjeti tabor.",
+  () => "Krdo njuši tor. Posjeti tabor.",
+  () => "Kiša na cisterne. Posjeti tabor.",
+  () => "Staza i salun. Posjeti tabor.",
 ];
 
 function danBroj(dan: string) {

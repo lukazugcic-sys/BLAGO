@@ -230,6 +230,9 @@ function snimkaTabora(): TaborSnimka {
     konjiBroj: s.konjiBroj,
     konjiDuznost: s.konjiDuznost,
     sijenoDo: s.sijenoDo,
+    kisaDo: s.kisaDo,
+    govedaBroj: s.govedaBroj,
+    govedaDuznost: s.govedaDuznost,
   });
   const mood = raspolozenjeKaube(kauba);
   const kat = kategorijaKaube(kauba.ljudi);
@@ -752,6 +755,9 @@ export function LiveProvider({
             konjiBroj: s.konjiBroj,
             konjiDuznost: s.konjiDuznost,
             sijenoDo: s.sijenoDo,
+            kisaDo: s.kisaDo,
+            govedaBroj: s.govedaBroj,
+            govedaDuznost: s.govedaDuznost,
           }),
         ).id,
         kat: kategorijaKaube(s.stanovnici).naziv,

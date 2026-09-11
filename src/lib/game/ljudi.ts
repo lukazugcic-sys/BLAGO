@@ -1,5 +1,5 @@
 import type { Gradevine, Gradnja, Karavana, Ostecenja, Resursi } from "@/lib/game/types";
-import { POKRICE, izracunajKauba, konjaKap, type KaubaDuznost, type KaubaExtra } from "./economy";
+import { POKRICE, izracunajKauba, konjaKap, type KaubaDuznost, type KaubaExtra, type GovedoDuznost } from "./economy";
 
 export type LikAlat = "sjekira" | "kosar" | "kanta" | "casa" | "cekic" | "kruh" | "zvezda" | "uzda" | "torba" | "prazno";
 export type LikHub = "krov" | "jelo" | "voda" | "zabava" | "posao" | "red" | "konji" | "zdravlje";
@@ -19,8 +19,24 @@ export type Stanovnik = {
   mane: string[];
 };
 
+export const GLAVNI_ID = ["boro", "kata", "ivo", "mara", "mile"] as const;
+
+export function jeGlavni(id: string) {
+  return (GLAVNI_ID as readonly string[]).includes(id);
+}
+
+export function poredajGlavne<T extends { id: string }>(list: T[]): T[] {
+  return [...list].sort((a, b) => {
+    const ga = (GLAVNI_ID as readonly string[]).indexOf(a.id);
+    const gb = (GLAVNI_ID as readonly string[]).indexOf(b.id);
+    if (ga < 0 && gb < 0) return 0;
+    if (ga < 0) return 1;
+    if (gb < 0) return -1;
+    return ga - gb;
+  });
+}
+export const LIK_XP_PO_LV = 96;
 export const LIK_MAX_RAZINA = 20;
-export const LIK_XP_PO_LV = 40;
 
 export type LikBuffSto = "brzina" | "obrana" | "sreca" | "plijen" | "red" | "rad" | "konj";
 
@@ -76,8 +92,13 @@ const POOL: LikPredlozak[] = [
   { id: "tena", ime: "Tena", spol: "z", posao: "Kaubojka", hub: "konji", alat: "uzda", rec: "Jaše prije doručka.", startBuff: "cvrsto-sedlo" },
   { id: "andrija", ime: "Andrija", spol: "m", posao: "Jahač", hub: "konji", alat: "uzda", rec: "Prašina mu je kuća.", startBuff: "prasina-u-krvi" },
   { id: "vlado", ime: "Vlado", spol: "m", posao: "Farmer", hub: "jelo", alat: "kosar", rec: "Žito ne laže. On ništa.", startBuff: "jaka-leda" },
+  { id: "sima", ime: "Sima", spol: "m", posao: "Gazda", hub: "jelo", alat: "uzda", rec: "Krdo sluša. Ljudi manje. Firma je tijesna.", startBuff: "jaka-leda" },
+  { id: "mito", ime: "Mito", spol: "m", posao: "Referent", hub: "jelo", alat: "torba", rec: "Broji grla. Plaća tanka. Firma ga jede.", startMana: "prazan-dzep" },
+  { id: "luka", ime: "Luka", spol: "m", posao: "Gonič", hub: "jelo", alat: "uzda", rec: "Tjera prašinu. I goveda.", startBuff: "prasina-u-krvi" },
   { id: "jure", ime: "Jure", spol: "m", posao: "Klesar", hub: "posao", alat: "cekic", rec: "Kamen sluša samo njega.", startBuff: "tesarski-udar" },
   { id: "ruza", ime: "Ruža", spol: "z", posao: "Liječnica", hub: "zdravlje", alat: "torba", rec: "Rana priča. Ona sluša.", startBuff: "mirna-ruka" },
+  { id: "zora", ime: "Zora", spol: "z", posao: "Travarica", hub: "zdravlje", alat: "kosar", rec: "Bere travu. Rana čeka nju.", startBuff: "mirna-ruka" },
+  { id: "karlo", ime: "Karlo", spol: "m", posao: "Cisternar", hub: "voda", alat: "kanta", rec: "Kiša mu je bunar. Krov hvata.", startBuff: "jaka-leda" },
   { id: "luce", ime: "Luce", spol: "z", posao: "Pekarica", hub: "jelo", alat: "kruh", rec: "Kruh ide iz ruke u ruku." },
   { id: "bozo", ime: "Božo", spol: "m", posao: "Kauboj", hub: "konji", alat: "uzda", rec: "Sedlo ne skida.", startBuff: "cvrsto-sedlo", startMana: "glasna-usta" },
   { id: "simun", ime: "Šime", spol: "m", posao: "Trgovac", hub: "posao", alat: "torba", rec: "Cijena je zakon. On piše zakon.", startBuff: "puna-torba" },
@@ -98,7 +119,7 @@ const POOL: LikPredlozak[] = [
   { id: "mate", ime: "Mate", spol: "m", posao: "Lovac", hub: "jelo", alat: "kosar", rec: "Trag čita bolje od mape.", startBuff: "lovacki-njuh" },
   { id: "bara", ime: "Bara", spol: "z", posao: "Vodarica", hub: "voda", alat: "kanta", rec: "Bunar joj šapće." },
   { id: "jozo", ime: "Jozo", spol: "m", posao: "Rudar", hub: "posao", alat: "cekic", rec: "Željezo mu je u dlanu." },
-  { id: "tonka", ime: "Tonka", spol: "z", posao: "Krupije", hub: "zabava", alat: "casa", rec: "Faro miješa bez treptaja.", startBuff: "sretan-dlan", startMana: "crna-sreca" },
+  { id: "tonka", ime: "Tonka", spol: "z", posao: "Djeliteljica", hub: "zabava", alat: "casa", rec: "Asove dijeli bez treptaja.", startBuff: "sretan-dlan", startMana: "crna-sreca" },
   { id: "ante", ime: "Ante", spol: "m", posao: "Tesar", hub: "krov", alat: "sjekira", rec: "Greda mora sjediti ravno.", startBuff: "tesarski-udar" },
   { id: "ika", ime: "Ika", spol: "z", posao: "Lovačica", hub: "jelo", alat: "kosar", rec: "Puška je lakša od brige.", startBuff: "ostro-oko" },
 ];
@@ -113,8 +134,13 @@ export const LIK_CRTE: Record<string, string> = {
   tena: "Prašina joj je parfem.",
   andrija: "Put bez sedla nije put.",
   vlado: "Žito zna kad kiša laže.",
+  sima: "Krdo zna tko je gazda. Firma ne.",
+  mito: "Broji. Šuti. Plaća ne stiže.",
+  luka: "Tjera dok prašina stane.",
   jure: "Kamen mu je brat. Tiši od brata.",
   ruza: "Rana ne čeka. Ni ona.",
+  zora: "Trava zna ime rane.",
+  karlo: "Kiša mu je bunar.",
   luce: "Tijesto sluša toplinu ruke.",
   bozo: "Glas prvi. Pamet druga.",
   simun: "Broji brže nego što diše.",
@@ -151,6 +177,12 @@ export function likCrta(p: Stanovnik) {
 
 export function razinaLika(xp: number) {
   return Math.min(LIK_MAX_RAZINA, 1 + Math.floor(Math.max(0, xp) / LIK_XP_PO_LV));
+}
+
+export function likXpPostotak(p: { xp: number; razina: number }) {
+  if (p.razina >= LIK_MAX_RAZINA) return 100;
+  const od = (p.razina - 1) * LIK_XP_PO_LV;
+  return Math.max(0, Math.min(100, ((p.xp - od) / LIK_XP_PO_LV) * 100));
 }
 
 function hash(s: string) {
@@ -226,7 +258,7 @@ export function recNovaMana(stari: Stanovnik, novi: Stanovnik) {
 export function dodajXpLiku(p: Stanovnik, n: number): Stanovnik {
   const xp = Math.max(0, p.xp + n);
   const stara = p.razina;
-  const nova = razinaLika(xp);
+  const nova = Math.min(LIK_MAX_RAZINA, Math.max(stara, razinaLika(xp)));
   const buffovi = [...(p.buffovi ?? [])];
   const mane = [...(p.mane ?? [])];
   if (nova > stara) {
@@ -346,6 +378,7 @@ export function uskladiSegrte(segrti: Segrt[], igracRazina: number): Segrt[] {
 
 export const ZAMJENIK_MAX = 2;
 export const ZAMJENIK_RED = 8;
+export const CELIJA_RED = 6;
 
 export function kaubaSaRedom(
   g: Gradevine,
@@ -353,7 +386,7 @@ export function kaubaSaRedom(
   zamjenici: { spreman?: boolean }[] = [],
   extra?: Omit<KaubaExtra, "red">,
 ) {
-  const red = zamjenici.filter((z) => z.spreman).length * ZAMJENIK_RED;
+  const red = zamjenici.filter((z) => z.spreman).length * ZAMJENIK_RED + Math.max(0, extra?.celija ?? 0) * CELIJA_RED;
   return izracunajKauba(g, n, { ...extra, red });
 }
 
@@ -364,11 +397,19 @@ export function kaubaOd(s: {
   konjiBroj?: number;
   konjiDuznost?: KaubaDuznost;
   sijenoDo?: number;
+  kisaDo?: number;
+  govedaBroj?: number;
+  govedaDuznost?: GovedoDuznost;
+  celijaBroj?: number;
 }) {
   return kaubaSaRedom(s.gradevine, s.stanovnici, s.zamjenici ?? [], {
     konjiBroj: s.konjiBroj,
     duznost: s.konjiDuznost,
     sijeno: (s.sijenoDo ?? 0) > Date.now(),
+    kisa: (s.kisaDo ?? 0) > Date.now(),
+    govedaBroj: s.govedaBroj,
+    govedaDuznost: s.govedaDuznost,
+    celija: s.celijaBroj,
   });
 }
 
@@ -544,7 +585,7 @@ export function recapOdlazak(p: Stanovnik, usko?: string) {
             : usko === "konji"
               ? "Nema konja."
               : usko === "zdravlje"
-                ? "Nema doktora."
+                ? "Nema lijeka."
                 : "Kaubi je tijesno.";
   return p.spol === "z" ? `${p.ime} je otišla. ${razlog}` : `${p.ime} je otišao. ${razlog}`;
 }
@@ -557,17 +598,21 @@ const ZGRADA_AKUZATIV: Record<keyof Gradevine, string> = {
   blok: "zgradu",
   salun: "salun",
   bunar: "bunar",
+  cisterna: "cisternu",
   mlin: "mlin",
   lov: "lov",
   mesnica: "mesnicu",
   pekara: "pekarnu",
-  karte: "faro stol",
+  karte: "stol za asove",
   ured: "ured",
   staja: "staju",
-  korali: "korale",
+  korali: "ispust",
   staza: "stazu",
   farma: "farmu",
+  tor: "tor",
   ordinacija: "ordinaciju",
+  travar: "travara",
+  banja: "banju",
   trgovina: "trgovinu",
   banka: "banku",
 };
@@ -580,6 +625,7 @@ const ZGRADA_LOKATIV: Record<keyof Gradevine, string> = {
   blok: "zgradi",
   salun: "salunu",
   bunar: "bunaru",
+  cisterna: "cisterni",
   mlin: "mlinu",
   lov: "lovu",
   mesnica: "mesnici",
@@ -590,12 +636,15 @@ const ZGRADA_LOKATIV: Record<keyof Gradevine, string> = {
   korali: "koralima",
   staza: "stazi",
   farma: "farmi",
+  tor: "toru",
   ordinacija: "ordinaciji",
+  travar: "travaru",
+  banja: "banji",
   trgovina: "trgovini",
   banka: "banci",
 };
 
-const ZGRADA_ZENSKA = new Set<keyof Gradevine>(["pilana", "kuca", "blok", "mesnica", "pekara", "staja", "staza", "farma", "ordinacija", "trgovina", "banka"]);
+const ZGRADA_ZENSKA = new Set<keyof Gradevine>(["pilana", "kuca", "blok", "mesnica", "pekara", "staja", "staza", "farma", "ordinacija", "banja", "cisterna", "trgovina", "banka"]);
 
 export function zgradaAkuzativ(id: keyof Gradevine) {
   return ZGRADA_AKUZATIV[id];
@@ -715,12 +764,16 @@ export function radnoMjesto(p: Stanovnik): keyof Gradevine {
   if (p.posao === "Mesarica") return "mesnica";
   if (p.posao === "Pekarica") return "pekara";
   if (p.posao === "Farmer") return "farma";
-  if (p.posao === "Liječnica" || p.hub === "zdravlje") return "ordinacija";
+  if (p.posao === "Gazda" || p.posao === "Gonič" || p.posao === "Referent") return "tor";
+  if (p.posao === "Liječnica") return "ordinacija";
+  if (p.posao === "Travarica") return "travar";
+  if (p.hub === "zdravlje") return "ordinacija";
   if (p.posao === "Trgovac") return "trgovina";
   if (p.posao === "Bankar") return "banka";
+  if (p.posao === "Cisternar") return "cisterna";
   if (p.posao === "Vodonoša" || p.posao === "Vodarica") return "bunar";
   if (p.posao === "Mlinar") return "mlin";
-  if (p.posao === "Gostioničarka" || p.posao === "Pjevačica" || p.posao === "Krupije") return "salun";
+  if (p.posao === "Gostioničarka" || p.posao === "Pjevačica" || p.posao === "Djeliteljica" || p.posao === "Krupije") return "salun";
   if (p.posao === "Pilar") return "pilana";
   if (p.posao === "Klesar") return "kamenolom";
   if (p.posao === "Rudar") return "rudnik";
@@ -836,13 +889,14 @@ export function ljudiUZgradi(
 
 export function recOsoba(p: Stanovnik, mood: string) {
   if (mood === "glad") return p.hub === "jelo" ? `${p.ime}: kuhinja je prazna.` : `${p.ime}: želudac vrije.`;
-  if (mood === "susa") return p.hub === "voda" ? `${p.ime}: bunar šuti.` : `${p.ime}: grlo je suho.`;
+  if (mood === "susa") return p.hub === "voda" ? `${p.ime}: nema kapi.` : `${p.ime}: grlo je suho.`;
   if (mood === "nered") return p.posao === "Šerif" || p.posao === "Zamjenik" ? `${p.ime}: red puca.` : `${p.ime}: noć je glasna.`;
   if (mood === "tiho" || mood === "dosada") return p.hub === "zabava" ? `${p.ime}: salun zijeva.` : `${p.ime}: tišina bode.`;
   if (mood === "dokolica" || mood === "posao") return `${p.ime}: ruke vise. Daj posao.`;
   if (mood === "krov") return `${p.ime}: krov prokišnjava.`;
   if (mood === "pjeske") return p.hub === "konji" ? `${p.ime}: staja je prazna.` : `${p.ime}: kauboj pješke nije kauboj.`;
-  if (mood === "bolesno") return p.hub === "zdravlje" ? `${p.ime}: ordinacija je prazna.` : `${p.ime}: kašalj ide ulicom.`;
+  if (mood === "bolesno") return p.hub === "zdravlje" ? `${p.ime}: nema trave ni rane.` : `${p.ime}: kašalj ide ulicom.`;
+  if (p.posao === "Referent") return `${p.ime}: plaća tanka. Gazda hoće još.`;
   return p.rec;
 }
 
@@ -889,7 +943,15 @@ export function razgovor(
   if (unutra && zgrada === "korali") return { rec: `${p.ime} broji grla.`, dar };
   if (unutra && zgrada === "staza") return { rec: `${p.ime} mjeri stazu.`, dar };
   if (unutra && zgrada === "ordinacija") return { rec: `${p.ime} zavija ruku.`, dar };
+  if (unutra && zgrada === "cisterna") return { rec: `${p.ime} gleda nebo.`, dar };
+  if (unutra && zgrada === "travar") return { rec: `${p.ime} bere travu.`, dar };
+  if (unutra && zgrada === "banja") return { rec: `${p.ime} pere prašinu.`, dar };
   if (unutra && zgrada === "farma") return { rec: `${p.ime} gleda žito.`, dar };
+  if (unutra && zgrada === "tor") {
+    if (p.posao === "Gazda") return { rec: `${p.ime}: firma mora rasti. Koža pa šta.`, dar };
+    if (p.posao === "Referent") return { rec: `${p.ime} broji. Plaća stoji. Šuti.`, dar };
+    return { rec: `${p.ime} broji krdo. Koža je tijesna.`, dar };
+  }
   if (unutra && zgrada === "trgovina") return { rec: `${p.ime} broji vreće.`, dar };
   if (unutra && zgrada === "banka") return { rec: `${p.ime} čuva ključ.`, dar };
   if (unutra && zgrada) {
@@ -928,10 +990,16 @@ const TIP_HUB: Record<string, LikHub> = {
   mesnica: "jelo",
   pekara: "jelo",
   farma: "jelo",
+  tor: "jelo",
+  govedo: "jelo",
   bunar: "voda",
+  cisterna: "voda",
+  kisa: "voda",
   mlin: "voda",
   salun: "zabava",
   karte: "zabava",
+  dvadesetjedan: "zabava",
+  knjiga: "zabava",
   spin: "zabava",
   luckySpin: "zabava",
   dobitak: "zabava",
@@ -947,12 +1015,16 @@ const TIP_HUB: Record<string, LikHub> = {
   staja: "konji",
   korali: "konji",
   staza: "konji",
+  utrka: "konji",
   ordinacija: "zdravlje",
+  travar: "zdravlje",
+  banja: "zdravlje",
 };
 
 export function tkoZaNalog(ljudi: Stanovnik[], tip: string) {
   if (tip === "ured") return serif(ljudi);
-  if (tip === "ordinacija") return doktor(ljudi) ?? ljudi[0] ?? null;
+  if (tip === "ordinacija" || tip === "travar" || tip === "banja") return doktor(ljudi) ?? ljudi[0] ?? null;
+  if (tip === "tor" || tip === "govedo") return ljudi.find((p) => p.posao === "Gazda" || p.posao === "Referent" || p.posao === "Gonič") ?? ljudi.find((p) => p.hub === "jelo") ?? ljudi[0] ?? null;
   if (tip === "kuca" || tip === "blok" || tip === "zgrada" || tip === "ljudi") return majstor(ljudi);
   const hub = TIP_HUB[tip];
   if (hub) return ljudi.find((p) => p.hub === hub) ?? ljudi[0] ?? null;
@@ -968,6 +1040,11 @@ export function nalogOd(p: Stanovnik, tip: string, cilj: number) {
   if (tip === "ljudi") return `Dovedi ${cilj} ljudi.`;
   if (tip === "oprema") return "Kupi alat.";
   if (tip === "zgrada") return "Podigni zgradu.";
+  if (tip === "knjiga") return "Skupi tri knjige u prašini.";
+  if (tip === "govedo") return "Uzmi govedo u tor.";
+  if (tip === "kisa") return "Skupi kišu s cisterne.";
+  if (tip === "dvadesetjedan") return "Sjedni na blackjack.";
+  if (tip === "utrka") return "Trči konja na stazi.";
   const zid = tip as keyof Gradevine;
   if (ZGRADA_AKUZATIV[zid]) {
     const ime = zid === "ured" ? "šerifov ured" : zgradaAkuzativ(zid);
@@ -977,5 +1054,5 @@ export function nalogOd(p: Stanovnik, tip: string, cilj: number) {
 }
 
 export function mozeKrupije(p: Stanovnik) {
-  return p.hub === "zabava" || p.posao === "Krupije" || p.posao === "Gostioničarka";
+  return p.hub === "zabava" || p.posao === "Djeliteljica" || p.posao === "Krupije" || p.posao === "Gostioničarka";
 }

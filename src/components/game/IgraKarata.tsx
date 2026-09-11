@@ -84,14 +84,14 @@ export function IgraKarata() {
         const d = faroDobitak(u, karteLv);
         useGameStore.setState((s) => ({
           zlato: s.zlato - u + d + bonus,
-          poruka: krupije ? `FARO +${d - u + bonus}. ${krupije.ime} miješa.` : `FARO +${d - u} ZLATA`,
+          poruka: krupije ? `ASOVI +${d - u + bonus}. ${krupije.ime} dijeli.` : `ASOVI +${d - u} ZLATA`,
         }));
         useGameStore.getState().azurirajMisiju("zlato", d - u + bonus);
       } else {
         playSfx("skull");
         useGameStore.setState((s) => ({
           zlato: s.zlato - u,
-          poruka: u >= Math.floor(s.zlato) ? "FARO — sve u prašinu." : "FARO — promašaj",
+          poruka: u >= Math.floor(s.zlato) ? "ASOVI — sve u prašinu." : "ASOVI — promašaj",
         }));
       }
     }, 720);
@@ -111,7 +111,7 @@ export function IgraKarata() {
       <div className="p-4 pt-2">
         <div className="mb-3 flex items-end justify-between gap-2">
           <div>
-            <h3 className="text-sm font-bold tracking-widest text-gold uppercase">Faro</h3>
+            <h3 className="text-sm font-bold tracking-widest text-gold uppercase">Asovi</h3>
             <p className="mt-0.5 text-xs font-semibold text-dim">
               {salun < 1
                 ? "Otvori salun pa igraj."
@@ -147,7 +147,7 @@ export function IgraKarata() {
         </div>
         {kandidati.length > 0 && (
           <div className="mb-3">
-            <p className="mb-1 text-[10px] font-bold tracking-wide text-dim uppercase">Krupije</p>
+            <p className="mb-1 text-[10px] font-bold tracking-wide text-dim uppercase">Djelitelj</p>
             <div className="flex flex-wrap gap-1">
               <button
                 type="button"

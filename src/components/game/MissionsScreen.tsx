@@ -4,63 +4,51 @@ import { MissionCard } from "./MissionCard";
 import { DailyStreakCard } from "./DailyRewardModal";
 import { JutroPopis } from "./JutroSheet";
 import { NagradaPikseli } from "./NagradaPikseli";
+import { KaravanaIgra } from "./KaravanaIgra";
+import { ScreenTabs } from "./ScreenTabs";
 import { DOSTIGNUCA, napredakDostignuca, snapshotDostignuca } from "@/lib/game/dostignuca";
 import { SYMBOL_ART } from "@/lib/game/art";
 import { IconBadge } from "./IconBadge";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
+const TABOVI = [
+  { id: "karavana", label: "Karavana" },
+  { id: "nalozi", label: "Nalozi" },
+  { id: "zvijezde", label: "Zvijezde" },
+] as const;
+
 export function MissionsScreen() {
-  const [prikazDostignuca, setPrikazDostignuca] = useState(false);
+  const [tab, setTab] = useState<(typeof TABOVI)[number]["id"]>("karavana");
   const misije = useGameStore((s) => s.misije);
 
   const spremni = misije.filter((m) => m.trenutno >= m.cilj).length;
-  const red = [...misije].sort((a, b) => Number(b.trenutno >= b.cilj) - Number(a.trenutno >= a.cilj));
+  const red = [...misije].sort((a, b) => Number(a.trenutno >= a.cilj) - Number(b.trenutno >= b.cilj));
 
   return (
-    <div className="mx-auto w-full max-w-lg px-3 pb-8 pt-2">
-      <div className="mb-3 flex rounded-xl border border-line bg-panel p-1">
-        <button
-          type="button"
-          onClick={() => setPrikazDostignuca(false)}
-          className={cn(
-            "min-h-11 flex-1 rounded-lg text-xs font-bold tracking-wide",
-            !prikazDostignuca ? "bg-ink/10 text-quest" : "text-dim",
-          )}
-        >
-          NALOZI
-        </button>
-        <button
-          type="button"
-          onClick={() => setPrikazDostignuca(true)}
-          className={cn(
-            "min-h-11 flex-1 rounded-lg text-xs font-bold tracking-wide",
-            prikazDostignuca ? "bg-ink/10 text-gold" : "text-dim",
-          )}
-        >
-          ZVIJEZDE
-        </button>
-      </div>
-
-      {!prikazDostignuca ? (
-        <>
-          <JutroPopis />
-          <div className="mb-2 flex items-end justify-between gap-2">
-            <h2 className="ml-1 text-sm font-bold tracking-widest text-ink uppercase">Nalozi</h2>
-            <p className="text-[11px] font-bold tabular-nums text-quest">
-              {spremni > 0 ? `${spremni} spremno` : `${misije.length} u tijeku`}
-            </p>
-          </div>
-          {red.map((m, i) => (
-            <div key={`${m.id}-${m.tip}-${m.cilj}`} className="hub-kartica" style={{ animationDelay: `${i * 50}ms` }}>
-              <MissionCard misija={m} />
+    <div className="mx-auto flex h-full min-h-0 w-full max-w-lg flex-col px-3 pt-2">
+      <div className="min-h-0 flex-1 overflow-y-auto pb-2">
+        {tab === "karavana" && <KaravanaIgra />}
+        {tab === "nalozi" && (
+          <>
+            <JutroPopis />
+            <div className="mb-2 flex items-end justify-between gap-2">
+              <h2 className="ml-1 text-sm font-bold tracking-widest text-ink uppercase">Nalozi</h2>
+              <p className="text-[11px] font-bold tabular-nums text-quest">
+                {spremni > 0 ? `${spremni} spremno` : `${misije.length} u tijeku`}
+              </p>
             </div>
-          ))}
-          <DailyStreakCard />
-        </>
-      ) : (
-        <ZvijezdeLista />
-      )}
+            {red.map((m, i) => (
+              <div key={`${m.id}-${m.tip}-${m.cilj}`} className="hub-kartica" style={{ animationDelay: `${i * 50}ms` }}>
+                <MissionCard misija={m} />
+              </div>
+            ))}
+            <DailyStreakCard />
+          </>
+        )}
+        {tab === "zvijezde" && <ZvijezdeLista />}
+      </div>
+      <ScreenTabs tabs={TABOVI} value={tab} onChange={setTab} dolje />
     </div>
   );
 }

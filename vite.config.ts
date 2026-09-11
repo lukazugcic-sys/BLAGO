@@ -148,19 +148,28 @@ function downloadHeadersPlugin(): Plugin {
     "/BLAGO-android.zip": ["application/zip", "BLAGO-android.zip"],
     "/BLAGO-github.zip": ["application/zip", "BLAGO-github.zip"],
   };
+  const mw = (
+    req: { url?: string },
+    res: { setHeader: (k: string, v: string) => void },
+    next: () => void,
+  ) => {
+    const pathOnly = (req.url ?? "").split("?", 1)[0] ?? "";
+    const hit = files[pathOnly];
+    if (hit) {
+      res.setHeader("Content-Type", hit[0]);
+      res.setHeader("Content-Disposition", `attachment; filename="${hit[1]}"`);
+      res.setHeader("Cache-Control", "no-store");
+    }
+    next();
+  };
   return {
     name: "blago-download-headers",
     apply: "serve",
     configureServer(server) {
-      server.middlewares.use((req, res, next) => {
-        const pathOnly = (req.url ?? "").split("?", 1)[0] ?? "";
-        const hit = files[pathOnly];
-        if (hit) {
-          res.setHeader("Content-Type", hit[0]);
-          res.setHeader("Content-Disposition", `attachment; filename="${hit[1]}"`);
-        }
-        next();
-      });
+      server.middlewares.use(mw);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(mw);
     },
   };
 }

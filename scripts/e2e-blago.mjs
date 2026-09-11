@@ -45,13 +45,14 @@ try {
   }
 
   await page.getByLabel("Kauba").click();
-  await page.getByText("Krov").first().waitFor({ state: "visible" });
+  await page.getByText("Smještaj").first().waitFor({ state: "visible" });
   ok("selo");
 
   await page.getByLabel("Tržnica").click();
   await page.getByText("PRODAJ").first().waitFor({ state: "visible" });
   ok("trznica");
 
+  await page.getByLabel("Izbornik").click();
   await page.getByLabel("Beta info").click();
   await page.getByRole("button", { name: "Pokreni auto-test" }).click();
   await page.getByText(/Auto-test \d+\/\d+/).waitFor({ state: "visible" });
