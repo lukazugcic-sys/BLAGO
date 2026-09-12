@@ -43,13 +43,21 @@ export function ScreenTabs<T extends string>({
               onChange(t.id);
             }}
             className={cn(
-              "relative min-h-10 flex-1 rounded-lg text-xs font-bold tracking-wide uppercase transition-colors duration-150",
-              aktivan ? "bg-gold/20 text-gold" : zakljucan ? "text-dim/55" : "text-dim",
+              "relative min-h-10 flex-1 rounded-lg text-xs font-bold tracking-wide uppercase transition-[colors,opacity] duration-150",
+              aktivan
+                ? "bg-gold/20 text-gold"
+                : zakljucan
+                  ? "text-dim/50 opacity-75"
+                  : "text-dim",
             )}
             aria-disabled={zakljucan || undefined}
           >
             <span className="inline-flex items-center justify-center gap-1">
-              {zakljucan && <Lock className="size-3 shrink-0 opacity-80" strokeWidth={2.6} />}
+              {zakljucan && (
+                <span className="inline-flex size-3.5 items-center justify-center rounded-full bg-void/40 text-gold/70">
+                  <Lock className="size-2.5 shrink-0" strokeWidth={2.8} />
+                </span>
+              )}
               {t.label}
             </span>
           </button>

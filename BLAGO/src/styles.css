@@ -103,6 +103,8 @@
   .reel-win,
   .reel-skull,
   .reel-land,
+  .reel-spinning,
+  .chip-ime,
   .screen-shake,
   .screen-shake-hard,
   .screen-shake-skull,
@@ -129,16 +131,14 @@
 
 @keyframes reel-cycle {
   0% {
-    transform: translateY(-8%);
-    opacity: 0.55;
-  }
-  50% {
-    transform: translateY(8%);
-    opacity: 0.85;
+    transform: translate3d(0, -42%, 0) scaleY(1.06);
+    filter: blur(1.4px) brightness(1.08);
+    opacity: 0.42;
   }
   100% {
-    transform: translateY(-8%);
-    opacity: 0.55;
+    transform: translate3d(0, 42%, 0) scaleY(1.06);
+    filter: blur(1.4px) brightness(1.08);
+    opacity: 0.78;
   }
 }
 
@@ -147,8 +147,11 @@
   100% {
     transform: scale(1);
   }
-  45% {
-    transform: scale(1.12);
+  35% {
+    transform: scale(1.14);
+  }
+  62% {
+    transform: scale(1.06);
   }
 }
 
@@ -256,7 +259,8 @@
 }
 
 .reel-spinning {
-  animation: reel-cycle 0.09s linear infinite;
+  animation: reel-cycle var(--reel-spd, 0.11s) linear infinite;
+  will-change: transform, filter, opacity;
 }
 
 .slot-token {
@@ -495,7 +499,7 @@ html.hitstop .slot-token,
 }
 
 .pager-track {
-  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 380ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .atmosphere {
@@ -2560,18 +2564,24 @@ html.hitstop .slot-token,
 }
 
 .reel-land {
-  animation: land-thump 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: land-thump 0.44s cubic-bezier(0.22, 1.28, 0.36, 1);
 }
 
 @keyframes land-thump {
   0% {
-    transform: translateY(-12px);
+    transform: translateY(-16px);
+    filter: blur(1.1px);
   }
-  62% {
-    transform: translateY(4px);
+  58% {
+    transform: translateY(5px);
+    filter: blur(0);
+  }
+  78% {
+    transform: translateY(-2px);
   }
   100% {
     transform: translateY(0);
+    filter: none;
   }
 }
 
@@ -3816,6 +3826,19 @@ html.hitstop .slot-token,
 .header-chip {
   position: relative;
   overflow: visible;
+}
+.chip-ime {
+  transition:
+    opacity 180ms ease,
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.chip-ime-on {
+  opacity: 1;
+  transform: translateY(0);
+}
+.chip-ime-off {
+  opacity: 0;
+  transform: translateY(3px);
 }
 .potreba-traka {
   transition: width 420ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -5959,6 +5982,48 @@ html.hitstop .slot-token,
 }
 .video-loop-skrit {
   opacity: 0;
+}
+
+
+/* —— Automata HUD polish (2nd pass) —— */
+.slot-hud-vrh {
+  max-width: 100%;
+}
+.slot-hud-vrh > :empty {
+  display: none;
+}
+.energija-hud {
+  position: relative;
+}
+.energija-traka {
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.35);
+}
+.energija-cta {
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--color-energy) 18%, transparent);
+}
+.cilj-kartica {
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--color-gold) 7%, var(--color-panel)) 0%,
+    var(--color-panel) 42%
+  );
+}
+.cilj-traka {
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.3);
+}
+.side-gate {
+  backdrop-filter: blur(2px);
+}
+.ulozi-red {
+  gap: 0.3rem;
+  padding: 0.05rem 0.05rem 0.15rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cilj-traka > div,
+  .energija-traka > div {
+    transition: none !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

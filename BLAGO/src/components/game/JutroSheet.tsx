@@ -187,7 +187,7 @@ export function JutroTraka({ naTab }: { naTab?: (id: "automat" | "selo") => void
           playSfx("button");
           otvori();
         }}
-        className="flex w-full items-center gap-2 rounded-2xl border border-quest/40 bg-quest/10 px-3 py-2 text-left"
+        className="flex w-full items-center gap-2 rounded-xl border border-quest/35 bg-quest/10 px-2.5 py-1.5 text-left"
       >
         <span className="flex -space-x-1.5">
           {jutro.map((p) => {
@@ -220,7 +220,7 @@ export function JutroTraka({ naTab }: { naTab?: (id: "automat" | "selo") => void
         playSfx("button");
         otvori();
       }}
-      className="flex w-full items-center gap-2 rounded-2xl border border-gold/40 bg-gold/10 px-3 py-2 text-left"
+      className="flex w-full items-center gap-2 rounded-xl border border-gold/35 bg-gold/10 px-2.5 py-1.5 text-left"
     >
       <span className="flex -space-x-1.5">
         {jutro.map((p) => {
