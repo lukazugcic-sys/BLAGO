@@ -167,19 +167,18 @@ export function SlotScreen() {
       const ul = useSlotStore.getState().ulog;
       const free = gs.luckySpinCounter === 1 || gs.besplatneVrtnje > 0;
       const tickAt = gs.zadnjaEnergijaTick || now;
-      if (free || e >= ul) {
-        setEtaMs(0);
-      } else {
-        setEtaMs(etaDoEnergije(e, ul, tickAt, rMs, now));
-      }
-      if (free || e >= 1) {
-        setEtaJednaMs(0);
-      } else {
-        setEtaJednaMs(etaDoEnergije(e, 1, tickAt, rMs, now));
-      }
+      // Round to whole seconds so setState bails when the HUD second is unchanged
+      const nextEta =
+        free || e >= ul ? 0 : Math.ceil(etaDoEnergije(e, ul, tickAt, rMs, now) / 1000) * 1000;
+      const nextJedna =
+        free || e >= 1 ? 0 : Math.ceil(etaDoEnergije(e, 1, tickAt, rMs, now) / 1000) * 1000;
+      setEtaMs((p) => (p === nextEta ? p : nextEta));
+      setEtaJednaMs((p) => (p === nextJedna ? p : nextJedna));
     };
     tick();
-    const id = window.setInterval(tick, 250);
+    // No countdown UI needed when energy already covers ×1 and current ulog
+    if (jeFreeSpin || (energija >= ulog && energija >= 1)) return;
+    const id = window.setInterval(tick, 500);
     return () => window.clearInterval(id);
   }, [energija, ulog, zadnjaEnergijaTick, baterija, jeFreeSpin, besplatneVrtnje, luckySpinCounter]);
 
@@ -281,9 +280,13 @@ export function SlotScreen() {
       )}
     >
       <KnjigaIgra />
-      {!imaPlijen && !winCelebration && knjigaFaza !== "igra" && !knjigaOtvorena && <TjedanTraka />}
-      {!imaPlijen && !winCelebration && knjigaFaza !== "igra" && !knjigaOtvorena && <div className="mb-1.5"><JutroTraka /></div>}
-      {!imaPlijen && !winCelebration && knjigaFaza !== "igra" && !knjigaOtvorena && <EventBanner dogadaj={aktivniDogadaj} />}
+      {!imaPlijen && !winCelebration && knjigaFaza !== "igra" && !knjigaOtvorena && (
+        <div className="slot-hud-vrh mb-1 flex shrink-0 flex-col gap-1">
+          <TjedanTraka kompaktna />
+          <JutroTraka />
+          <EventBanner dogadaj={aktivniDogadaj} kompaktna />
+        </div>
+      )}
       {!imaPlijen && !winCelebration && knjigaFaza !== "igra" && !knjigaOtvorena && (
         <SljedeciCiljCard kompaktna />
       )}
@@ -317,7 +320,7 @@ export function SlotScreen() {
         </div>
       </div>
 
-      <div className="zavrti-traka flex w-full shrink-0 flex-col gap-1.5">
+      <div className="zavrti-traka flex w-full shrink-0 flex-col gap-1">
         {poruka && !jeSerifovaPoruka(poruka) && knjigaFaza !== "igra" && !knjigaOtvorena && (
           <p className="slot-poruka">{poruka}</p>
         )}
@@ -534,26 +537,52 @@ export function SlotScreen() {
                     : "ZAVRTI"}
           </span>
         </button>
-        <div className="mt-1 flex flex-col items-center gap-1">
-          <p
-            className={cn(
-              "text-center text-sm font-bold tabular-nums",
-              energija > maxEnergija ? "text-volt" : "text-energy",
-            )}
-            aria-label={`Energija ${formatHud(energija)} od ${formatHud(maxEnergija)}`}
-          >
-            <span className="mr-1.5 text-[10px] font-bold tracking-[0.18em] text-dim uppercase">
-              Energija
-            </span>
-            {formatHud(energija)}
-            <span className="text-dim">/{formatHud(maxEnergija)}</span>
-          </p>
-          {energijaNedostaje && (
-            <div className="flex w-full max-w-sm flex-col items-center gap-1.5">
-              <p className="text-center text-[11px] font-bold text-energy/90">
+        <div className="energija-hud mt-1 flex w-full flex-col items-center gap-1.5">
+          <div className="flex w-full max-w-sm items-end justify-between gap-2 px-1">
+            <p
+              className={cn(
+                "text-sm font-bold tabular-nums leading-none",
+                energija > maxEnergija ? "text-volt" : "text-energy",
+              )}
+              aria-label={`Energija ${formatHud(energija)} od ${formatHud(maxEnergija)}`}
+            >
+              <span className="mr-1.5 text-[9px] font-bold tracking-[0.2em] text-dim uppercase">
+                Energija
+              </span>
+              {formatHud(energija)}
+              <span className="text-dim">/{formatHud(maxEnergija)}</span>
+            </p>
+            {energijaNedostaje && (
+              <p className="text-right text-[10px] font-bold tabular-nums text-energy/85">
                 {energija <= 0
-                  ? `Puni se do ${formatHud(maxEnergija)} · ×1 za ${etaJednaMs > 0 ? formatEta(etaJednaMs) : "…"}`
-                  : `Do ×${ulog}: još ${trebaDoUloga} · ${etaMs > 0 ? formatEta(etaMs) : "…"}`}
+                  ? `×1 · ${etaJednaMs > 0 ? formatEta(etaJednaMs) : "…"}`
+                  : `Do ×${ulog} · ${etaMs > 0 ? formatEta(etaMs) : "…"}`}
+              </p>
+            )}
+          </div>
+          <div
+            className="energija-traka h-1.5 w-full max-w-sm overflow-hidden rounded-full bg-void/55"
+            role="progressbar"
+            aria-valuenow={Math.min(100, Math.round((energija / Math.max(1, maxEnergija)) * 100))}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <div
+              className={cn(
+                "h-full rounded-full transition-[width] duration-300 ease-out",
+                energijaNedostaje ? "bg-energy" : energija > maxEnergija ? "bg-volt" : "bg-gold",
+              )}
+              style={{
+                width: `${Math.min(100, Math.round((energija / Math.max(1, maxEnergija)) * 100))}%`,
+              }}
+            />
+          </div>
+          {energijaNedostaje && (
+            <div className="energija-cta flex w-full max-w-sm flex-col items-stretch gap-1 rounded-xl border border-energy/25 bg-energy/8 px-2 py-1.5">
+              <p className="text-center text-[10px] font-bold text-energy/90">
+                {energija <= 0
+                  ? `Puni se do ${formatHud(maxEnergija)}`
+                  : `Još ${trebaDoUloga} do ×${ulog}`}
               </p>
               <div className="flex flex-wrap items-center justify-center gap-1.5">
                 {smanjiNa != null && (
@@ -565,9 +594,9 @@ export function SlotScreen() {
                       setUlog(smanjiNa);
                       useGameStore.setState({ poruka: `SMANJENO NA ×${smanjiNa}` });
                     }}
-                    className="min-h-9 rounded-full border border-energy bg-energy/20 px-3 text-[11px] font-bold tracking-wide text-energy"
+                    className="min-h-9 flex-1 rounded-lg border border-energy/50 bg-energy/25 px-3 text-[11px] font-bold tracking-wide text-energy"
                   >
-                    Smanji na ×{smanjiNa} · vrti sad
+                    Smanji ×{smanjiNa}
                   </button>
                 )}
                 {jutroEnergija && (
@@ -578,9 +607,9 @@ export function SlotScreen() {
                       playSfx("button");
                       uzmiJutarnju(jutroEnergija.id);
                     }}
-                    className="min-h-9 rounded-full border border-quest bg-quest/20 px-3 text-[11px] font-bold tracking-wide text-quest"
+                    className="min-h-9 flex-1 rounded-lg border border-quest/50 bg-quest/20 px-3 text-[11px] font-bold tracking-wide text-quest"
                   >
-                    Uzmi jutro · +{jutroEnergija.nagrada.energija} energije
+                    +{jutroEnergija.nagrada.energija} jutro
                   </button>
                 )}
                 {!jutroEnergija && jutroSpremno && (
@@ -590,14 +619,14 @@ export function SlotScreen() {
                       playSfx("button");
                       otvoriJutro();
                     }}
-                    className="min-h-9 rounded-full border border-gold/50 bg-gold/15 px-3 text-[11px] font-bold tracking-wide text-gold"
+                    className="min-h-9 flex-1 rounded-lg border border-gold/40 bg-gold/15 px-3 text-[11px] font-bold tracking-wide text-gold"
                   >
-                    Jutros · nagrada čeka
+                    Jutros čeka
                   </button>
                 )}
                 {smanjiNa == null && !jutroEnergija && !jutroSpremno && (
-                  <p className="text-center text-[10px] font-bold text-dim">
-                    Vrati se za malo · ili KUPI vrtnje dijamantima
+                  <p className="w-full text-center text-[10px] font-bold text-dim">
+                    Vrati se za malo · ili KUPI vrtnje
                   </p>
                 )}
               </div>

@@ -52,20 +52,33 @@ export function AppNav({
                 onTab(t.id);
               }}
               className={cn(
-                "relative flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 py-1.5 transition-[background,color,transform] duration-200 ease-[cubic-bezier(0.34,1.4,0.64,1)] active:scale-[0.92]",
-                aktivan ? cn(COLOR[t.boja], "nav-bounce") : zakljucan ? "text-dim/50" : "text-dim",
+                "relative flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 py-1.5 transition-[background,color,transform,opacity] duration-200 ease-[cubic-bezier(0.34,1.4,0.64,1)] active:scale-[0.92]",
+                aktivan
+                  ? cn(COLOR[t.boja], "nav-bounce")
+                  : zakljucan
+                    ? "text-dim/45 opacity-70"
+                    : "text-dim",
               )}
               aria-current={aktivan ? "page" : undefined}
               aria-label={zakljucan ? `${t.label} · ${SIDE_GATE_REC}` : t.label}
             >
-              <span className={cn("nav-iko relative", aktivan ? "bg-void/18" : "bg-ink/8")}>
-                <Icon className="size-3.5 shrink-0" strokeWidth={aktivan ? 2.6 : 2} />
+              <span
+                className={cn(
+                  "nav-iko relative",
+                  aktivan ? "bg-void/18" : zakljucan ? "bg-ink/5" : "bg-ink/8",
+                )}
+              >
+                <Icon
+                  className={cn("size-3.5 shrink-0", zakljucan && !aktivan && "opacity-55")}
+                  strokeWidth={aktivan ? 2.6 : 2}
+                />
                 {zakljucan && (
-                  <Lock
-                    className="absolute -right-1.5 -top-1.5 size-2.5 text-dim"
-                    strokeWidth={3}
+                  <span
+                    className="absolute -right-1.5 -top-1.5 flex size-3.5 items-center justify-center rounded-full border border-line/50 bg-void/90 text-gold/75"
                     aria-hidden
-                  />
+                  >
+                    <Lock className="size-2" strokeWidth={3} />
+                  </span>
                 )}
               </span>
               <span className="whitespace-nowrap text-[10px] font-bold leading-none tracking-normal uppercase">

@@ -1,5 +1,5 @@
 import { Volume2, VolumeX, Maximize2, Minimize2, Crown, User, Settings } from "lucide-react";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useGameStore } from "@/lib/stores/gameStore";
 import { useLive } from "@/lib/multiplayer";
 import { AnimatedStat } from "./AnimatedStat";
@@ -11,6 +11,14 @@ import { SYMBOL_ART } from "@/lib/game/art";
 import { IconBadge } from "./IconBadge";
 import { cn } from "@/lib/utils";
 import { playSfx } from "@/lib/game/audio";
+
+const CHIP_META = [
+  { icon: SYMBOL_ART.gold, label: "zlato", fullName: "zlato" },
+  { icon: SYMBOL_ART.gem, label: "dij.", fullName: "dijamanti" },
+  { icon: SYMBOL_ART.wood, label: "drvo", fullName: "drvo" },
+  { icon: SYMBOL_ART.stone, label: "kamen", fullName: "kamen" },
+  { icon: SYMBOL_ART.iron, label: "žel.", fullName: "željezo" },
+] as const;
 
 export function Header({
   muted,
@@ -40,7 +48,10 @@ export function Header({
   const otvoriDnevnuNagradu = useGameStore((s) => s.otvoriDnevnuNagradu);
   const stitovi = useGameStore((s) => s.stitovi);
   const live = useLive();
-  const online = live.cowboys.filter((c) => c.connected).length;
+  const online = useMemo(
+    () => live.cowboys.reduce((n, c) => n + (c.connected ? 1 : 0), 0),
+    [live.cowboys],
+  );
   const [beta, setBeta] = useState(false);
   const [karta, setKarta] = useState(false);
 
@@ -165,40 +176,72 @@ export function Header({
       </div>
 
       <div className="grid grid-cols-5 gap-1">
-        <Chip value={zlato} icon={SYMBOL_ART.gold} label="zlato" />
-        <Chip value={dijamanti} icon={SYMBOL_ART.gem} label="dij." />
-        <Chip value={drvo} icon={SYMBOL_ART.wood} label="drvo" />
-        <Chip value={kamen} icon={SYMBOL_ART.stone} label="kamen" />
-        <Chip value={zeljezo} icon={SYMBOL_ART.iron} label="žel." />
+        <Chip value={zlato} {...CHIP_META[0]!} />
+        <Chip value={dijamanti} {...CHIP_META[1]!} />
+        <Chip value={drvo} {...CHIP_META[2]!} />
+        <Chip value={kamen} {...CHIP_META[3]!} />
+        <Chip value={zeljezo} {...CHIP_META[4]!} />
       </div>
       <BetaSheet open={beta} onClose={() => setBeta(false)} />
     </header>
   );
 }
 
-function Chip({
+const Chip = memo(function Chip({
   value,
   icon,
   label,
+  fullName,
 }: {
   value: number;
   icon: string;
   label: string;
+  fullName: string;
 }) {
+  const [otkriven, setOtkriven] = useState(false);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+    };
+  }, []);
+
+  const otkrij = () => {
+    setOtkriven(true);
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(() => setOtkriven(false), 1800);
+  };
+
   return (
     <AnimatedStat
       value={value}
-      className="flex h-9 min-w-0 flex-col items-center justify-center gap-0 rounded-full border border-line bg-panel px-1 py-0.5"
+      className="relative flex h-9 min-w-0 flex-col items-center justify-center gap-0 rounded-full border border-line bg-panel px-1 py-0.5"
     >
-      <span className="flex min-w-0 items-center justify-center gap-0.5" title={label} aria-label={`${label}: ${formatHud(value)}`}>
-        <IconBadge src={icon} size="xs" />
-        <span className="text-[11px] font-bold tabular-nums leading-none text-ink">
-          {formatHud(value)}
+      <button
+        type="button"
+        onClick={otkrij}
+        className="flex w-full min-w-0 flex-col items-center justify-center gap-0 rounded-full outline-none active:scale-[0.97] touch-manipulation"
+        title={fullName}
+        aria-label={`${fullName}: ${formatHud(value)}`}
+        aria-expanded={otkriven}
+      >
+        <span className="flex min-w-0 items-center justify-center gap-0.5">
+          <IconBadge src={icon} size="xs" />
+          <span className="text-[11px] font-bold tabular-nums leading-none text-ink">
+            {formatHud(value)}
+          </span>
         </span>
-      </span>
-      <span className="max-w-full truncate text-[8px] font-bold leading-none tracking-[0.1em] text-dim uppercase">
-        {label}
-      </span>
+        <span
+          className={cn(
+            "chip-ime pointer-events-none absolute inset-x-0 bottom-0 truncate text-center text-[8px] font-bold leading-none tracking-[0.1em] text-dim uppercase",
+            otkriven ? "chip-ime-on" : "chip-ime-off",
+          )}
+          aria-hidden={!otkriven}
+        >
+          {label}
+        </span>
+      </button>
     </AnimatedStat>
   );
-}
+});

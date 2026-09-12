@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { BLAGO } from "@/lib/game/constants";
 import { useSlotStore } from "@/lib/stores/slotStore";
 import { SlotSymbol } from "./SlotSymbol";
 import { cn } from "@/lib/utils";
+
+/** Per-column spin period — later columns slightly slower for stagger feel. */
+const REEL_SPD = [0, 1, 2, 3, 4].map((c) => `${(0.095 + c * 0.012).toFixed(3)}s`);
 
 function cellPt(idx: number) {
   const col = idx % 5;
@@ -27,7 +30,7 @@ function ReelCol({
   useEffect(() => {
     if (was.current && !spinning) {
       setLand(true);
-      const t = window.setTimeout(() => setLand(false), 560);
+      const t = window.setTimeout(() => setLand(false), 480);
       was.current = spinning;
       return () => window.clearTimeout(t);
     }
@@ -38,20 +41,28 @@ function ReelCol({
     <div
       className={cn("flex flex-col", compact ? "gap-1" : "gap-1.5 sm:gap-2", land && "reel-land")}
       data-col={col}
+      style={spinning ? { ["--reel-spd" as string]: REEL_SPD[col] } : undefined}
     >
       {children}
     </div>
   );
 }
 
-export function SlotReel({ compact = false }: { compact?: boolean }) {
+const ReelColMemo = memo(ReelCol);
+
+export const SlotReel = memo(function SlotReel({ compact = false }: { compact?: boolean }) {
   const simboli = useSlotStore((s) => s.simboli);
   const dobitnaPolja = useSlotStore((s) => s.dobitnaPolja);
   const expandPolja = useSlotStore((s) => s.expandPolja);
   const dobitneLinije = useSlotStore((s) => s.dobitneLinije);
   const spinningCols = useSlotStore((s) => s.spinningCols);
   const winCelebration = useSlotStore((s) => s.winCelebration);
-  const dobitakNaCekanju = useSlotStore((s) => s.dobitakNaCekanju);
+  // Primitive only — avoid re-rendering the reel on unrelated dobitak field churn
+  const winZlato = useSlotStore((s) =>
+    s.winCelebration && s.dobitakNaCekanju && s.dobitakNaCekanju.zlato > 0
+      ? s.dobitakNaCekanju.zlato
+      : 0,
+  );
   const winSet = useMemo(() => new Set(dobitnaPolja), [dobitnaPolja]);
   const expandSet = useMemo(() => new Set(expandPolja), [expandPolja]);
   const hasWinAnywhere = winSet.size > 0;
@@ -69,7 +80,7 @@ export function SlotReel({ compact = false }: { compact?: boolean }) {
     >
       <div className={cn("grid grid-cols-5", compact ? "gap-1" : "gap-1.5 sm:gap-2")}>
         {[0, 1, 2, 3, 4].map((col) => (
-          <ReelCol key={col} col={col} spinning={!!spinningCols[col]} compact={compact}>
+          <ReelColMemo key={col} col={col} spinning={!!spinningCols[col]} compact={compact}>
             {[0, 1, 2].map((row) => {
               const idx = row * 5 + col;
               const simbolId = simboli[idx] ?? "gold";
@@ -88,7 +99,7 @@ export function SlotReel({ compact = false }: { compact?: boolean }) {
                     id={simbolId}
                     win={isWin && !isSkullCell}
                     skullHit={isSkullCell}
-                    spinning={spinningCols[col]}
+                    spinning={!!spinningCols[col]}
                     expanding={isExpand}
                   />
                   {isWin && !isSkullCell && (
@@ -101,7 +112,7 @@ export function SlotReel({ compact = false }: { compact?: boolean }) {
                 </div>
               );
             })}
-          </ReelCol>
+          </ReelColMemo>
         ))}
       </div>
 
@@ -136,11 +147,11 @@ export function SlotReel({ compact = false }: { compact?: boolean }) {
 
       {skullHit && <div className="skull-cracks pointer-events-none absolute inset-0 z-[3]" aria-hidden />}
 
-      {winCelebration && dobitakNaCekanju && dobitakNaCekanju.zlato > 0 && (
+      {winZlato > 0 && (
         <div className="win-float-gold pointer-events-none absolute inset-x-0 top-[42%] z-[4] text-center font-display text-3xl tracking-widest text-gold">
-          +{dobitakNaCekanju.zlato}
+          +{winZlato}
         </div>
       )}
     </div>
   );
-}
+});

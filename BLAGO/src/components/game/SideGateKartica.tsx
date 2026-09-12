@@ -14,25 +14,29 @@ export function SideGateKartica({
   return (
     <article
       className={cn(
-        "mb-3 rounded-2xl border border-line bg-panel p-4 text-center shadow-panel",
+        "side-gate relative mb-3 overflow-hidden rounded-2xl border border-line/60 bg-panel/70 p-4 text-center shadow-panel",
         klasa,
       )}
     >
-      <span className="mx-auto mb-2 flex size-10 items-center justify-center rounded-full border border-line bg-void/60 text-dim">
-        <Lock className="size-4" strokeWidth={2.4} />
+      <span
+        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-void/25 via-transparent to-void/40"
+        aria-hidden
+      />
+      <span className="relative mx-auto mb-2.5 flex size-11 items-center justify-center rounded-full border border-gold/25 bg-void/55 text-gold/80 shadow-[0_0_18px_color-mix(in_oklab,var(--color-void)_55%,transparent)]">
+        <Lock className="size-4" strokeWidth={2.2} />
       </span>
-      <p className="text-[10px] font-bold tracking-[0.22em] text-dim uppercase">
+      <p className="relative text-[10px] font-bold tracking-[0.22em] text-dim/80 uppercase">
         {naslov ?? "Još zatvoreno"}
       </p>
-      <p className="mt-2 text-sm font-bold text-ink">{SIDE_GATE_REC}</p>
-      <p className="mt-1 text-xs font-bold leading-snug text-dim">{SIDE_GATE_OPIS}</p>
+      <p className="relative mt-2 text-sm font-bold text-ink/90">{SIDE_GATE_REC}</p>
+      <p className="relative mt-1 text-xs font-bold leading-snug text-dim/85">{SIDE_GATE_OPIS}</p>
       <button
         type="button"
         onClick={() => {
           playSfx("button");
           otvoriCiljZgradu("kuca");
         }}
-        className="mt-3 min-h-11 w-full rounded-xl bg-gold px-3 text-xs font-bold tracking-widest text-void uppercase"
+        className="relative mt-3.5 min-h-11 w-full rounded-xl border border-gold/40 bg-gold/90 px-3 text-xs font-bold tracking-widest text-void uppercase shadow-[0_0_16px_color-mix(in_oklab,var(--color-gold)_28%,transparent)] transition-transform duration-150 ease-out active:scale-[0.98]"
       >
         Na Kuću
       </button>
