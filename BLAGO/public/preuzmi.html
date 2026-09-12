@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="hr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BLAGO — preuzmi</title>
+    <style>
+      :root { color-scheme: dark; }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        background: #24140c;
+        color: #fff8e8;
+        font-family: "Barlow Condensed", ui-sans-serif, system-ui, sans-serif;
+      }
+      main {
+        width: min(22rem, calc(100vw - 2rem));
+        padding: 1.4rem;
+        border: 1px solid rgb(255 210 100 / 0.45);
+        border-radius: 1.4rem;
+        background: #5a321c;
+        box-shadow: 0 0 0 4px #2a140c;
+      }
+      h1 {
+        margin: 0;
+        font-size: 1.7rem;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: #ffd24a;
+      }
+      p { margin: 0.7rem 0 1.1rem; font-size: 0.95rem; line-height: 1.4; color: #f0d4a8; }
+      a {
+        display: block;
+        margin-top: 0.55rem;
+        padding: 0.85rem 1rem;
+        border-radius: 999px;
+        text-align: center;
+        text-decoration: none;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .apk { background: #ffd24a; color: #24140c; }
+      .zip { background: #3a2418; color: #fff8e8; border: 1px solid rgb(255 210 100 / 0.35); }
+      small { display: block; margin-top: 0.9rem; font-size: 0.75rem; color: #f0d4a8; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>BLAGO</h1>
+      <p>Beta 0.9.44. Stisni i spremi na telefon. Ako APK ne krene, uzmi ZIP.</p>
+      <a class="apk" href="/BLAGO.apk" download="BLAGO.apk">Preuzmi APK</a>
+      <a class="zip" href="/BLAGO-android.zip" download="BLAGO-android.zip">APK u ZIP-u</a>
+      <a class="zip" href="/BLAGO-github.zip" download="BLAGO-github.zip">Izvor za GitHub</a>
+      <a class="zip" href="/">Natrag u prašinu</a>
+      <small>Otvori ovu stranicu izvan pregleda pa stisni Preuzmi.</small>
+    </main>
+  </body>
+</html>
