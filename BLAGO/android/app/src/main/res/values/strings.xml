@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">BLAGO</string>
+    <string name="title_activity_main">BLAGO</string>
+    <string name="package_name">hr.blago.game</string>
+    <string name="custom_url_scheme">hr.blago.game</string>
+</resources>
