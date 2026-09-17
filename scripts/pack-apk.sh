@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Pack current BLAGO into public/BLAGO.apk so the beta menu always serves the latest game.
+# Pack current BLAGO into artifacts/apk-pack so live Beta Preuzmi serves it
+# without putting 90 MB binaries in the Publish upload.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -25,7 +26,7 @@ fi
 
 GRADLE="$ROOT/android/app/build.gradle"
 CODE="$(grep -oE 'versionCode [0-9]+' "$GRADLE" | head -1 | awk '{print $2}')"
-APK_OUT="$ROOT/public/BLAGO.apk"
+APK_OUT="$ROOT/artifacts/apk-pack/BLAGO.apk"
 META="$ROOT/public/apk-meta.json"
 
 if [ "${FORCE:-0}" != "1" ] && [ -f "$META" ] && [ -f "$APK_OUT" ]; then
@@ -52,9 +53,11 @@ print("gradle", sys.argv[2], sys.argv[3])
 PY
 
 HOLD="$ROOT/artifacts/.apk-hold"
-mkdir -p "$HOLD"
+PACK="$ROOT/artifacts/apk-pack"
+mkdir -p "$HOLD" "$PACK"
 for f in BLAGO.apk BLAGO-android.zip BLAGO-github.zip; do
   if [ -f "$ROOT/public/$f" ]; then mv "$ROOT/public/$f" "$HOLD/$f"; fi
+  if [ -f "$PACK/$f" ]; then mv "$PACK/$f" "$HOLD/$f"; fi
 done
 
 npx vite build --config vite.apk.config.ts
@@ -64,12 +67,12 @@ npx cap copy android
 
 SRC_APK="$ROOT/android/app/build/outputs/apk/debug/app-debug.apk"
 cp -f "$SRC_APK" "$ROOT/artifacts/BLAGO.apk"
-cp -f "$SRC_APK" "$ROOT/public/BLAGO.apk"
+cp -f "$SRC_APK" "$APK_OUT"
 python3 - << PY
 import json, time, zipfile
 from pathlib import Path
-apk = Path("$ROOT/public/BLAGO.apk")
-with zipfile.ZipFile(Path("$ROOT/public/BLAGO-android.zip"), "w", zipfile.ZIP_STORED) as z:
+apk = Path("$APK_OUT")
+with zipfile.ZipFile(Path("$ROOT/artifacts/apk-pack/BLAGO-android.zip"), "w", zipfile.ZIP_STORED) as z:
     z.write(apk, "BLAGO.apk")
 meta = {
     "version": "$VER",
@@ -81,8 +84,6 @@ Path("$ROOT/public/apk-meta.json").write_text(json.dumps(meta, indent=2) + "\n")
 print("packed", meta)
 PY
 
-if [ -f "$HOLD/BLAGO-github.zip" ]; then
-  mv "$HOLD/BLAGO-github.zip" "$ROOT/public/BLAGO-github.zip"
-fi
+python3 "$ROOT/scripts/pack-github-zip.py"
 rm -rf "$HOLD"
 echo "pack-apk: $VER ready"

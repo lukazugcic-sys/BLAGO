@@ -1,0 +1,15 @@
+android
+artifacts
+screenshots
+apk-www
+.vercel
+.jdk
+.android-sdk
+node_modules
+.git
+*.apk
+*.aab
+*.zip
+public/BLAGO.apk
+public/BLAGO-android.zip
+public/BLAGO-github.zip

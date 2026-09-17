@@ -1,5 +1,6 @@
-import { readdirSync } from "node:fs";
+import { createReadStream, existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Plugin } from "vite";
 import { defineConfig } from "vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
@@ -148,19 +149,29 @@ function downloadHeadersPlugin(): Plugin {
     "/BLAGO-android.zip": ["application/zip", "BLAGO-android.zip"],
     "/BLAGO-github.zip": ["application/zip", "BLAGO-github.zip"],
   };
-  const mw = (
-    req: { url?: string },
-    res: { setHeader: (k: string, v: string) => void },
-    next: () => void,
-  ) => {
+  const packDir = join(process.cwd(), "artifacts/apk-pack");
+  const mw = (req: IncomingMessage, res: ServerResponse, next: () => void) => {
     const pathOnly = (req.url ?? "").split("?", 1)[0] ?? "";
     const hit = files[pathOnly];
-    if (hit) {
-      res.setHeader("Content-Type", hit[0]);
-      res.setHeader("Content-Disposition", `attachment; filename="${hit[1]}"`);
-      res.setHeader("Cache-Control", "no-store");
+    if (!hit) {
+      next();
+      return;
     }
-    next();
+    const filePath = join(packDir, hit[1]);
+    if (!existsSync(filePath)) {
+      next();
+      return;
+    }
+    const st = statSync(filePath);
+    res.setHeader("Content-Type", hit[0]);
+    res.setHeader("Content-Disposition", `attachment; filename="${hit[1]}"`);
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Content-Length", String(st.size));
+    if ((req.method ?? "GET").toUpperCase() === "HEAD") {
+      res.end();
+      return;
+    }
+    createReadStream(filePath).pipe(res);
   };
   return {
     name: "blago-download-headers",
@@ -189,6 +200,9 @@ export default defineConfig(({ command, isPreview }) => ({
         "**/apk-www/**",
         "**/.android-sdk/**",
         "**/node_modules/**",
+        "**/attachments/**",
+        "**/screenshots/**",
+        "**/.jdk/**",
       ],
     },
   },
