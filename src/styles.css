@@ -667,8 +667,12 @@
   .izo-pas i,
   .izo-koko i,
   .izo-konj i,
-  .karta-prsten circle {
-    animation: none;
+  .karta-prsten circle,
+  .ziva-izo .izo-put-ulaz,
+  .chip-drzi,
+  .chip-drzi:after {
+    animation: none !important;
+    transition: none !important;
   }
 }
 
