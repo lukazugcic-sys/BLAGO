@@ -5,10 +5,12 @@ export function AnimatedStat({
   value,
   className,
   children,
+  chip,
 }: {
   value: number;
   className?: string;
   children: ReactNode;
+  chip?: string;
 }) {
   const prev = useRef(value);
   const [pop, setPop] = useState(false);
@@ -28,7 +30,7 @@ export function AnimatedStat({
   }, [value]);
 
   return (
-    <div className={cn("header-chip", className, pop && "stat-pop")}>
+    <div className={cn("header-chip", className, pop && "stat-pop")} data-chip={chip}>
       {children}
       {pop && delta !== 0 && (
         <span className={cn("stat-delta", delta < 0 && "stat-delta-minus")}>

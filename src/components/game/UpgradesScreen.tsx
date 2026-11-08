@@ -4,6 +4,7 @@ import { IconBadge } from "./IconBadge";
 import { PrikazCijene } from "./PrikazCijene";
 import { ALATI } from "@/lib/game/constants";
 import { ALAT_MAX, alatCijena, alatLv, type AlatId } from "@/lib/game/tuning";
+import { cijenaUzKrunu } from "@/lib/game/economy";
 import { RESURS_ART, SYMBOL_ART } from "@/lib/game/art";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +13,7 @@ export function UpgradesScreen({ embedded = false }: { embedded?: boolean }) {
   const resursi = useGameStore((s) => s.resursi);
   const razine = useGameStore((s) => s.razine);
   const krunjenja = useGameStore((s) => s.krunjenja);
+  const prestigeRazina = useGameStore((s) => s.prestigeRazina);
   const kupiAlat = useGameStore((s) => s.kupiAlat);
 
   return (
@@ -19,7 +21,7 @@ export function UpgradesScreen({ embedded = false }: { embedded?: boolean }) {
       <h2 className="mb-2 ml-1 text-sm font-bold tracking-widest text-ink uppercase">
         Alati i sposobnosti
       </h2>
-      <article className="mb-3 rounded-2xl border border-prestige/50 bg-prestige/10 px-4 py-3">
+      <article className={cn("mb-3 rounded-2xl border border-prestige/50 bg-prestige/10 px-4 py-3", embedded && "trznica-kruna")}>
         <p className="flex items-center gap-2 text-sm font-bold text-prestige">
           <Crown className="size-4" strokeWidth={2.5} />
           {krunjenja === 0 ? "Nema krunjenja" : krunjenja === 1 ? "1 krunjenje" : `${krunjenja} krunjenja`}
@@ -30,24 +32,25 @@ export function UpgradesScreen({ embedded = false }: { embedded?: boolean }) {
             : "Svaka nadogradnja uzima jedno krunjenje."}
         </p>
       </article>
+      <div className={embedded ? "trznica-mreza" : undefined}>
       {ALATI.map((p) => {
         const lv = alatLv(p.id as AlatId, razine[p.id] || 0);
         const max = ALAT_MAX[p.id as AlatId];
         const jeMax = lv >= max;
-        const zl = alatCijena(p.cZlato, lv);
-        const ka = alatCijena(p.cKamen, lv);
-        const ze = alatCijena(p.cZeljezo, lv);
+        const zl = cijenaUzKrunu(alatCijena(p.cZlato, lv), prestigeRazina);
+        const ka = cijenaUzKrunu(alatCijena(p.cKamen, lv), prestigeRazina);
+        const ze = cijenaUzKrunu(alatCijena(p.cZeljezo, lv), prestigeRazina);
         const imaKrunu = krunjenja >= 1;
         const moze = !jeMax && imaKrunu && zlato >= zl && resursi.kamen >= ka && resursi.zeljezo >= ze;
         return (
-          <article key={p.id} className="mb-3.5 rounded-2xl border border-line bg-panel p-5 shadow-panel">
+          <article key={p.id} className={cn(embedded ? "trznica-kartica" : "mb-3.5 rounded-2xl border border-line bg-panel p-5 shadow-panel")}>
             <div className="mb-4 flex items-center">
               <IconBadge src={SYMBOL_ART[p.art]} />
               <div className="min-w-0 flex-1 px-4">
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="text-base font-bold text-ink">{p.n}</h3>
                   <span className="rounded-sm bg-ink/5 px-2.5 py-1 text-[11px] font-bold tabular-nums text-gear">
-                    LVL {lv}/{max}
+                    RAZ. {lv}/{max}
                   </span>
                 </div>
                 <p className="mt-1.5 text-xs leading-relaxed text-dim">{p.d}</p>
@@ -78,7 +81,7 @@ export function UpgradesScreen({ embedded = false }: { embedded?: boolean }) {
                 onClick={() => kupiAlat(p)}
                 className={cn(
                   "min-h-11 rounded-lg px-5 py-3 text-xs font-bold tracking-wide",
-                  jeMax ? "bg-panel-2 text-dim" : moze ? "bg-gear text-void" : "bg-panel-2 text-dim",
+                  jeMax ? "bg-[#4a4038] text-[#f3e6c8]" : moze ? "bg-gear text-void" : "bg-[#4a4038] text-[#f3e6c8]",
                 )}
               >
                 {jeMax ? "MAX" : imaKrunu ? "NADOGRADI" : "KRUNA"}
@@ -87,6 +90,7 @@ export function UpgradesScreen({ embedded = false }: { embedded?: boolean }) {
           </article>
         );
       })}
+      </div>
     </div>
   );
 }

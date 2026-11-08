@@ -1,20 +1,23 @@
 import { AlertTriangle } from "lucide-react";
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useGameStore } from "@/lib/stores/gameStore";
 import { PrikazCijene } from "./PrikazCijene";
 import { ZGRADE_SKINOVI } from "@/lib/game/constants";
 import { RESURS_ART, ZGRADA_ART, artSrc } from "@/lib/game/art";
-import { izracunajPasivniMnozitelj, izracunajTokMnozitelj, izracunajSalunZlato, zgradaUvjet, POKRICE, RESOURCE_TICK_MS, popravakCijena, bankaKap } from "@/lib/game/economy";
+import { izracunajPasivniMnozitelj, izracunajTokMnozitelj, izracunajSalunZlato, zgradaUvjet, POKRICE, RESOURCE_TICK_MS, popravakCijena, bankaKap, cijenaZgrade, skalaCijene } from "@/lib/game/economy";
 import { BUNAR_ENERGIJA, MLIN_ENERGIJA } from "@/lib/game/tuning";
 import type { Zgrada } from "@/lib/game/types";
 import { ljudiUZgradi, slobodanGraditelj, kaubaOd } from "@/lib/game/ljudi";
 import { LikAvatar } from "./LikAvatar";
 import { GradnjaScena } from "./GradnjaScena";
 import { cn } from "@/lib/utils";
+import { useSekunda } from "@/lib/game/sat";
 
 export const BuildingCard = memo(function BuildingCard({ zgrada, compact }: { zgrada: Zgrada; compact?: boolean }) {
-  const zlato = useGameStore((s) => s.zlato);
-  const resursi = useGameStore((s) => s.resursi);
+  const zlato = useGameStore((s) => Math.floor(s.zlato));
+  const drvo = useGameStore((s) => Math.floor(s.resursi.drvo));
+  const kamen = useGameStore((s) => Math.floor(s.resursi.kamen));
+  const zeljezo = useGameStore((s) => Math.floor(s.resursi.zeljezo));
   const gradevine = useGameStore((s) => s.gradevine);
   const ostecenja = useGameStore((s) => s.ostecenja);
   const igracRazina = useGameStore((s) => s.igracRazina);
@@ -27,17 +30,10 @@ export const BuildingCard = memo(function BuildingCard({ zgrada, compact }: { zg
   const segrti = useGameStore((s) => s.segrti);
   const zamjenici = useGameStore((s) => s.zamjenici);
   const karavana = useGameStore((s) => s.karavana);
-  const [sad, setSad] = useState(() => Date.now());
   const [slavlje, setSlavlje] = useState(false);
   const posao = gradnje.find((g) => g.zgrada === zgrada.id) ?? null;
+  const sad = useSekunda(!!posao);
   const lvRef = useRef(gradevine[zgrada.id] || 0);
-
-  useEffect(() => {
-    if (!posao) return;
-    setSad(Date.now());
-    const t = window.setInterval(() => setSad(Date.now()), 500);
-    return () => window.clearInterval(t);
-  }, [posao]);
 
   const stanovnici = useGameStore((s) => s.stanovnici);
   const ljudi = useGameStore((s) => s.ljudi);
@@ -61,7 +57,7 @@ export const BuildingCard = memo(function BuildingCard({ zgrada, compact }: { zg
   );
   const jeOstecena = ostecenja[zgrada.id];
   const zakljucan = zgradaUvjet(zgrada.id, gradevine);
-  const c = zgrada.cijena(lv + 1);
+  const c = cijenaZgrade(zgrada, lv + 1, prestigeRazina);
   const jeMax = lv >= zgrada.maxLv;
   const radiOvdje = !!posao;
   const slobodan = !!slobodanGraditelj(ljudi, segrti, gradnje);
@@ -85,13 +81,16 @@ export const BuildingCard = memo(function BuildingCard({ zgrada, compact }: { zg
 
   const mozeKupiti =
     zlato >= c.zlato &&
-    resursi.drvo >= (c.drvo || 0) &&
-    resursi.kamen >= (c.kamen || 0) &&
-    resursi.zeljezo >= (c.zeljezo || 0);
+    drvo >= (c.drvo || 0) &&
+    kamen >= (c.kamen || 0) &&
+    zeljezo >= (c.zeljezo || 0);
 
-  const cPopravak = popravakCijena(lv);
-  const mozePopraviti = zlato >= cPopravak.zlato && resursi.drvo >= cPopravak.drvo;
-  const kauba = kaubaOd({ gradevine, stanovnici, zamjenici, konjiBroj, konjiDuznost, sijenoDo, kisaDo, govedaBroj, govedaDuznost });
+  const cPopravak = skalaCijene(popravakCijena(lv), prestigeRazina);
+  const mozePopraviti = zlato >= cPopravak.zlato && drvo >= cPopravak.drvo;
+  const kauba = useMemo(
+    () => kaubaOd({ gradevine, stanovnici, zamjenici, konjiBroj, konjiDuznost, sijenoDo, kisaDo, govedaBroj, govedaDuznost }),
+    [gradevine, stanovnici, zamjenici, konjiBroj, konjiDuznost, sijenoDo, kisaDo, govedaBroj, govedaDuznost],
+  );
   const radE = kauba.rad * kauba.efikasnost;
   const trenutnaProizvodnja = (lv * zgrada.bazaProizvodnja * pasivniMnozitelj * radE).toFixed(1);
   const ljudiN = Math.max(0, Math.floor(kauba.ljudi));
@@ -112,8 +111,8 @@ export const BuildingCard = memo(function BuildingCard({ zgrada, compact }: { zg
             ? zakljucan
               ? zakljucan
               : lv > 0
-                ? `Stol za asove · zabava ${lv * POKRICE.karte}`
-                : "Stol za pogađanje karata"
+                ? `Casino · zabava ${lv * POKRICE.karte}`
+                : "Stolovi i kocke"
             : zgrada.id === "bunar"
               ? lv > 0
                 ? `Voda ${Math.min(ljudiN, lv * POKRICE.bunar)}/${lv * POKRICE.bunar} · +${(lv * BUNAR_ENERGIJA).toFixed(1)} energije / ${tickSec}s`
@@ -231,6 +230,8 @@ export const BuildingCard = memo(function BuildingCard({ zgrada, compact }: { zg
             draggable={false}
             decoding="async"
             loading="lazy"
+            width={480}
+            height={192}
             className="size-full object-cover object-center"
             style={{ filter: skin.id === "default" ? undefined : skin.nijansa }}
             onError={(e) => {
@@ -253,6 +254,8 @@ export const BuildingCard = memo(function BuildingCard({ zgrada, compact }: { zg
           draggable={false}
           decoding="async"
           loading="lazy"
+          width={480}
+          height={192}
           className="size-full object-cover object-center"
           style={{ filter: skin.id === "default" ? undefined : skin.nijansa }}
           onError={(e) => {
@@ -280,7 +283,7 @@ export const BuildingCard = memo(function BuildingCard({ zgrada, compact }: { zg
             segrti={segrti.filter((p) => !p.spreman)}
             start={posao.start}
             kraj={posao.kraj}
-            rec={`${posao.majstorIme} diže`}
+            rec="Diže se"
           />
         )}
       </div>
@@ -292,32 +295,25 @@ export const BuildingCard = memo(function BuildingCard({ zgrada, compact }: { zg
             {jeOstecena ? " · gori" : ""}
           </h3>
           <span className="rounded-sm bg-ink/5 px-2.5 py-1 text-[11px] font-bold tabular-nums text-dim">
-            LVL {lv}/{zgrada.maxLv}
+            RAZ. {lv}/{zgrada.maxLv}
           </span>
         </div>
         {unutra.length > 0 && (
           <div className="mb-2 flex items-center gap-1.5">
-            <ul className="flex -space-x-1.5">
+            <ul className="flex -space-x-1.5" aria-label={`${unutra.length} u zgradi`}>
               {unutra.slice(0, 5).map((p) => (
-                <li key={p.id} className="kauba-chip-avatar size-8 ring-1 ring-panel" title={p.ime}>
+                <li key={p.id} className="kauba-chip-avatar size-8 ring-1 ring-panel">
                   <LikAvatar p={p} mood="mir" />
                 </li>
               ))}
             </ul>
-            <p className="min-w-0 text-[11px] font-bold text-dim">
-              {unutra.length === 1
-                ? `${unutra[0]!.ime} unutra`
-                : unutra.length <= 5
-                  ? `${unutra.map((p) => p.ime).join(", ")} unutra`
-                  : `${unutra.slice(0, 2).map((p) => p.ime).join(", ")} i još ${unutra.length - 2} unutra`}
-            </p>
           </div>
         )}
         <p className={cn("mb-3 text-xs font-semibold", jeOstecena ? "text-ruby" : "text-xp")}>
           {jeOstecena
             ? "U PLAMENU. Stalo."
             : radiOvdje
-              ? `${posao?.majstorIme} diže razinu ${posao?.ciljLv}.`
+              ? `Diže se razina ${posao?.ciljLv}.`
               : efekt}
         </p>
         {radiOvdje && (
@@ -334,14 +330,14 @@ export const BuildingCard = memo(function BuildingCard({ zgrada, compact }: { zg
                 POPRAVAK
               </span>
               <PrikazCijene src={RESURS_ART.zlato} iznos={cPopravak.zlato} trenutno={zlato} />
-              <PrikazCijene src={RESURS_ART.drvo} iznos={cPopravak.drvo} trenutno={resursi.drvo} />
+              <PrikazCijene src={RESURS_ART.drvo} iznos={cPopravak.drvo} trenutno={drvo} />
             </div>
           ) : !jeMax ? (
             <div className="flex flex-1 flex-wrap items-center gap-2">
               <PrikazCijene src={RESURS_ART.zlato} iznos={c.zlato} trenutno={zlato} />
-              <PrikazCijene src={RESURS_ART.drvo} iznos={c.drvo} trenutno={resursi.drvo} />
-              <PrikazCijene src={RESURS_ART.kamen} iznos={c.kamen} trenutno={resursi.kamen} />
-              <PrikazCijene src={RESURS_ART.zeljezo} iznos={c.zeljezo} trenutno={resursi.zeljezo} />
+              <PrikazCijene src={RESURS_ART.drvo} iznos={c.drvo} trenutno={drvo} />
+              <PrikazCijene src={RESURS_ART.kamen} iznos={c.kamen} trenutno={kamen} />
+              <PrikazCijene src={RESURS_ART.zeljezo} iznos={c.zeljezo} trenutno={zeljezo} />
             </div>
           ) : (
             <p className="text-xs font-bold tracking-wide text-gold">MAKSIMALNA RAZINA</p>
@@ -368,6 +364,7 @@ export const BuildingCard = memo(function BuildingCard({ zgrada, compact }: { zg
                 type="button"
                 disabled={zauzet || radiOvdje}
                 onClick={() => nadogradiZgradu(zgrada)}
+                data-vodic={zgrada.id === "kuca" || zgrada.id === "bunar" ? zgrada.id : undefined}
                 className="min-h-11 rounded-lg px-5 py-3 text-xs font-bold tracking-wide text-void transition-transform duration-150 ease-out active:scale-[0.96] disabled:opacity-60"
                 style={{
                   backgroundColor: radiOvdje || zauzet ? "var(--color-panel-2)" : mozeKupiti ? skinBoja : "var(--color-panel-2)",

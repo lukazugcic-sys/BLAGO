@@ -1,3 +1,5 @@
+import { prijaviFeel, izvediHaptiku } from "./feel";
+
 type Tone = { freq: number; dur: number; type?: OscillatorType; gain?: number };
 type Sfx =
   | "spin"
@@ -206,8 +208,24 @@ if (typeof window !== "undefined") {
 export function setMuted(next: boolean) {
   muted = next;
   if (master && ctx) {
-    master.gain.setTargetAtTime(next ? 0 : MASTER_GAIN, ctx.currentTime, 0.04);
+    const t = ctx.currentTime;
+    master.gain.cancelScheduledValues(t);
+    master.gain.setValueAtTime(next ? 0 : MASTER_GAIN, t);
   }
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("blago-mute", { detail: next }));
+    document.querySelectorAll("video").forEach((el) => {
+      const m = el as HTMLMediaElement;
+      m.muted = true;
+      m.volume = 0;
+    });
+    document.querySelectorAll("audio").forEach((el) => {
+      const m = el as HTMLMediaElement;
+      m.muted = next;
+      if (next) m.volume = 0;
+    });
+  }
+  if (!next && currentTrack && !musicSrc && !starting) playNext(true);
 }
 
 export function isMuted() {
@@ -239,6 +257,7 @@ function fadeOutCurrent() {
 }
 
 function playNext(cross = false) {
+  if (muted) return;
   const c = ensureCtx();
   if (!c || !musicBus || !currentTrack) return;
   const url = peekUrl(0);
@@ -247,7 +266,7 @@ function playNext(cross = false) {
   starting = true;
   void ensureTrack(url).then((buf) => {
     starting = false;
-    if (gen !== musicGen) return;
+    if (gen !== musicGen || muted) return;
     if (!buf) {
       qIndex += 1;
       playNext(true);
@@ -378,7 +397,8 @@ function playBuffer(tip: Sfx) {
   return true;
 }
 
-export function playSfx(tip: Sfx) {
+export function playSfx(tip: Sfx, opts?: { bezFeel?: boolean }) {
+  if (!opts?.bezFeel) prijaviFeel(tip);
   if (tip === "win") duckMusic(520);
   if (tip === "jackpot") duckMusic(900);
   if (tip === "skull") duckMusic(640);
@@ -439,10 +459,6 @@ export function playSfx(tip: Sfx) {
   }
 }
 
-export function vibrate(ms = 18) {
-  try {
-    navigator.vibrate?.(ms);
-  } catch {
-    /* ignore */
-  }
+export function vibrate(ms: number | number[] = 18) {
+  izvediHaptiku(ms);
 }

@@ -4,18 +4,24 @@ import { ZGRADA_ART } from "@/lib/game/art";
 import { mozeKrupije } from "@/lib/game/ljudi";
 import { playSfx, vibrate } from "@/lib/game/audio";
 import { cn } from "@/lib/utils";
+import { jeSideOtkljucan, SIDE_GATE_REC } from "@/lib/game/sideGate";
 import { FARO_MIN, FARO_ULOG, faroBankaDobit, faroDobitak, faroKrupijeBonus } from "@/lib/game/tuning";
 import { UlogTraka } from "./UtrkaStaza";
 
-const LICE: Array<{ znak: string; boja: string }> = [
-  { znak: "A♠", boja: "#1a120c" },
-  { znak: "9♥", boja: "#8a2030" },
-  { znak: "4♣", boja: "#1a120c" },
-];
+const KOCKE = [1, 5, 6] as const;
+
+function KockaPips({ n }: { n: number }) {
+  return (
+    <span className={cn("casino-pips", `casino-pips-${n}`)} aria-hidden>
+      {Array.from({ length: 9 }, (_, i) => (
+        <span key={i} className="casino-pip" />
+      ))}
+    </span>
+  );
+}
 
 export function IgraKarata() {
   const zlato = useGameStore((s) => Math.floor(s.zlato));
-  const salun = useGameStore((s) => s.gradevine.salun || 0);
   const karteLv = useGameStore((s) => s.gradevine.karte || 0);
   const ljudi = useGameStore((s) => s.ljudi);
   const faroKrupije = useGameStore((s) => s.faroKrupije);
@@ -33,11 +39,16 @@ export function IgraKarata() {
   const dobit = faroDobitak(ulog, karteLv);
   const bankaDobit = faroBankaDobit(ulog);
   const zakljucan = mijesa || pick !== null;
+  const otvoren = karteLv >= 1;
 
   const igraj = (i: number) => {
     if (mijesa || pick !== null) return;
-    if (salun < 1) {
-      useGameStore.getState().setPoruka("PRVO SALUN");
+    if (!jeSideOtkljucan(useGameStore.getState().gradevine)) {
+      useGameStore.getState().setPoruka(SIDE_GATE_REC);
+      return;
+    }
+    if (karteLv < 1) {
+      useGameStore.getState().setPoruka("PRVO CASINO");
       return;
     }
     const u = Math.min(Math.floor(useGameStore.getState().zlato), Math.max(FARO_MIN, Math.floor(ulogRaw)));
@@ -71,7 +82,7 @@ export function IgraKarata() {
           playSfx("skull");
           useGameStore.setState((s) => ({
             zlato: s.zlato - u,
-            poruka: u >= Math.floor(s.zlato) ? "BANKA — sve je otišlo s asom." : "BANKA — gost je pogodio as.",
+            poruka: u >= Math.floor(s.zlato) ? "BANKA — sve je otišlo s kockom." : "BANKA — gost je pogodio kocku.",
           }));
         }
         return;
@@ -84,14 +95,14 @@ export function IgraKarata() {
         const d = faroDobitak(u, karteLv);
         useGameStore.setState((s) => ({
           zlato: s.zlato - u + d + bonus,
-          poruka: krupije ? `ASOVI +${d - u + bonus}. ${krupije.ime} dijeli.` : `ASOVI +${d - u} ZLATA`,
+          poruka: krupije ? `CASINO +${d - u + bonus}. ${krupije.ime} dijeli.` : `CASINO +${d - u} ZLATA`,
         }));
         useGameStore.getState().azurirajMisiju("zlato", d - u + bonus);
       } else {
         playSfx("skull");
         useGameStore.setState((s) => ({
           zlato: s.zlato - u,
-          poruka: u >= Math.floor(s.zlato) ? "ASOVI — sve u prašinu." : "ASOVI — promašaj",
+          poruka: u >= Math.floor(s.zlato) ? "CASINO — sve u prašinu." : "CASINO — promašaj",
         }));
       }
     }, 720);
@@ -103,7 +114,7 @@ export function IgraKarata() {
   };
 
   return (
-    <article className="mb-2.5 overflow-hidden rounded-2xl border border-line bg-panel">
+    <article className="mb-2.5 overflow-hidden rounded-2xl border border-line bg-panel" data-testid="igra-casino">
       <div className="relative h-20 overflow-hidden" aria-hidden>
         <img src={ZGRADA_ART.karte} alt="" className="size-full object-cover object-center" draggable={false} />
         <div className="absolute inset-0 bg-gradient-to-t from-panel to-transparent" />
@@ -111,13 +122,13 @@ export function IgraKarata() {
       <div className="p-4 pt-2">
         <div className="mb-3 flex items-end justify-between gap-2">
           <div>
-            <h3 className="text-sm font-bold tracking-widest text-gold uppercase">Asovi</h3>
+            <h3 className="text-sm font-bold tracking-widest text-gold uppercase">Casino</h3>
             <p className="mt-0.5 text-xs font-semibold text-dim">
-              {salun < 1
-                ? "Otvori salun pa igraj."
+              {!otvoren
+                ? "Otvori casino pa igraj."
                 : uloga === "banka"
                   ? `Ti si banka. Gost vuče. Ulog ${ulog}, uzmeš ${bankaDobit} ako promaši.`
-                  : `Pogodi as. Ulog ${ulog}, dobit ${dobit}. Sve ide, sve pada.`}
+                  : `Pogodi kocku. Ulog ${ulog}, dobit ${dobit}. Sve ide, sve pada.`}
             </p>
           </div>
           {pick !== null && (
@@ -175,7 +186,7 @@ export function IgraKarata() {
             </div>
           </div>
         )}
-        {!zakljucan && salun >= 1 && (
+        {!zakljucan && otvoren && (
           <div className="mb-3">
             <UlogTraka ulog={ulog} max={maxUlog} onUlog={setUlogRaw} />
           </div>
@@ -183,7 +194,7 @@ export function IgraKarata() {
         {uloga === "banka" && pick === null && (
           <button
             type="button"
-            disabled={mijesa || salun < 1 || ulog < FARO_MIN}
+            disabled={mijesa || !otvoren || ulog < FARO_MIN}
             onClick={() => igraj(Math.floor(Math.random() * 3))}
             className="mb-3 min-h-11 w-full rounded-xl bg-gold text-xs font-bold tracking-widest text-void uppercase disabled:bg-panel-2 disabled:text-dim"
           >
@@ -194,37 +205,37 @@ export function IgraKarata() {
           {[0, 1, 2].map((i) => {
             const otvorena = pick !== null;
             const dobitna = otvorena && i === adut;
-            const lice = dobitna ? LICE[0]! : LICE[(i % 2) + 1]!;
+            const pips = dobitna ? KOCKE[0]! : KOCKE[(i % 2) + 1]!;
             return (
               <button
                 key={i}
                 type="button"
-                disabled={mijesa || pick !== null || salun < 1 || uloga === "banka" || ulog < FARO_MIN}
+                disabled={mijesa || pick !== null || !otvoren || uloga === "banka" || ulog < FARO_MIN}
                 onClick={() => igraj(i)}
                 className={cn(
-                  "faro-karta",
+                  "faro-karta casino-kocka",
                   mijesa && "faro-mijesaj",
                   otvorena && "faro-otvorena",
                   otvorena && (dobitna ? "faro-adut" : "faro-prazna"),
                   pick === i && "faro-pick",
                 )}
                 style={{ animationDelay: `${i * 80}ms` }}
-                aria-label={uloga === "banka" ? `Karta ${i + 1}` : `Karta ${i + 1}`}
+                aria-label={uloga === "banka" ? `Kocka ${i + 1}` : `Kocka ${i + 1}`}
               >
                 <span className="faro-unutra">
                   <span className="faro-ledja">
                     <span className="faro-ledja-uzorak" />
                   </span>
-                  <span className="faro-lice" style={{ color: lice.boja }}>
-                    {lice.znak}
+                  <span className="faro-lice casino-kocka-lice">
+                    <KockaPips n={pips} />
                   </span>
                 </span>
               </button>
             );
           })}
         </div>
-        {uloga === "igraj" && pobjeda === true && <p className="faro-pobjeda mt-3 text-center text-sm font-bold text-xp">As. Pogađaš.</p>}
-        {uloga === "igraj" && pobjeda === false && <p className="faro-pobjeda mt-3 text-center text-sm font-bold text-ruby">Nije as.</p>}
+        {uloga === "igraj" && pobjeda === true && <p className="faro-pobjeda mt-3 text-center text-sm font-bold text-xp">Kocka. Pogađaš.</p>}
+        {uloga === "igraj" && pobjeda === false && <p className="faro-pobjeda mt-3 text-center text-sm font-bold text-ruby">Nije tvoja.</p>}
         {uloga === "banka" && pobjeda === true && <p className="faro-pobjeda mt-3 text-center text-sm font-bold text-xp">Gost promašio. Banka uzima.</p>}
         {uloga === "banka" && pobjeda === false && <p className="faro-pobjeda mt-3 text-center text-sm font-bold text-ruby">Gost pogodio. Plaćaš.</p>}
       </div>

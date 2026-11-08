@@ -115,7 +115,7 @@ const PUT_CINOVI: KaravanaCin[] = [
     rec: "Prašina se diže. Netko čeka na stazi.",
     opcije: [
       { id: "plati", rec: "Baci 8g" },
-      { id: "jasi", rec: "Jasi kroz" },
+      { id: "jasi", rec: "Jaši kroz" },
       { id: "pucaj", rec: "Pucaj" },
     ],
   },

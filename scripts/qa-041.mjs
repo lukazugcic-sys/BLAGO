@@ -73,7 +73,7 @@ try {
 
   const kauboji = page.getByRole("button", { name: /^Kauboji$/i });
   await kauboji.click();
-  await page.getByText("Kauboji kaube").first().waitFor({ state: "visible" });
+  await page.getByTestId("kauboji-mreza").waitFor({ state: "visible" });
   await shot("kauboji");
 
   const zid = page.getByRole("button", { name: /^Zid$/i });

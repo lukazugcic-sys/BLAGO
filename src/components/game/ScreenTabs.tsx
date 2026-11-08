@@ -1,3 +1,4 @@
+import { Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { playSfx } from "@/lib/game/audio";
 
@@ -6,11 +7,16 @@ export function ScreenTabs<T extends string>({
   value,
   onChange,
   dolje,
+  locked,
+  onLocked,
 }: {
   tabs: readonly { id: T; label: string }[];
   value: T;
   onChange: (id: T) => void;
   dolje?: boolean;
+  /** Soft-gate: tab stays visible but muted until unlocked. */
+  locked?: Partial<Record<T, boolean>>;
+  onLocked?: (id: T) => void;
 }) {
   return (
     <div
@@ -21,6 +27,7 @@ export function ScreenTabs<T extends string>({
     >
       {tabs.map((t) => {
         const aktivan = value === t.id;
+        const zakljucan = !!locked?.[t.id];
         return (
           <button
             key={t.id}
@@ -28,14 +35,32 @@ export function ScreenTabs<T extends string>({
             onClick={() => {
               if (aktivan) return;
               playSfx("button");
+              if (zakljucan) {
+                onLocked?.(t.id);
+                onChange(t.id);
+                return;
+              }
               onChange(t.id);
             }}
             className={cn(
-              "min-h-10 flex-1 rounded-lg text-xs font-bold tracking-wide uppercase transition-colors duration-150",
-              aktivan ? "bg-gold/20 text-gold" : "text-dim",
+              "relative min-h-10 flex-1 rounded-lg font-bold uppercase transition-[colors,opacity] duration-150",
+              tabs.length >= 4 ? "text-[10px] tracking-wide" : "text-xs tracking-wide",
+              aktivan
+                ? "bg-gold/20 text-gold"
+                : zakljucan
+                  ? "text-dim/50 opacity-75"
+                  : "text-dim",
             )}
+            aria-disabled={zakljucan || undefined}
           >
-            {t.label}
+            <span className="inline-flex items-center justify-center gap-1">
+              {zakljucan && (
+                <span className="inline-flex size-3.5 items-center justify-center rounded-full bg-void/40 text-gold/70">
+                  <Lock className="size-2.5 shrink-0" strokeWidth={2.8} />
+                </span>
+              )}
+              {t.label}
+            </span>
           </button>
         );
       })}

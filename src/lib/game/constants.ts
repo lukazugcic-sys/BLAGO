@@ -24,7 +24,7 @@ import {
   Target,
   Drumstick,
   Wheat,
-  Spade,
+  Dices,
   Fence,
   Flag,
   Heart,
@@ -34,6 +34,9 @@ import {
   Warehouse,
   LandPlot,
   Beef,
+  Hammer,
+  Flame,
+  Factory,
 } from "lucide-react";
 import type {
   Alat,
@@ -64,14 +67,14 @@ export const BLAGO: Record<
   }
 > = {
   skull: { Ikona: Skull, boja: "#ff6b73", raritet: "#3a100c", tip: "steta", baza: 0 },
-  wood: { Ikona: TreePine, boja: "#f4a24a", raritet: "#3a2210", tip: "drvo", baza: 5 },
-  stone: { Ikona: Mountain, boja: "#e0b070", raritet: "#3a2410", tip: "kamen", baza: 7 },
-  iron: { Ikona: Pickaxe, boja: "#7aa0c8", raritet: "#182030", tip: "zeljezo", baza: 10 },
-  gold: { Ikona: Coins, boja: "#ffd24a", raritet: "#3a2408", tip: "zlato", baza: 16 },
-  energy: { Ikona: Zap, boja: "#ff6a18", raritet: "#3a1408", tip: "energija", baza: 1 },
-  gem: { Ikona: Gem, boja: "#ff5ab4", raritet: "#3a1024", tip: "dijamanti", baza: 1 },
-  shield: { Ikona: Shield, boja: "#5ec8ff", raritet: "#102838", tip: "stit", baza: 0 },
-  wild: { Ikona: Star, boja: "#5ee06a", raritet: "#0e2a14", tip: "wild", baza: 0 },
+  wood: { Ikona: TreePine, boja: "#a35a22", raritet: "#2a1608", tip: "drvo", baza: 3 },
+  stone: { Ikona: Mountain, boja: "#cfd3d8", raritet: "#2a2c30", tip: "kamen", baza: 4 },
+  iron: { Ikona: Pickaxe, boja: "#b56a42", raritet: "#2a1610", tip: "zeljezo", baza: 6 },
+  gold: { Ikona: Coins, boja: "#ffd24a", raritet: "#3a2408", tip: "zlato", baza: 10 },
+  energy: { Ikona: Zap, boja: "#ff7a12", raritet: "#3a1408", tip: "energija", baza: 1 },
+  gem: { Ikona: Gem, boja: "#9b4dff", raritet: "#241040", tip: "dijamanti", baza: 1 },
+  shield: { Ikona: Shield, boja: "#3d8bff", raritet: "#0c1c38", tip: "stit", baza: 0 },
+  wild: { Ikona: Star, boja: "#2ec85a", raritet: "#0e2a14", tip: "wild", baza: 0 },
   knjiga: { Ikona: BookOpen, boja: "#e8c36a", raritet: "#2a1a08", tip: "knjiga", baza: 0 },
 };
 
@@ -165,7 +168,7 @@ export const ZGRADE: Zgrada[] = [
     ikona: Pickaxe,
     bazaBoja: "#cfc6b8",
     cijena: (lv) => ({
-      zlato: rast(120, lv, 1.4),
+      zlato: rast(120, lv, 1.55),
       drvo: rast(36, lv),
       kamen: rast(28, lv),
       zeljezo: rast(4, lv),
@@ -190,13 +193,13 @@ export const ZGRADE: Zgrada[] = [
   },
   {
     id: "blok",
-    naziv: "Zgrada",
+    naziv: "Konak",
     maxLv: 6,
     ikona: Building2,
     bazaBoja: "#d8c8a8",
     tip: "blok",
     cijena: (lv) => ({
-      zlato: rast(95, lv, 1.38),
+      zlato: rast(95, lv, 1.52),
       drvo: rast(20, lv),
       kamen: rast(24, lv),
       zeljezo: lv === 1 ? 0 : rast(8, lv - 1),
@@ -265,7 +268,7 @@ export const ZGRADE: Zgrada[] = [
   },
   {
     id: "lov",
-    naziv: "Lov",
+    naziv: "Lovački dom",
     maxLv: 6,
     ikona: Target,
     bazaBoja: "#c47848",
@@ -310,9 +313,9 @@ export const ZGRADE: Zgrada[] = [
   },
   {
     id: "karte",
-    naziv: "Asovi",
+    naziv: "Casino",
     maxLv: 5,
-    ikona: Spade,
+    ikona: Dices,
     bazaBoja: "#d4a04a",
     tip: "karte",
     cijena: (lv) => ({
@@ -488,6 +491,51 @@ export const ZGRADE: Zgrada[] = [
     }),
     bazaProizvodnja: 0,
   },
+  {
+    id: "kovacnica",
+    naziv: "Kovačnica",
+    maxLv: 5,
+    ikona: Hammer,
+    bazaBoja: "#c45c38",
+    tip: "kovacnica",
+    cijena: (lv) => ({
+      zlato: rast(42, lv),
+      drvo: rast(8, lv),
+      kamen: rast(6, lv),
+      zeljezo: rast(4, lv),
+    }),
+    bazaProizvodnja: 0,
+  },
+  {
+    id: "barutana",
+    naziv: "Barutana",
+    maxLv: 5,
+    ikona: Flame,
+    bazaBoja: "#8a4030",
+    tip: "barutana",
+    cijena: (lv) => ({
+      zlato: rast(48, lv),
+      drvo: rast(6, lv),
+      kamen: rast(10, lv),
+      zeljezo: lv === 1 ? 0 : rast(3, lv - 1),
+    }),
+    bazaProizvodnja: 0,
+  },
+  {
+    id: "tvornica",
+    naziv: "Tvornica oružja",
+    maxLv: 5,
+    ikona: Factory,
+    bazaBoja: "#6a4030",
+    tip: "tvornica",
+    cijena: (lv) => ({
+      zlato: rast(64, lv),
+      drvo: rast(10, lv),
+      kamen: rast(12, lv),
+      zeljezo: rast(6, lv),
+    }),
+    bazaProizvodnja: 0,
+  },
 ];
 
 export function seloNaMaxu(g: Gradevine) {
@@ -503,11 +551,11 @@ const BAZA_MISIJA: Array<Omit<Misija, "id" | "trenutno" | "zavrseno">> = [
   { opis: "Otvori bunar", tip: "bunar", cilj: 1, nagrada: { energija: 4, kamen: 6 } },
   { opis: "Otvori cisternu", tip: "cisterna", cilj: 1, nagrada: { energija: 3, kamen: 6 } },
   { opis: "Otvori mlin", tip: "mlin", cilj: 1, nagrada: { dijamanti: 2, energija: 5 } },
-  { opis: "Otvori lov", tip: "lov", cilj: 1, nagrada: { drvo: 10, zlato: 16 } },
+  { opis: "Otvori lovački dom", tip: "lov", cilj: 1, nagrada: { drvo: 10, zlato: 16 } },
   { opis: "Otvori mesnicu", tip: "mesnica", cilj: 1, nagrada: { dijamanti: 2, zlato: 20 } },
   { opis: "Otvori pekarnu", tip: "pekara", cilj: 1, nagrada: { dijamanti: 2, zlato: 20 } },
   { opis: "Otvori salun", tip: "salun", cilj: 1, nagrada: { zlato: 24 } },
-  { opis: "Stavi stol za asove", tip: "karte", cilj: 1, nagrada: { dijamanti: 3 } },
+  { opis: "Otvori casino", tip: "karte", cilj: 1, nagrada: { dijamanti: 3 } },
   { opis: "Otvori šerifov ured", tip: "ured", cilj: 1, nagrada: { stitovi: 1, dijamanti: 2 } },
   { opis: "Izgradi staju", tip: "staja", cilj: 1, nagrada: { zlato: 20, drvo: 8 } },
   { opis: "Ogradi ispust", tip: "korali", cilj: 1, nagrada: { zlato: 14, drvo: 6 } },
@@ -542,6 +590,7 @@ const USKO_MISIJA_TIPOVI: Record<string, string[]> = {
   red: ["ured", "banka"],
   konji: ["staja", "korali", "staza", "utrka"],
   zdravlje: ["ordinacija", "travar", "banja"],
+  oruzje: ["kovacnica", "barutana", "tvornica"],
 };
 
 export const generirajMisiju = (
@@ -595,6 +644,7 @@ export const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export const TABOVI = [
   { id: "automat", label: "Igraj", boja: "volt" },
+  { id: "zid", label: "Zid", boja: "zid" },
   { id: "selo", label: "Kauba", boja: "wood" },
   { id: "misije", label: "Zadaci", boja: "quest" },
   { id: "trznica", label: "Tržnica", boja: "gold" },
@@ -727,6 +777,7 @@ export function primijeniSkinTemu(skin: Skin) {
   r.style.setProperty("--color-clan", t.clan);
   r.style.setProperty("--color-prestige", t.prestige);
   r.style.setProperty("--color-aurora", t.aurora);
+  r.dataset.skin = skin.id;
   document.body.style.backgroundColor = t.void;
   postaviBojuPrikaza(t.void);
 }

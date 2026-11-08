@@ -2,9 +2,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { generirajKlanZadatke } from "@/lib/game/constants";
 import { dohvatiLokalneMete, izracunajPlijen, plijenUkupno } from "@/lib/game/raids";
-import type { DebriefStav, Gradnja, Karavana, Klan, KlanZadatak, KronikaZapis, Misija, RaidMeta, Resursi } from "@/lib/game/types";
+import { alatLv } from "@/lib/game/tuning";
+import type { DebriefStav, Dobitak, Gradnja, Karavana, Klan, KlanZadatak, KronikaZapis, Misija, RaidMeta, Resursi, SimbolId } from "@/lib/game/types";
 import type { Stanovnik, Segrt, Zamjenik } from "@/lib/game/ljudi";
 import type { KaubaDogadaj } from "@/lib/game/dogadaji";
+import type { JutarnjiPosao } from "@/lib/game/jutro";
 
 export type CloudPayload = {
   imeIgraca: string;
@@ -26,6 +28,7 @@ export type CloudPayload = {
   trend: Record<string, number>;
   luckySpinCounter: number;
   winStreak: number;
+  winStreakDo?: number;
   aktivniSkin: string;
   skinovi?: string[];
   klan: Klan;
@@ -45,7 +48,10 @@ export type CloudPayload = {
   konjiBroj?: number;
   konjiDuznost?: Record<string, number>;
   sijenoDo?: number;
+  potkove?: number;
+  potkoveDo?: number;
   kisaDo?: number;
+  travaDo?: number;
   govedaBroj?: number;
   govedaDuznost?: Record<string, number>;
   knjigaSkup?: number;
@@ -62,6 +68,15 @@ export type CloudPayload = {
   tjedanKljuc?: string;
   tjedanCeker?: boolean;
   tjedanPohod?: boolean;
+  jutroDan?: string;
+  jutro?: JutarnjiPosao[];
+  zadnjiResursTick?: number;
+  zadnjaEnergijaTick?: number;
+  zadnjiMetakTick?: number;
+  savedAt?: number;
+  dobitakNaCekanju?: Dobitak | null;
+  gambleCount?: number;
+  slotSimboli?: SimbolId[];
   _raidNotice?: Pending | null;
 };
 
@@ -70,6 +85,81 @@ type Pending = { drvo: number; kamen: number; zeljezo: number };
 function asNum(v: unknown, fallback = 0) {
   const n = typeof v === "number" ? v : Number(v);
   return Number.isFinite(n) ? n : fallback;
+}
+
+function nenegSave(v: unknown, fallback = 0) {
+  const n = asNum(v, Number.NaN);
+  if (!Number.isFinite(n) || n < 0) return Math.max(0, fallback);
+  return n;
+}
+
+const SIMBOLI_OK = new Set<string>(["skull", "wood", "stone", "iron", "gold", "energy", "gem", "shield", "wild", "knjiga"]);
+
+function simboliSave(raw: unknown): SimbolId[] | undefined {
+  if (!Array.isArray(raw) || raw.length !== 15) return undefined;
+  if (!raw.every((x) => typeof x === "string" && SIMBOLI_OK.has(x))) return undefined;
+  return raw as SimbolId[];
+}
+
+function dobitakSave(raw: unknown): Dobitak | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  return {
+    zlato: nenegSave(r.zlato),
+    dijamanti: nenegSave(r.dijamanti),
+    energija: nenegSave(r.energija),
+    stitovi: nenegSave(r.stitovi),
+    drvo: nenegSave(r.drvo),
+    kamen: nenegSave(r.kamen),
+    zeljezo: nenegSave(r.zeljezo),
+    linije: nenegSave(r.linije),
+  };
+}
+
+function capRazineSave(raw: unknown) {
+  const r = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  return {
+    sreca: alatLv("sreca", nenegSave(r.sreca)),
+    pojacalo: alatLv("pojacalo", nenegSave(r.pojacalo)),
+    baterija: alatLv("baterija", nenegSave(r.baterija)),
+    oklop: alatLv("oklop", nenegSave(r.oklop)),
+    wildBoost: alatLv("wildBoost", nenegSave(r.wildBoost)),
+  };
+}
+
+/** Ulaz mora biti objekt. Brojevi su konačni i ≥ 0, razine alata su pod kapom. */
+export function provjeriCloudPayload(d: unknown): CloudPayload {
+  if (!d || typeof d !== "object" || Array.isArray(d)) throw new Error("neispravan save");
+  const raw = d as CloudPayload;
+  const razine = capRazineSave(raw.razine);
+  const resursi = raw.resursi && typeof raw.resursi === "object" ? raw.resursi : { drvo: 0, kamen: 0, zeljezo: 0 };
+  const savedAt = asNum(raw.savedAt, Number.NaN);
+  const simboli = simboliSave(raw.slotSimboli);
+  return {
+    ...raw,
+    imeIgraca: String(raw.imeIgraca ?? "Kauboj").slice(0, 32),
+    igracRazina: Math.max(1, Math.floor(nenegSave(raw.igracRazina, 1))),
+    prestigeRazina: Math.floor(nenegSave(raw.prestigeRazina, 0)),
+    xp: nenegSave(raw.xp),
+    energija: nenegSave(raw.energija),
+    zlato: nenegSave(raw.zlato),
+    dijamanti: nenegSave(raw.dijamanti),
+    stitovi: nenegSave(raw.stitovi),
+    ukupnoVrtnji: nenegSave(raw.ukupnoVrtnji),
+    ukupnoZlata: nenegSave(raw.ukupnoZlata),
+    winStreak: Math.floor(nenegSave(raw.winStreak)),
+    luckySpinCounter: Math.max(0, Math.floor(nenegSave(raw.luckySpinCounter, 0))),
+    resursi: {
+      drvo: nenegSave(resursi.drvo),
+      kamen: nenegSave(resursi.kamen),
+      zeljezo: nenegSave(resursi.zeljezo),
+    },
+    razine,
+    savedAt: Number.isFinite(savedAt) && savedAt >= 0 ? savedAt : Date.now(),
+    gambleCount: Math.max(0, Math.min(3, Math.floor(nenegSave(raw.gambleCount, 0)))),
+    dobitakNaCekanju: raw.dobitakNaCekanju ? dobitakSave(raw.dobitakNaCekanju) : null,
+    ...(simboli ? { slotSimboli: simboli } : { slotSimboli: undefined }),
+  };
 }
 
 function parsePending(raw: unknown): Pending[] {
@@ -149,7 +239,7 @@ export const loadCloudSave = createServerFn({ method: "GET" })
 
 export const pushCloudSave = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator((d: CloudPayload) => d)
+  .validator((d: unknown) => provjeriCloudPayload(d))
   .handler(async ({ context, data }) => {
     const db = await sql();
     const pendingRows = await db<{ raid_pending: unknown }>`
@@ -192,6 +282,15 @@ export const pushCloudSave = createServerFn({ method: "POST" })
         updated_at = now()
     `;
     return { ok: true as const, stolen };
+  });
+
+/** Briše samo red ove prijave. Novi početak ne smije ostaviti tuđi ni stari save. */
+export const deleteCloudSave = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const db = await sql();
+    await db`delete from player_saves where user_id = ${context.userId}`;
+    return { ok: true as const };
   });
 
 export const listLeaderboard = createServerFn({ method: "GET" })

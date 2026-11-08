@@ -111,3 +111,47 @@ test("potez iz delte čita koji je žeton uzet", () => {
   assert.equal(potezIzDelte([1, 2, 3], [1, 2, 3]), null);
 });
 
+function npcVjestina(igracLv, metaLv, jatoBonus = 0) {
+  const baza = Math.max(0.28, Math.min(0.68, 0.42 + (metaLv - igracLv) * 0.03));
+  return Math.max(0.08, Math.min(0.68, baza - Math.max(0, jatoBonus)));
+}
+
+function jatoPohodBonus(clanovi) {
+  let n = 0;
+  for (const p of clanovi.slice(0, 3)) {
+    n += 0.1;
+    if (p.glavni) n += 0.04;
+    if (p.posao === "Šerif" || p.posao === "Zamjenik") n += 0.06;
+    if (p.hub === "konji" || p.posao === "Šerif" || p.posao === "Zamjenik") n += 0.03;
+    n += Math.min(0.04, Math.max(0, p.razina) * 0.008);
+  }
+  return Math.min(0.45, n);
+}
+
+test("jato spušta vještinu npc, do tri kauboja", () => {
+  const baza = npcVjestina(5, 5);
+  const jedan = jatoPohodBonus([{ posao: "Lovac", hub: "jelo", razina: 3 }]);
+  const tri = jatoPohodBonus([
+    { posao: "Šerif", hub: "red", razina: 5, glavni: true },
+    { posao: "Konjušar", hub: "konji", razina: 4, glavni: true },
+    { posao: "Lovac", hub: "jelo", razina: 3, glavni: true },
+    { posao: "Rudar", hub: "posao", razina: 2 },
+  ]);
+  assert.ok(jedan > 0);
+  assert.ok(tri > jedan);
+  assert.ok(tri <= 0.45);
+  assert.ok(npcVjestina(5, 5, tri) < baza);
+  assert.equal(npcVjestina(5, 5, 1), Math.max(0.08, baza - 1));
+});
+
+function plijenSJatom(baza, rad, jato) {
+  const k = 1 + Math.max(0, rad) * 0.06 + Math.max(0, Math.min(3, jato)) * 0.08;
+  return Math.floor(baza * k);
+}
+
+test("jato vuče veći plijen, četvrti ne ulazi", () => {
+  assert.ok(plijenSJatom(100, 0, 1) > plijenSJatom(100, 0, 0));
+  assert.ok(plijenSJatom(100, 0, 3) > plijenSJatom(100, 0, 1));
+  assert.equal(plijenSJatom(100, 0, 4), plijenSJatom(100, 0, 3));
+});
+

@@ -4,12 +4,19 @@ import {
   dohvatiLokalneMete,
   hrpeIzResursa,
   izracunajPlijen,
+  jatoPohodBonus,
   jeLegalniPotez,
   jeNpcUid,
   jeTerminal,
   jeUtvrdjeno,
   npcPotez,
+  npcVjestina,
+  ocistiPohodJato,
+  osigurajPobjednickiStart,
   plijenUkupno,
+  POHOD_JATO_MAX,
+  postaviPohodJato,
+  okupiValter,
   potezIzDelte,
   primijeniPotez,
   tkoIdePrvi,
@@ -28,9 +35,13 @@ import { ART, SYMBOL_ART } from "@/lib/game/art";
 import { flash, hitstop, shake } from "@/lib/context/UIContext";
 import { useLive } from "@/lib/multiplayer";
 import { susjedPoUid, serifKaoLik } from "@/lib/game/susjedi";
+import { jeGlavni, poredajGlavne } from "@/lib/game/ljudi";
+import { recValter } from "@/lib/game/dijalozi";
+import { HOLD_KADAR_MS, osjeti } from "@/lib/game/feel";
 import { LikAvatar } from "./LikAvatar";
 import { KonjSilueta } from "./KonjSilueta";
 import { cn } from "@/lib/utils";
+import { portalKorijen } from "@/lib/game/portal";
 
 type Faza = "lista" | "jahanje" | "ceka" | "opsada" | "pobjeda" | "poraz" | "blokirano" | "prazno" | "greska";
 
@@ -77,6 +88,8 @@ export function RaidModal({
   const [utvrdjenoStart, setUtvrdjenoStart] = useState(false);
   const [liveDvoboj, setLiveDvoboj] = useState(false);
   const [leaving, setLeaving] = useState<NimPotez | null>(null);
+  const [jato, setJato] = useState<string[]>([]);
+  const [telegraphUid, setTelegraphUid] = useState<string | null>(null);
   const primiResurse = useGameStore((s) => s.primiResurse);
   const zapisiDebrief = useGameStore((s) => s.zapisiDebrief);
   const igracRazina = useGameStore((s) => s.igracRazina);
@@ -85,6 +98,8 @@ export function RaidModal({
   const live = useLive();
   const jahanje = useGameStore((s) => s.konjiDuznost.jahanje);
   const radKonja = useGameStore((s) => s.konjiDuznost.rad);
+  const ljudiSvi = useGameStore((s) => s.ljudi);
+  const zamjenici = useGameStore((s) => s.zamjenici);
   const cowboyKey = live.cowboys.filter((c) => c.connected).map((c) => c.id).join("|");
   const lock = useRef(false);
   const dead = useRef(false);
@@ -92,12 +107,28 @@ export function RaidModal({
   const hrpeRef = useRef<Hrpe>([0, 0, 0]);
   hrpeRef.current = hrpe;
   const krajRef = useRef<string | null>(null);
+  const jatoBonusRef = useRef(0);
+  const jatoBrojRef = useRef(0);
+  const telegraphT = useRef(0);
+  const kandidati = poredajGlavne(ljudiSvi.concat(zamjenici)).filter((p) => p.posao !== "Šegrt");
+  const jatoClanovi = kandidati.filter((p) => jato.includes(p.id));
+  const jatoBonus = jatoPohodBonus(
+    jatoClanovi.map((p) => ({
+      posao: p.posao,
+      hub: p.hub,
+      razina: p.razina,
+      glavni: jeGlavni(p.id),
+    })),
+  );
 
   useEffect(() => {
     if (!vidljiv) {
       lock.current = false;
       turnLock.current = false;
       dead.current = true;
+      window.clearTimeout(telegraphT.current);
+      setTelegraphUid(null);
+      ocistiPohodJato();
       return;
     }
     dead.current = false;
@@ -108,6 +139,10 @@ export function RaidModal({
     setMeta(null);
     setPlijen(null);
     setPoruka("");
+    setJato([]);
+    setTelegraphUid(null);
+    jatoBonusRef.current = 0;
+    jatoBrojRef.current = 0;
     setNpcHint(null);
     setNaPotezu("igrac");
     setLiveDvoboj(false);
@@ -172,7 +207,7 @@ export function RaidModal({
       if (ids === old) return prev;
       return [...uzivo, ...npc].slice(0, 6);
     });
-  }, [vidljiv, faza, cowboyKey, live.cowboys]);
+  }, [vidljiv, faza, cowboyKey]);
 
   useEffect(() => {
     if (!vidljiv) return;
@@ -257,7 +292,7 @@ export function RaidModal({
       krajRef.current = p.id;
       if (p.pobjeda) {
         if (p.uloga === "napadac") {
-          setPlijen((prev) => prev ?? izracunajPlijen(p.ostava, 1, radKonja));
+          setPlijen((prev) => prev ?? izracunajPlijen(p.ostava, 1, radKonja, jatoBrojRef.current));
         }
         playSfx("collect");
         flash("rgba(198, 224, 90, 0.4)");
@@ -275,12 +310,45 @@ export function RaidModal({
     if (naPotezu === "npc" && faza === "opsada" && !liveDvoboj) return;
     if (faza === "ceka") live.odbijPohod();
     else if (liveDvoboj && (faza === "opsada" || faza === "jahanje")) live.bjeziPohod();
+    window.clearTimeout(telegraphT.current);
+    setTelegraphUid(null);
+    ocistiPohodJato();
     onZatvori();
+  };
+
+  const klikniJato = (e: { stopPropagation: () => void; preventDefault: () => void }, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    playSfx("button");
+    setJato((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.length >= POHOD_JATO_MAX) return prev;
+      return [...prev, id];
+    });
+  };
+
+  const spremiJato = () => {
+    postaviPohodJato(jato);
+    jatoBonusRef.current = jatoBonus;
+    jatoBrojRef.current = jato.length;
+  };
+
+  const kreniSMostom = (m: RaidMeta) => {
+    if (lock.current || telegraphUid) return;
+    if (faza !== "lista" && faza !== "jahanje") return;
+    setTelegraphUid(m.uid);
+    osjeti("hold");
+    window.clearTimeout(telegraphT.current);
+    telegraphT.current = window.setTimeout(() => {
+      if (dead.current) return;
+      setTelegraphUid(null);
+      kreniOpsadu(m);
+    }, HOLD_KADAR_MS);
   };
 
   const kreniOpsadu = (m: RaidMeta) => {
     if (lock.current || (faza !== "lista" && faza !== "jahanje")) return;
-    const h = hrpeIzResursa(m.resursi);
+    let h = hrpeIzResursa(m.resursi);
     if (jeTerminal(h)) {
       playSfx("attack");
       setMeta(m);
@@ -290,13 +358,14 @@ export function RaidModal({
     playSfx("attack");
     shake("soft");
     setMeta(m);
-    setHrpe(h);
     setNpcHint(null);
     setUtvrdjenoStart(jeUtvrdjeno(h));
     turnLock.current = false;
     setLiveDvoboj(false);
+    spremiJato();
 
     if (m.uzivo && live.joined) {
+      setHrpe(h);
       live.pozoviPohod(m.uid, m.imeIgraca, h);
       setLiveDvoboj(true);
       if (jahanje > 0) {
@@ -313,10 +382,13 @@ export function RaidModal({
 
     const ophodnja = m.uzivo ? (live.cowboys.find((c) => c.id === m.uid)?.ophodnja ?? 0) : jeUtvrdjeno(h) ? 1 : 0;
     const prvi = tkoIdePrvi(jahanje, ophodnja);
+    if (prvi === "igrac") h = osigurajPobjednickiStart(h);
+    setHrpe(h);
+    const vjestina = npcVjestina(igracRazina, m.igracRazina, jatoBonusRef.current);
     const kreni = () => {
       if (prvi === "npc") {
         setNaPotezu("npc");
-        const odgovor = npcPotez(h);
+        const odgovor = npcPotez(h, vjestina);
         if (odgovor) {
           setNpcHint(odgovor);
           window.setTimeout(() => {
@@ -352,7 +424,7 @@ export function RaidModal({
     lock.current = true;
     try {
       if (m.uzivo) {
-        const loot = izracunajPlijen(m.resursi, m.igracRazina, radKonja);
+        const loot = izracunajPlijen(m.resursi, m.igracRazina, radKonja, jatoBrojRef.current);
         if (plijenUkupno(loot) > 0) primiResurse(loot);
         playSfx("collect");
         flash("rgba(198, 224, 90, 0.4)");
@@ -385,7 +457,7 @@ export function RaidModal({
           drvo: stolen.drvo,
           kamen: stolen.kamen,
           zeljezo: stolen.zeljezo,
-          zlato: izracunajPlijen(stolen, m.igracRazina).zlato,
+          zlato: izracunajPlijen(stolen, m.igracRazina, 0, jatoBrojRef.current).zlato,
         };
         if (plijenUkupno(loot) <= 0) {
           playSfx("attack");
@@ -401,7 +473,7 @@ export function RaidModal({
         return;
       }
 
-      const loot = izracunajPlijen(m.resursi, m.igracRazina, radKonja);
+      const loot = izracunajPlijen(m.resursi, m.igracRazina, radKonja, jatoBrojRef.current);
       if (plijenUkupno(loot) <= 0) {
         playSfx("attack");
         setFaza("prazno");
@@ -454,7 +526,7 @@ export function RaidModal({
       return;
     }
     setNaPotezu("npc");
-    const odgovor = npcPotez(nakonIgraca);
+    const odgovor = npcPotez(nakonIgraca, npcVjestina(igracRazina, meta.igracRazina, jatoBonusRef.current));
     if (!odgovor) {
       await zavrsiPobjedu(meta);
       return;
@@ -623,7 +695,11 @@ export function RaidModal({
               </div>
             </div>
             <p className="mt-3 text-center text-sm font-bold text-ink">Jašeš na {meta.kauba ?? meta.imeIgraca}.</p>
-            <p className="mt-1 text-center text-xs font-bold text-dim">Prašina. Sedlo. Ostava čeka.</p>
+            <p className="mt-1 text-center text-xs font-bold text-dim">
+              {jatoClanovi.length
+                ? `S tobom: ${jatoClanovi.map((p) => p.ime).join(", ")}.`
+                : "Prašina. Sedlo. Ostava čeka."}
+            </p>
           </div>
         )}
 
@@ -662,25 +738,84 @@ export function RaidModal({
         )}
 
         {faza === "lista" && (
-          <>
-            <p className="px-4 pb-3 text-xs leading-relaxed text-dim">
+          <div className="pohod-lista min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4">
+            <p className="pb-2 text-xs leading-relaxed text-dim">
               Noć. Tri hrpe. Tko uzme zadnji žeton, nosi blago. Jahanje ide prvo. Ophodnja čeka na ulici.
             </p>
-            <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
-              {ucitava && (
-                <p className="py-8 text-center text-xs font-bold tracking-widest text-dim uppercase">
-                  Tražim protivnike…
+            {kandidati.length > 0 && (
+              <div className="pohod-jato mb-3">
+                <p className="text-[10px] font-bold tracking-[0.18em] text-gold uppercase">Tko jaše</p>
+                <p className="mt-0.5 text-[11px] font-bold text-dim">
+                  Do {POHOD_JATO_MAX}. {jato.length}/{POHOD_JATO_MAX}
+                  {jato.length >= POHOD_JATO_MAX
+                    ? " · jato puno. Skini jednog da mijenjaš."
+                    : jato.length > 0
+                      ? " · jato diže izgled pobjede."
+                      : " · uzmi kauboje sa sobom."}
                 </p>
-              )}
-              {!ucitava && mete.length === 0 && (
-                <p className="py-8 text-center text-xs font-bold tracking-widest text-dim uppercase">
-                  Nema kauboja u sobi
-                </p>
-              )}
-              <div className="flex flex-col gap-2">
+                {kandidati.length > 0 && (
+                  <button
+                    type="button"
+                    data-testid="pohod-valter"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      playSfx("button");
+                      osjeti("hold");
+                      setJato(okupiValter(kandidati));
+                    }}
+                    className="mt-1.5 min-h-9 w-full rounded-lg border border-gold/45 bg-gold/12 px-2.5 text-[11px] font-bold tracking-wide text-gold uppercase"
+                  >
+                    Valter · okupi kaubu
+                  </button>
+                )}
+                <p className="mt-1 text-[11px] font-bold leading-snug text-dim">{recValter("pohod")}</p>
+                <div className="pohod-jato-traka mt-2">
+                  {kandidati.map((p) => {
+                    const on = jato.includes(p.id);
+                    const pun = !on && jato.length >= POHOD_JATO_MAX;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        aria-pressed={on}
+                        aria-disabled={pun}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => klikniJato(e, p.id)}
+                        className={cn(
+                          "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-2 py-1",
+                          on ? "border-gold bg-gold/20 text-ink" : "border-line bg-panel-2 text-dim",
+                          pun && "opacity-45",
+                        )}
+                      >
+                        <span className="size-7 overflow-hidden rounded-full">
+                          <LikAvatar p={p} mood="mir" />
+                        </span>
+                        <span className="text-[11px] font-bold">
+                          {jeGlavni(p.id) ? "★ " : ""}
+                          {p.ime}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {ucitava && (
+              <p className="py-8 text-center text-xs font-bold tracking-widest text-dim uppercase">
+                Tražim protivnike…
+              </p>
+            )}
+            {!ucitava && mete.length === 0 && (
+              <p className="py-8 text-center text-xs font-bold tracking-widest text-dim uppercase">
+                Nema kauboja u sobi
+              </p>
+            )}
+            <div className="flex flex-col gap-2">
                 {mete.map((item) => {
                   const h = hrpeIzResursa(item.resursi);
-                  const loot = izracunajPlijen(item.resursi, item.igracRazina, radKonja);
+                  const loot = izracunajPlijen(item.resursi, item.igracRazina, radKonja, jato.length);
                   const utvrda = jeUtvrdjeno(h);
                   const susjed = susjedPoUid(item.uid);
                   const lik = susjed ? serifKaoLik(susjed) : null;
@@ -749,9 +884,13 @@ export function RaidModal({
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            kreniOpsadu(item);
+                            kreniSMostom(item);
                           }}
-                          className="inline-flex min-h-11 min-w-[6.2rem] items-center justify-center gap-1 rounded-lg bg-ruby px-3 text-xs font-bold tracking-wide text-ink"
+                          disabled={!!telegraphUid}
+                          className={cn(
+                            "inline-flex min-h-11 min-w-[6.2rem] items-center justify-center gap-1 rounded-lg bg-ruby px-3 text-xs font-bold tracking-wide text-ink",
+                            telegraphUid === item.uid && "chip-drzi",
+                          )}
                         >
                           <img
                             src={SYMBOL_ART.skull}
@@ -794,12 +933,11 @@ export function RaidModal({
                   );
                 })}
               </div>
-            </div>
-          </>
+          </div>
         )}
       </div>
     </div>,
-    document.body,
+    portalKorijen(),
   );
 }
 

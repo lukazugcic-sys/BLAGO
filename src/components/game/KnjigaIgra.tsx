@@ -50,11 +50,13 @@ export function KnjigaIgra() {
 
   useEffect(() => {
     if (faza === "uvod") {
+      if (pending) return;
       setPecat(false);
       setOtvorena(false);
       lock.current = false;
       const open = window.setTimeout(() => setOtvorena(true), 70);
-      const cilj = izaberiExpand();
+      const vec = useGameStore.getState().besplatneExpand;
+      const cilj = vec && EXPAND_ZNAKOVI.includes(vec) ? vec : izaberiExpand();
       let i = 0;
       let ms = 90;
       let id = 0;
@@ -91,7 +93,7 @@ export function KnjigaIgra() {
       setOtvorena(true);
       setPecat(false);
     }
-  }, [faza, kreniKnjigu, zavrtiMasinu]);
+  }, [faza, pending, kreniKnjigu, zavrtiMasinu]);
 
   if (!faza || faza === "igra") return null;
   if (faza === "uvod" && pending) return null;
@@ -211,7 +213,7 @@ export function KnjigaIgra() {
                   <NagradaPikseli nagrada={lonac} />
                 </div>
                 <p className="knjiga-rec knjiga-stagger" style={{ ["--i" as string]: 4 }}>
-                  Prašina sjele. Kolo čeka.
+                  Prašina se slegla. Kolo čeka.
                 </p>
                 <button
                   type="button"

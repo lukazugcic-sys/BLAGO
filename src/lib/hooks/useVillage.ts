@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { useGameStore } from "@/lib/stores/gameStore";
 import { RESOURCE_TICK_MS, izracunajEnergijaRegenMs } from "@/lib/game/economy";
+import { msUntilNextZora, msUntilMidnight } from "@/lib/game/daily";
+import { pretplatiSat } from "@/lib/game/sat";
 
 export function useVillage() {
   const timerTick = useGameStore((s) => s.timerTick);
@@ -18,6 +20,8 @@ export function useVillage() {
       );
       if (s.gradnje.length) wait = Math.min(wait, ...s.gradnje.map((g) => Math.max(200, g.kraj - now)));
       if (s.karavana) wait = Math.min(wait, Math.max(200, s.karavana.kraj - now));
+      wait = Math.min(wait, Math.max(400, msUntilNextZora() + 250));
+      wait = Math.min(wait, Math.max(400, msUntilMidnight() + 250));
       wait = Math.max(400, Math.min(wait, 8000));
       t = window.setTimeout(() => {
         timerTick();
@@ -35,8 +39,16 @@ export function useVillage() {
       }
     };
     document.addEventListener("visibilitychange", onVis);
+    const odjava = pretplatiSat(() => {
+      const s = useGameStore.getState();
+      const d = s.metakDogadaj;
+      if (!d) return;
+      if (d.do <= Date.now()) s.ugasiMetak();
+      else s.tikMetka();
+    });
     return () => {
       window.clearTimeout(t);
+      odjava();
       document.removeEventListener("visibilitychange", onVis);
     };
   }, [timerTick]);

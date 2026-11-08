@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useGameStore } from "@/lib/stores/gameStore";
 import { kadJe, kronikaArt, kronikaNaslov, stavOd } from "@/lib/game/kronika";
 import { SYMBOL_ART } from "@/lib/game/art";
@@ -34,20 +34,41 @@ function redKlasa(z: KronikaZapis) {
   return "";
 }
 
+const PRVI = 8;
+const KORAK = 8;
+
 export function KronikaLista() {
   const kronika = useGameStore((s) => s.kronika);
   const [filter, setFilter] = useState<(typeof FILTERI)[number]["id"]>("sve");
+  const [koliko, setKoliko] = useState(PRVI);
+  const viseRef = useRef<HTMLDivElement>(null);
   const red = useMemo(() => kronika.filter((z) => prolazi(z, filter)), [kronika, filter]);
+  const vidljivi = red.slice(0, koliko);
   const skupine = useMemo(() => {
     const map = new Map<string, KronikaZapis[]>();
-    for (const z of red) {
+    for (const z of vidljivi) {
       const k = kadJe(z.t);
       const arr = map.get(k);
       if (arr) arr.push(z);
       else map.set(k, [z]);
     }
     return [...map.entries()];
-  }, [red]);
+  }, [vidljivi]);
+  useEffect(() => {
+    setKoliko(PRVI);
+  }, [filter]);
+  useEffect(() => {
+    const el = viseRef.current;
+    if (!el || koliko >= red.length) return;
+    const io = new IntersectionObserver(
+      (ents) => {
+        if (ents.some((e) => e.isIntersecting)) setKoliko((n) => Math.min(red.length, n + KORAK));
+      },
+      { rootMargin: "240px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [koliko, red.length]);
 
   return (
     <div className="flex flex-col gap-3">
@@ -82,18 +103,14 @@ export function KronikaLista() {
           </p>
         </article>
       ) : (
-        skupine.map(([kad, zapisi]) => (
-          <article key={kad} className="rounded-2xl border border-line bg-panel p-3.5">
+        skupine.map(([kad, zapisi], gi) => (
+          <article key={`${kad}-${gi}`} className="rounded-2xl border border-line bg-panel p-3.5">
             <p className="mb-2 text-[10px] font-bold tracking-widest text-dim uppercase">{kad}</p>
             <ul className="flex flex-col gap-2.5">
-              {zapisi.map((z, i) => {
+              {zapisi.map((z) => {
                 const s = stavOd(z.stav);
                 return (
-                  <li
-                    key={z.id}
-                    className={cn("kronika-red flex gap-2.5", redKlasa(z))}
-                    style={{ animationDelay: `${Math.min(i, 6) * 40}ms` }}
-                  >
+                  <li key={z.id} className={cn("kronika-red flex gap-2.5", redKlasa(z))}>
                     <IconBadge src={SYMBOL_ART[kronikaArt(z)]} size="sm" />
                     <span className="min-w-0">
                       <span className="block text-xs font-bold tracking-wide text-dim uppercase">
@@ -109,6 +126,7 @@ export function KronikaLista() {
           </article>
         ))
       )}
+      {koliko < red.length ? <div ref={viseRef} className="h-6" aria-hidden /> : null}
     </div>
   );
 }

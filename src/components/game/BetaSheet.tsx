@@ -6,7 +6,9 @@ import { SAVE_KEYS } from "@/lib/game/persist";
 import { playSfx } from "@/lib/game/audio";
 import { useGameStore } from "@/lib/stores/gameStore";
 import { useSlotStore } from "@/lib/stores/slotStore";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { portalKorijen } from "@/lib/game/portal";
+import { lokalniNoviPocetak } from "@/lib/game/noviPocetak";
 
 const ALATI: Array<{
   id: "zlato" | "energija" | "dijamanti" | "resursi" | "stitovi" | "popravi";
@@ -20,39 +22,30 @@ const ALATI: Array<{
   { id: "popravi", n: "Popravi zgrade" },
 ];
 
-type ApkMeta = { version: string; versionCode: number; bytes: number; builtAt: string };
-
-function mb(n: number) {
-  return `${Math.max(1, Math.round(n / 1_000_000))} MB`;
-}
-
 export function BetaSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [potvrda, setPotvrda] = useState(false);
+  const [noviPotvrda, setNoviPotvrda] = useState(false);
   const [autoRez, setAutoRez] = useState<string | null>(null);
-  const [meta, setMeta] = useState<ApkMeta | null>(null);
+  const [devAlati, setDevAlati] = useState(false);
+  const verzijaTaps = useRef(0);
   const testAlat = useGameStore((s) => s.testAlat);
   const autoTest = useGameStore((s) => s.autoTest);
   const setRaidAktivan = useSlotStore((s) => s.setRaidAktivan);
+  const aiDogadaji = useGameStore((s) => s.aiDogadaji !== false);
 
   useEffect(() => {
-    if (!open) return;
-    let ziv = true;
-    fetch(`/apk-meta.json?t=${Date.now()}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (ziv && d?.version) setMeta(d as ApkMeta);
-      })
-      .catch(() => {});
-    return () => {
-      ziv = false;
-    };
+    if (!open || typeof window === "undefined") return;
+    const q = new URLSearchParams(window.location.search).get("dev") === "1";
+    let mem = false;
+    try {
+      mem = window.sessionStorage.getItem("blago-dev") === "1";
+    } catch {
+      mem = false;
+    }
+    setDevAlati(q || mem);
   }, [open]);
 
   if (!open || typeof document === "undefined") return null;
-
-  const paket = meta?.version ?? APP_VERSION;
-  const tag = `${paket}-${meta?.versionCode ?? 0}`;
-  const svjez = !meta || meta.version === APP_VERSION;
 
   const reset = () => {
     if (!potvrda) {
@@ -70,13 +63,26 @@ export function BetaSheet({ open, onClose }: { open: boolean; onClose: () => voi
       <div className="modal-ulaz max-h-[min(32rem,82dvh)] w-full max-w-sm overflow-y-auto rounded-3xl border border-line bg-panel">
         <div className="p-3 pt-3">
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-[10px] font-bold tracking-[0.28em] text-gold uppercase">
+          <p
+            className="text-[10px] font-bold tracking-[0.28em] text-gold uppercase"
+            onClick={() => {
+              verzijaTaps.current += 1;
+              if (verzijaTaps.current < 7) return;
+              try {
+                window.sessionStorage.setItem("blago-dev", "1");
+              } catch {
+                /* privatno */
+              }
+              setDevAlati(true);
+            }}
+          >
             {APP_CHANNEL} {APP_VERSION}
           </p>
           <button
             type="button"
             onClick={() => {
               setPotvrda(false);
+              setNoviPotvrda(false);
               onClose();
             }}
             className="flex size-8 items-center justify-center rounded-full border border-line text-dim"
@@ -87,42 +93,18 @@ export function BetaSheet({ open, onClose }: { open: boolean; onClose: () => voi
         </div>
         <h2 className="font-display text-lg text-gold">BLAGO beta</h2>
         <p className="mt-1 text-xs font-bold leading-relaxed text-ink/75">
-          {svjez ? `Najnoviji paket · ${paket}` : `Igra ${APP_VERSION} · paket se sprema`}
+          Igraj u pregledniku. Na telefonu otvori izbornik preglednika i dodaj na početni zaslon.
         </p>
+        <a
+          href={`/apk/BLAGO-${APP_VERSION}.apk`}
+          download={`BLAGO-${APP_VERSION}.apk`}
+          className="mt-3 flex min-h-10 w-full items-center justify-center rounded-full bg-gold text-xs font-bold tracking-widest text-void uppercase"
+        >
+          Preuzmi APK {APP_VERSION}
+        </a>
 
-        <h3 className="mt-3 text-[10px] font-bold tracking-[0.22em] text-gold uppercase">
-          Preuzmi
-        </h3>
-        <div className="mt-1.5 grid grid-cols-1 gap-1.5">
-          <a
-            href="/preuzmi"
-            target="_blank"
-            rel="noreferrer"
-            onClick={() => playSfx("button")}
-            className="flex min-h-10 items-center justify-center rounded-xl bg-gold px-2 text-[11px] font-bold tracking-widest text-void uppercase"
-          >
-            Preuzmi APK · {meta ? mb(meta.bytes) : "paket"}
-          </a>
-          <a
-            href={`/BLAGO-android.zip?v=${tag}`}
-            download="BLAGO-android.zip"
-            target="_blank"
-            rel="noreferrer"
-            onClick={() => playSfx("button")}
-            className="flex min-h-10 items-center justify-center rounded-xl border border-gold/50 bg-gold/15 px-2 text-[11px] font-bold tracking-widest text-gold uppercase"
-          >
-            APK u ZIP-u · {meta ? mb(meta.bytes) : "paket"}
-          </a>
-          <a
-            href="/BLAGO-github.zip"
-            download="BLAGO-github.zip"
-            onClick={() => playSfx("button")}
-            className="flex min-h-10 items-center justify-center rounded-xl border border-line bg-panel-2 px-2 text-[11px] font-bold tracking-widest text-ink uppercase"
-          >
-            Izvor za GitHub
-          </a>
-        </div>
-
+        {devAlati && (
+        <>
         <h3 className="mt-3 text-[10px] font-bold tracking-[0.22em] text-gold uppercase">
           Alati za testiranje
         </h3>
@@ -163,6 +145,47 @@ export function BetaSheet({ open, onClose }: { open: boolean; onClose: () => voi
         >
           {autoRez ? `Auto-test ${autoRez}` : "Pokreni auto-test"}
         </button>
+        </>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            playSfx("button");
+            if (!noviPotvrda) {
+              setNoviPotvrda(true);
+              return;
+            }
+            lokalniNoviPocetak();
+          }}
+          className="mt-1.5 min-h-10 w-full rounded-xl border border-line bg-panel-2 px-2 text-[11px] font-bold text-ink"
+        >
+          {noviPotvrda ? "Da, počni ispočetka na ovom uređaju" : "Novi početak (test)"}
+        </button>
+        {noviPotvrda && (
+          <p className="mt-1 text-[10px] font-bold leading-relaxed text-dim">
+            Briše spremanje na ovom uređaju i serverski zapis ove prijave, pa krene od priče.
+          </p>
+        )}
+
+        <button
+          type="button"
+          role="switch"
+          aria-checked={aiDogadaji}
+          data-testid="ai-dogadaji"
+          onClick={() => {
+            playSfx("button");
+            const cur = useGameStore.getState();
+            useGameStore.setState({ aiDogadaji: cur.aiDogadaji === false });
+            cur.spremi();
+          }}
+          className="mt-2 flex min-h-10 w-full items-center justify-between rounded-xl border border-line bg-panel-2 px-3 text-[11px] font-bold text-ink"
+        >
+          <span>AI događaji</span>
+          <span>{aiDogadaji ? "Uključeno" : "Isključeno"}</span>
+        </button>
+        <p className="mt-1 text-[10px] font-bold leading-relaxed text-dim" data-testid="ai-cloud-rec">
+          Kontekst igre (bez osobnih podataka) šalje se na Cloudflare radi stvaranja događaja.
+        </p>
 
         <p className="mt-2 text-[10px] font-bold leading-relaxed tracking-wide text-dim">{CREDITS}</p>
         <button
@@ -178,6 +201,6 @@ export function BetaSheet({ open, onClose }: { open: boolean; onClose: () => voi
         </div>
       </div>
     </div>,
-    document.body,
+    portalKorijen(),
   );
 }

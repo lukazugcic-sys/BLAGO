@@ -1,26 +1,75 @@
 {
-  "headers": [
+  "redirects": [
     {
       "source": "/BLAGO.apk",
+      "destination": "/apk/BLAGO-0.9.161-beta.apk",
+      "permanent": false
+    }
+  ],
+  "headers": [
+    {
+      "source": "/",
       "headers": [
-        { "key": "Content-Type", "value": "application/vnd.android.package-archive" },
-        { "key": "Content-Disposition", "value": "attachment; filename=\"BLAGO.apk\"" },
-        { "key": "Cache-Control", "value": "no-store" }
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/index.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/apk/(.*\\.apk)",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/vnd.android.package-archive"
+        },
+        {
+          "key": "Content-Disposition",
+          "value": "attachment; filename=\"BLAGO-0.9.161-beta.apk\""
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
       ]
     },
     {
       "source": "/BLAGO-android.zip",
       "headers": [
-        { "key": "Content-Type", "value": "application/zip" },
-        { "key": "Content-Disposition", "value": "attachment; filename=\"BLAGO-android.zip\"" },
-        { "key": "Cache-Control", "value": "no-store" }
+        {
+          "key": "Content-Type",
+          "value": "application/zip"
+        },
+        {
+          "key": "Content-Disposition",
+          "value": "attachment; filename=\"BLAGO-android.zip\""
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
       ]
     },
     {
       "source": "/BLAGO-github.zip",
       "headers": [
-        { "key": "Content-Type", "value": "application/zip" },
-        { "key": "Content-Disposition", "value": "attachment; filename=\"BLAGO-github.zip\"" }
+        {
+          "key": "Content-Type",
+          "value": "application/zip"
+        },
+        {
+          "key": "Content-Disposition",
+          "value": "attachment; filename=\"BLAGO-github.zip\""
+        }
       ]
     }
   ]

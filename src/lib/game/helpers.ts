@@ -18,3 +18,22 @@ export function formatHud(n: number) {
   if (v < 1_000_000) return `${Math.round(v / 1000)}k`;
   return `${(v / 1_000_000).toFixed(1).replace(/\.0$/, "")}m`;
 }
+
+export function vidljiviInterval(fn: () => void, ms: number) {
+  fn();
+  const tick = () => {
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+    fn();
+  };
+  const id = window.setInterval(tick, ms);
+  const onVis = () => {
+    if (document.visibilityState === "visible") fn();
+  };
+  document.addEventListener("visibilitychange", onVis);
+  return () => {
+    window.clearInterval(id);
+    document.removeEventListener("visibilitychange", onVis);
+  };
+}
+
+

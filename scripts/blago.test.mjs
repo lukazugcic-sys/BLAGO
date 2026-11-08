@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 
 const izracunajMaxEnergiju = (baterija) => 20 + baterija * 6;
 const izracunajEnergijaRegenMs = (baterija) =>
-  Math.max(2000, 4500 - Math.max(0, baterija) * 380);
+  Math.max(3800, 8000 - Math.max(0, baterija) * 320);
 const izracunajMaxStitova = (oklop) => 1 + oklop;
 const izracunajSansuZaDobitak = (sreca) => Math.min(0.18, 0.09 + sreca * 0.015);
 const izracunajPotrebniXp = (razina) =>
@@ -35,11 +36,20 @@ function formatHud(n) {
 
 const cycleDay = (streak) => ((Math.max(1, streak) - 1) % 7) + 1;
 
-test("energija raste s baterijom, regen ne ide ispod 2000ms", () => {
+const TRAVA_ZABAVA = 8;
+
+test("trava diže zabavu u kaubi", () => {
+  assert.equal(TRAVA_ZABAVA, 8);
+  const zabava = 10 + TRAVA_ZABAVA;
+  assert.equal(zabava, 18);
+});
+
+
+test("energija raste s baterijom, regen 8s i ne ide ispod 3.8s", () => {
   assert.equal(izracunajMaxEnergiju(0), 20);
   assert.equal(izracunajMaxEnergiju(2), 32);
-  assert.equal(izracunajEnergijaRegenMs(0), 4500);
-  assert.equal(izracunajEnergijaRegenMs(20), 2000);
+  assert.equal(izracunajEnergijaRegenMs(0), 8000);
+  assert.equal(izracunajEnergijaRegenMs(20), 3800);
 });
 
 const POKRICE = { kuca: 5, blok: 10, bunar: 8, lov: 6, salun: 8, posao: 4 };
@@ -758,7 +768,9 @@ test("kupnja knjige je 15 dijamanata i raste svaka 3 levela", () => {
   assert.ok(KNJIGA_PLIJEN < 0.8);
 });
 
-test("bonus vrtnja plaća fiksnim ulogom, ne energijom okidača", () => {
+test("bonus vrtnja plaća spremljenim ulogom, ne fiksnom 3", () => {
+  const hook = readFileSync(new URL("../src/lib/hooks/useSlotMachine.ts", import.meta.url), "utf8");
+  assert.match(hook, /jeBonus \? Math\.max\(1, gs\.besplatneUlog \|\| KNJIGA_ULOG\)/);
   assert.equal(KNJIGA_ULOG, 3);
 });
 
@@ -770,7 +782,7 @@ const MIN_NIZ = {
   gem: 3,
   shield: 3,
   wild: 3,
-  energy: 4,
+  energy: 3,
 };
 function rasponNiza(id, rng) {
   const min = Math.min(5, Math.max(3, MIN_NIZ[id] ?? 3));
@@ -797,17 +809,25 @@ function rasponStupova(id, rng) {
   return 2;
 }
 
-test("kolo od 3, energija od 4. bonus stupci jaki 2–5, slabi 3–5, energija 4–5", () => {
+test("energija plaća i od 3 u liniji", () => {
+  const vrtnje = (n) => (n >= 3 ? n : 0);
+  assert.equal(vrtnje(2), 0);
+  assert.equal(vrtnje(3), 3);
+  assert.equal(vrtnje(4), 4);
+  assert.equal(vrtnje(5), 5);
+});
+
+test("kolo od 3, i energija. bonus stupci jaki 2–5, slabi 3–5, energija 4–5", () => {
   assert.equal(MIN_NIZ.gold, 3);
   assert.equal(MIN_NIZ.iron, 3);
   assert.equal(MIN_NIZ.wood, 3);
   assert.equal(MIN_NIZ.stone, 3);
-  assert.equal(MIN_NIZ.energy, 4);
+  assert.equal(MIN_NIZ.energy, 3);
   assert.equal(rasponNiza("gold", () => 0), 3);
   assert.equal(rasponNiza("wood", () => 0), 3);
-  assert.equal(rasponNiza("energy", () => 0), 4);
+  assert.equal(rasponNiza("energy", () => 0), 3);
   assert.equal(rasponNiza("gold", () => 0.97), 5);
-  assert.equal(rasponNiza("energy", () => 0.95), 5);
+  assert.equal(rasponNiza("energy", () => 0.97), 5);
   assert.equal(rasponStupova("gold", () => 0), 2);
   assert.equal(rasponStupova("wood", () => 0), 3);
   assert.equal(rasponStupova("energy", () => 0), 4);

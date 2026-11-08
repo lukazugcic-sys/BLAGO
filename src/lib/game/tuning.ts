@@ -6,9 +6,9 @@ export const START = {
   zlato: 90,
   dijamanti: 2,
   energija: 20,
-  drvo: 28,
-  kamen: 6,
-  zeljezo: 0,
+  drvo: 300,
+  kamen: 60,
+  zeljezo: 20,
   stitovi: 1,
   stanovnici: 5,
   kvalitetaSela: 20,
@@ -17,11 +17,11 @@ export const START = {
 
 export const ENERGY_BASE_MAX = 20;
 export const ENERGY_PER_BATTERY = 6;
-export const ENERGY_REGEN_MS = 4500;
-export const ENERGY_REGEN_PER_LV = 380;
-export const ENERGY_REGEN_FLOOR_MS = 2000;
-export const BUNAR_ENERGIJA = 0.12;
-export const MLIN_ENERGIJA = 0.18;
+export const ENERGY_REGEN_MS = 8000;
+export const ENERGY_REGEN_PER_LV = 320;
+export const ENERGY_REGEN_FLOOR_MS = 3800;
+export const BUNAR_ENERGIJA = 0.08;
+export const MLIN_ENERGIJA = 0.12;
 
 export const WIN_CHANCE_BASE = 0.09;
 export const WIN_CHANCE_PER_LUCK = 0.015;
@@ -29,7 +29,7 @@ export const WIN_CHANCE_CAP = 0.18;
 export const LINE_MULT = { 3: 1, 4: 3, 5: 6 } as const;
 export const JACKPOT_BONUS = 1.4;
 export const STREAK_BONUS_PER_WIN = 0.1;
-export const MAX_WIN_STREAK = 5;
+export const MAX_WIN_STREAK = 3;
 export const LUCKY_SPIN_INTERVAL = 40;
 export const GAMBLE_MAX = 3;
 export const GAMBLE_WIN_P = 0.46;
@@ -40,7 +40,7 @@ export const LUCKY_WILD_P = 0.28;
 export const FORCED_P5 = 0.08;
 export const FORCED_P4 = 0.22;
 
-/** Linije na kolu: od 3. Energija od 4. Bonus knjige ima svoje stupce. */
+/** Linije na kolu: od 3, i energija. Bonus knjige ima svoje stupce. */
 export const MIN_NIZ: Record<SimbolId, number> = {
   skull: 9,
   knjiga: 9,
@@ -51,7 +51,7 @@ export const MIN_NIZ: Record<SimbolId, number> = {
   gem: 3,
   shield: 3,
   wild: 3,
-  energy: 4,
+  energy: 3,
 };
 
 export function minNiz(id: SimbolId): number {
@@ -63,6 +63,23 @@ export function linijaMnozitelj(n: number): number {
   if (n === 4) return LINE_MULT[4];
   if (n === 3) return LINE_MULT[3];
   return 0;
+}
+
+/** Niz dobitaka: prvi ×1,1, drugi ×1,2, treći i dalje ×1,3. */
+export function winStreakMnozitelj(n: number): number {
+  const k = Math.min(MAX_WIN_STREAK, Math.max(0, Math.floor(n)));
+  if (k <= 0) return 1;
+  return 1 + k * STREAK_BONUS_PER_WIN;
+}
+
+/** Niz vrijedi deset minuta od zadnjeg dobitka. Stari save bez roka se gasi. */
+export const NIZ_TRAJE_MS = 10 * 60 * 1000;
+
+export function nizAkoVrijedi(n: number, doMs: number, sad = Date.now()) {
+  const k = Math.floor(Number(n) || 0);
+  if (k <= 0) return 0;
+  if (!Number.isFinite(doMs) || doMs <= sad) return 0;
+  return k;
 }
 
 /** Koliko ćelija u nizu posaditi na namještenoj liniji. */
@@ -87,7 +104,9 @@ export const PASIVNI_PO_RAZINI = 0.02;
 
 export const RESOURCE_TICK_MS = 6000;
 export const MAX_OFFLINE_MS = 2 * 60 * 60 * 1000;
-export const CIJENA_RAST = 1.36;
+export const CIJENA_RAST = 1.82;
+/** Svaka krunidba množi sve kupnje. 1. kruna ×1.85, 2. ×3.42, 3. ×6.33. */
+export const KRUNA_CIJENA = 1.85;
 
 export const POKRICE = {
   kuca: 5,
@@ -129,6 +148,8 @@ export const GOVEDO_KLANJE = 7;
 export const GOVEDO_KLANJE_MESNICA = 5;
 export const KISA_ZLATO = 5;
 export const KISA_MS = 4 * 60 * 1000;
+export const TRAVA_MS = 2 * 60 * 1000;
+export const TRAVA_ZABAVA = 8;
 
 export const SELIDBA_PRAG_DOCI = 45;
 export const SELIDBA_PRAG_ICI = 30;
@@ -145,9 +166,9 @@ export const TOK_BAZA = 0.88;
 export const TOK_SPAN = 0.24;
 
 export const PROIZVODNJA = {
-  pilana: 0.36,
-  kamenolom: 0.18,
-  rudnik: 0.08,
+  pilana: 0.55,
+  kamenolom: 0.30,
+  rudnik: 0.14,
 } as const;
 
 export const ALAT_MAX = {
@@ -158,7 +179,7 @@ export const ALAT_MAX = {
   wildBoost: 6,
 } as const;
 
-export const ALAT_CIJENA_MNOZ = 1.48;
+export const ALAT_CIJENA_MNOZ = 1.82;
 
 export type AlatId = keyof typeof ALAT_MAX;
 

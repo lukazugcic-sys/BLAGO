@@ -22,14 +22,14 @@ export const SlotSymbol = memo(function SlotSymbol({
     <span
       className={cn(
         "slot-token relative flex aspect-square w-full items-center justify-center",
-        id === "gold" && "slot-token-gold",
-        id === "energy" && "slot-token-energy",
+        `slot-token-${id}`,
         id === "knjiga" && "slot-knjiga",
         spinning && "reel-spinning",
         expanding && "slot-expand",
         win && !skullHit && "slot-win",
         skullHit && "slot-skull",
       )}
+      data-simbol={id}
       style={{
         color: meta.boja,
         ["--sym" as string]: meta.boja,
@@ -44,12 +44,7 @@ export const SlotSymbol = memo(function SlotSymbol({
         decoding="async"
         className="slot-art relative z-[1] object-contain select-none"
       />
-      {win && !skullHit && (
-        <>
-          <span className="slot-win-ring" aria-hidden />
-          <span className="slot-win-sheen" aria-hidden />
-        </>
-      )}
+      {win && !skullHit && <span className="slot-win-sheen" aria-hidden />}
       {skullHit && (
         <>
           <span className="slot-skull-vein" aria-hidden />

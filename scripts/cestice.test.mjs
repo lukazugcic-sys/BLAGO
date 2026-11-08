@@ -1,0 +1,60 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+
+const src = readFileSync(new URL("../src/lib/game/cestice.ts", import.meta.url), "utf8");
+assert.match(src, /CESTICE_MAX = 360/);
+assert.match(src, /CESTICE_STRIDE = 16/);
+assert.match(src, /CESTICE_EMIT_MAX = 80/);
+assert.match(src, /CESTICE_WG = 64/);
+assert.match(src, /CESTICE_GRAV = 110/);
+assert.match(src, /emitCestice/);
+assert.match(src, /chipTocka/);
+assert.match(src, /cilj: chipTocka\("zlato"\)/);
+assert.match(src, /export function emitDobitak/);
+assert.match(src, /stitovi: "štitovi"/);
+assert.match(src, /CHIP_BOJA/);
+assert.match(src, /energija: "energija"/);
+assert.match(src, /export function emitPrasina/);
+assert.match(src, /boja: "prasina"/);
+assert.match(src, /pakirajPending/);
+assert.match(src, /primiPendingUBazen/);
+assert.match(src, /cesticeTrebaCrtati/);
+assert.match(src, /chip-pogodak/);
+assert.match(src, /p\.vuci/);
+assert.match(src, /out\[o \+ 7\] = p\.vuci/);
+assert.match(src, /out\[o \+ 6\] = p\.max/);
+
+const gpu = readFileSync(new URL("../src/lib/game/cesticeGpu.ts", import.meta.url), "utf8");
+assert.match(gpu, /createBindGroupLayout/);
+assert.match(gpu, /createPipelineLayout/);
+assert.match(gpu, /createRenderPipeline/);
+assert.match(gpu, /createComputePipeline/);
+assert.match(gpu, /dispatchWorkgroups/);
+assert.match(gpu, /WGSL_CS/);
+assert.match(gpu, /WGSL_VS/);
+assert.match(gpu, /@compute @workgroup_size/);
+assert.match(gpu, /srcFactor: "one"/);
+assert.match(gpu, /dstFactor: "one-minus-src-alpha"/);
+assert.doesNotMatch(gpu, /layout: "auto"/);
+assert.match(gpu, /nacin: "compute"/);
+assert.match(gpu, /pakirajPending/);
+assert.match(gpu, /p\.vuci > 0\.0/);
+assert.match(gpu, /particlesOut/);
+assert.match(gpu, /cestice-a/);
+assert.match(gpu, /cestice-b/);
+assert.match(gpu, /beginComputePass/);
+
+const sloj = readFileSync(new URL("../src/components/game/CesticeSloj.tsx", import.meta.url), "utf8");
+assert.match(sloj, /pokreniCesticeGpu/);
+assert.match(sloj, /data-testid="cestice-sloj"/);
+assert.match(sloj, /feel-stop/);
+assert.match(sloj, /gpu-compute/);
+assert.match(sloj, /primiPendingUBazen/);
+assert.match(sloj, /cesticeTrebaCrtati/);
+
+const app = readFileSync(new URL("../src/components/game/GameApp.tsx", import.meta.url), "utf8");
+assert.match(app, /<CesticeSloj/);
+
+const css = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+assert.match(css, /\.chip-pogodak/);
+assert.match(css, /@keyframes chip-pogodak/);

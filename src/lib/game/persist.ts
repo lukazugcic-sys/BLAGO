@@ -8,7 +8,17 @@ export const SAVE_KEYS = {
   mute: `${PREFIX}:mute`,
   onboard: `${PREFIX}:onboard`,
   room: `${PREFIX}:room`,
+  tab: `${PREFIX}:tab`,
+  korak: `${PREFIX}:korak`,
+  vodic: `${PREFIX}:vodic`,
 } as const;
+
+let spremanjeBlokirano: () => boolean = () => false;
+
+/** Novi početak gasi upis dok se ključevi brišu, da pagehide ne vrati staru igru. */
+export function postaviBlokaduSpremanja(fn: () => boolean) {
+  spremanjeBlokirano = fn;
+}
 
 export function loadJSON<T>(key: string): T | null {
   if (typeof window === "undefined") return null;
@@ -23,6 +33,7 @@ export function loadJSON<T>(key: string): T | null {
 
 export function saveJSON(key: string, value: unknown) {
   if (typeof window === "undefined") return;
+  if (spremanjeBlokirano()) return;
   try {
     window.localStorage.setItem(key, JSON.stringify(value));
   } catch {

@@ -1,7 +1,11 @@
 {
   "name": "app-builder-workspace",
   "private": true,
-  "sideEffects": false,
+  "version": "0.9.161-beta",
+  "sideEffects": [
+    "src/main.tsx",
+    "src/lib/game/noviPrije.ts"
+  ],
   "type": "module",
   "overrides": {
     "nf3": "0.3.17"
@@ -16,6 +20,7 @@
     "check:auth": "node scripts/check-auth-invariant.mjs",
     "test": "node --test 'scripts/**/*.test.mjs'",
     "test:e2e": "node scripts/e2e-blago.mjs",
+    "test:qa": "node scripts/qa-napredni.mjs",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
@@ -48,7 +53,7 @@
     "@tailwindcss/vite": "^4.3.0",
     "@tanstack/react-query": "^5.101.0",
     "@tanstack/react-router": "^1.170.0",
-    "@tanstack/react-start": "^1.168.0",
+    "@tanstack/react-start": "~1.168.60",
     "@tanstack/react-table": "^8.21.0",
     "@tanstack/router-plugin": "^1.168.0",
     "better-auth": "~1.6.30",

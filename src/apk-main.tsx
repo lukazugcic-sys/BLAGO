@@ -1,3 +1,5 @@
+import { noviPrijeGotov } from "@/main";
+import "@/main";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -10,8 +12,7 @@ import {
 } from "@tanstack/react-router";
 import { GameApp } from "@/components/game/GameApp";
 import { AuthProvider } from "@/lib/auth/provider";
-import { AppErrorComponent } from "@/lib/error-component";
-import "./apk-fonts.css";
+import { AppErrorComponent, NijeNadjeno } from "@/lib/error-component";
 import "./styles.css";
 
 const rootRoute = createRootRoute({
@@ -40,7 +41,10 @@ const router = createRouter({
   routeTree,
   history: createMemoryHistory({ initialEntries: ["/"] }),
   defaultErrorComponent: AppErrorComponent,
+  defaultNotFoundComponent: NijeNadjeno,
 });
+
+if (noviPrijeGotov) document.documentElement.dataset.blagoNovi = "1";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

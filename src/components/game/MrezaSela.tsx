@@ -1,600 +1,422 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
+import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useShallow } from "zustand/react/shallow";
+import { ART, HUB_ART } from "@/lib/game/art";
+import { playSfx } from "@/lib/game/audio";
+import { smanjenPokret } from "@/lib/game/feel";
+import { kaubaOd } from "@/lib/game/ljudi";
+import {
+  OBRUC,
+  bojaKvalitete,
+  brojZgrada,
+  debljinaDoprinos,
+  debljinaJacine,
+  huboviIz,
+  imaUtjecaj,
+  krivulja,
+  najjaciUtjecaji,
+  sloziTok,
+  spojiUtjecaje,
+  stisniPomak,
+  stisniZum,
+  vezaPulsira,
+  type HubPrikaz,
+} from "@/lib/game/mrezaPrikaz";
+import type { KaubaUsko } from "@/lib/game/economy";
+import { POTREBE_META } from "@/lib/game/economy";
+import type { Gradevine } from "@/lib/game/types";
 import { useGameStore } from "@/lib/stores/gameStore";
 import { useSlotStore } from "@/lib/stores/slotStore";
-import { izgradiMrezu, vezeZa, type MrezaCvor } from "@/lib/game/mreza";
-import { ART, HUB_ART } from "@/lib/game/art";
-import { POTREBE_META, type KaubaUsko, type KaubaUtjecaj } from "@/lib/game/economy";
-import { kaubaOd } from "@/lib/game/ljudi";
-import { playSfx } from "@/lib/game/audio";
 import { cn } from "@/lib/utils";
-import type { Gradevine } from "@/lib/game/types";
 
-const HUB_XY: Record<KaubaUsko, { x: number; y: number }> = {
-  red: { x: 50, y: 16 },
-  krov: { x: 22, y: 32 },
-  voda: { x: 78, y: 32 },
-  jelo: { x: 22, y: 58 },
-  posao: { x: 78, y: 58 },
-  zdravlje: { x: 22, y: 82 },
-  zabava: { x: 50, y: 82 },
-  konji: { x: 78, y: 82 },
-};
+type Fokus = { vrsta: "selo" } | { vrsta: "hub"; id: KaubaUsko } | { vrsta: "dodatak"; id: string };
 
-const OBRUC: Array<[KaubaUsko, KaubaUsko]> = [
-  ["red", "krov"],
-  ["red", "voda"],
-  ["krov", "jelo"],
-  ["voda", "posao"],
-  ["jelo", "zdravlje"],
-  ["posao", "konji"],
-  ["zdravlje", "zabava"],
-  ["zabava", "konji"],
-  ["krov", "voda"],
-  ["jelo", "posao"],
-  ["red", "zabava"],
-];
+const PRAZNO: string[] = [];
 
-function krivulja(x1: number, y1: number, x2: number, y2: number, predznak: 1 | -1) {
-  const mx = (x1 + x2) / 2;
-  const my = (y1 + y2) / 2;
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  const k = predznak * 0.14;
-  return `M ${x1} ${y1} Q ${mx - dy * k} ${my + dx * k} ${x2} ${y2}`;
+function imeHuba(id: string) {
+  return POTREBE_META.find((p) => p.id === id)?.naziv ?? id;
 }
-
-function spojiUtjecaje(lista: KaubaUtjecaj[]) {
-  const map = new Map<string, KaubaUtjecaj>();
-  for (const u of lista) {
-    if (u.od === u.do) continue;
-    const k = `${u.od}>${u.do}:${u.predznak}`;
-    const ima = map.get(k);
-    if (!ima || u.jacina > ima.jacina) map.set(k, u);
-  }
-  return [...map.values()].sort((a, b) => b.jacina - a.jacina);
-}
-
-function KvalitetnaTraka({ n }: { n: number }) {
-  return (
-    <span className="mt-1 block h-1.5 w-full overflow-hidden rounded-full bg-void">
-      <span
-        className={cn("block h-full rounded-full", n >= 50 ? "bg-volt" : n >= 25 ? "bg-gold" : "bg-ruby")}
-        style={{ width: `${n}%` }}
-      />
-    </span>
-  );
-}
-
-type PregledId = "selo" | KaubaUsko | string;
 
 export function MrezaSela({
-  fokusHub,
-  onHub,
+  onZatvori,
   onZgrada,
-  velika,
 }: {
-  fokusHub?: KaubaUsko;
-  onHub?: (id: KaubaUsko) => void;
-  onZgrada?: (id: keyof Gradevine) => void;
-  velika?: boolean;
+  onZatvori: () => void;
+  onZgrada: (id: keyof Gradevine) => void;
 }) {
-  const imeIgraca = useGameStore((s) => s.imeIgraca);
-  const gradevine = useGameStore((s) => s.gradevine);
-  const ostecenja = useGameStore((s) => s.ostecenja);
-  const stitovi = useGameStore((s) => s.stitovi);
-  const oklop = useGameStore((s) => s.razine.oklop);
-  const klan = useGameStore((s) => s.klan);
-  const stavSela = useGameStore((s) => s.stavSela);
-  const kronika = useGameStore((s) => s.kronika);
-  const igracRazina = useGameStore((s) => s.igracRazina);
-  const prestigeRazina = useGameStore((s) => s.prestigeRazina);
-  const protokPuls = useGameStore((s) => s.protokPuls);
-  const setRaidAktivan = useSlotStore((s) => s.setRaidAktivan);
-  const stanovnici = useGameStore((s) => s.stanovnici);
-  const zamjenici = useGameStore((s) => s.zamjenici);
-  const konjiBroj = useGameStore((s) => s.konjiBroj);
-  const konjiDuznost = useGameStore((s) => s.konjiDuznost);
-  const govedaBroj = useGameStore((s) => s.govedaBroj);
-  const govedaDuznost = useGameStore((s) => s.govedaDuznost);
-  const sijenoDo = useGameStore((s) => s.sijenoDo);
-  const kisaDo = useGameStore((s) => s.kisaDo);
-  const kauba = useMemo(
-    () => kaubaOd({ gradevine, stanovnici, zamjenici, konjiBroj, konjiDuznost, sijenoDo, kisaDo, govedaBroj, govedaDuznost }),
-    [gradevine, stanovnici, zamjenici, konjiBroj, konjiDuznost, sijenoDo, kisaDo, govedaBroj, govedaDuznost],
+  const ulaz = useGameStore(
+    useShallow((s) => ({
+      imeIgraca: s.imeIgraca,
+      gradevine: s.gradevine,
+      ostecenja: s.ostecenja,
+      stitovi: s.stitovi,
+      oklop: s.razine?.oklop ?? 0,
+      klan: s.klan,
+      stavSela: s.stavSela,
+      kronika: s.kronika,
+      igracRazina: s.igracRazina,
+      prestigeRazina: s.prestigeRazina,
+      stanovnici: s.stanovnici,
+      zamjenici: s.zamjenici,
+      konjiBroj: s.konjiBroj,
+      konjiDuznost: s.konjiDuznost,
+      sijenoDo: s.sijenoDo,
+      kisaDo: s.kisaDo,
+      govedaBroj: s.govedaBroj,
+      govedaDuznost: s.govedaDuznost,
+      ljudi: s.ljudi,
+      segrti: s.segrti,
+    })),
   );
-  const utjecaji = useMemo(() => spojiUtjecaje(kauba.utjecaji), [kauba.utjecaji]);
-
-  const { cvorovi, veze } = useMemo(
-    () =>
-      izgradiMrezu({
-        imeIgraca,
-        gradevine,
-        ostecenja,
-        stitovi,
-        oklop,
-        klan,
-        stavSela,
-        kronika,
-        igracRazina,
-        prestigeRazina,
-      }),
-    [imeIgraca, gradevine, ostecenja, stitovi, oklop, klan, stavSela, kronika, igracRazina, prestigeRazina],
-  );
-
-  const [fokus, setFokus] = useState<PregledId>(fokusHub ?? "selo");
-  const [smijeTok, setSmijeTok] = useState(true);
-  const [zum, setZum] = useState(1);
-  const [ofs, setOfs] = useState({ x: 0, y: 0 });
-  const geste = useRef({
-    pointers: new Map<number, { x: number; y: number }>(),
-    startDist: 0,
-    startZum: 1,
-    startOfs: { x: 0, y: 0 },
-    last: { x: 0, y: 0 },
-    tap: 0,
+  const pulsIds = useGameStore((s) => {
+    const ids = (s as { protokPuls?: { ids?: string[] } | null }).protokPuls?.ids;
+    return ids?.length ? ids : PRAZNO;
   });
+  const setRaidAktivan = useSlotStore((s) => s.setRaidAktivan);
+  const tok = useMemo(() => {
+    try {
+      return sloziTok(ulaz);
+    } catch {
+      return sloziTok(null);
+    }
+  }, [ulaz]);
+  const utjecaji = useMemo(() => {
+    try {
+      return spojiUtjecaje(
+        kaubaOd({
+          gradevine: ulaz.gradevine,
+          stanovnici: ulaz.stanovnici ?? 0,
+          zamjenici: ulaz.zamjenici,
+          konjiBroj: ulaz.konjiBroj,
+          konjiDuznost: ulaz.konjiDuznost,
+          sijenoDo: ulaz.sijenoDo,
+          kisaDo: ulaz.kisaDo,
+          govedaBroj: ulaz.govedaBroj,
+          govedaDuznost: ulaz.govedaDuznost,
+          ljudi: ulaz.ljudi,
+          segrti: ulaz.segrti,
+        }).utjecaji ?? [],
+      );
+    } catch {
+      return [];
+    }
+  }, [ulaz]);
+  const [fokus, setFokus] = useState<Fokus>({ vrsta: "selo" });
+  const [zum, setZum] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const gesta = useRef({
+    prsti: new Map<number, { x: number; y: number }>(),
+    zum0: 1,
+    razmak0: 0,
+    pan0: { x: 0, y: 0 },
+    zadnji: 0,
+    pomak: 0,
+  });
+  const mirno = smanjenPokret();
+  const hub = fokus.vrsta === "hub" ? tok.hubovi.find((h) => h.id === fokus.id) : null;
+  const dodatak = fokus.vrsta === "dodatak" ? tok.dodaci.find((c) => c.id === fokus.id) : null;
+  const naslov = fokus.vrsta === "selo" ? tok.selo.naziv : hub?.naziv ?? dodatak?.naziv ?? tok.selo.naziv;
 
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const sync = () => setSmijeTok(!mq.matches);
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
-  }, []);
-
-  useEffect(() => {
-    if (fokusHub) setFokus(fokusHub);
-  }, [fokusHub]);
-
-  const selo = cvorovi.find((c) => c.id === "selo");
-  const extra = cvorovi.filter((c) => c.vrsta === "obrana" || c.vrsta === "stav" || c.vrsta === "kriza");
-
-  const hubovi = useMemo(() => {
-    return POTREBE_META.map((h) => {
-      const zgrade = h.zgrade
-        .map((id) => cvorovi.find((c) => c.zgradaId === id))
-        .filter((c): c is MrezaCvor => !!c);
-      const kv =
-        zgrade.length === 0
-          ? 0
-          : Math.round(zgrade.reduce((a, c) => a + c.kvaliteta, 0) / zgrade.length);
-      const doprinos = veze
-        .filter((v) => v.do === "selo" && zgrade.some((c) => c.id === v.od))
-        .reduce((a, v) => a + v.doprinos, 0);
-      return { ...h, zgrade, kvaliteta: kv, doprinos };
-    });
-  }, [cvorovi, veze]);
-
-  const aktivniHub = hubovi.find((h) => h.id === fokus);
-  const aktivniExtra = extra.find((c) => c.id === fokus);
-  const aktivniSelo = fokus === "selo";
-  const { ulaz, izlaz } = vezeZa(aktivniSelo ? "selo" : aktivniExtra?.id ?? "selo", veze);
-  const pulsIds = protokPuls?.ids ?? [];
-
-  const odaberiHub = (id: KaubaUsko) => {
+  const odaberi = (f: Fokus) => {
     playSfx("button");
-    setFokus(id);
-    onHub?.(id);
+    setFokus(f);
   };
 
-  const odaberiSelo = () => {
-    playSfx("button");
-    setFokus("selo");
-  };
-
-  const odaberiExtra = (c: MrezaCvor) => {
-    playSfx("button");
-    setFokus(c.id);
-  };
-
-  const resetZum = () => {
-    setZum(1);
-    setOfs({ x: 0, y: 0 });
-  };
-
-  const naPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+  const naDolje = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest("button")) return;
     e.stopPropagation();
-    const g = geste.current;
-    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
-    g.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (g.pointers.size === 2) {
-      const pts = [...g.pointers.values()];
-      const dx = pts[0]!.x - pts[1]!.x;
-      const dy = pts[0]!.y - pts[1]!.y;
-      g.startDist = Math.hypot(dx, dy) || 1;
-      g.startZum = zum;
-      g.startOfs = { ...ofs };
-    } else {
-      g.last = { x: e.clientX, y: e.clientY };
-      g.startOfs = { ...ofs };
-      const sad = Date.now();
-      if (sad - g.tap < 280) resetZum();
-      g.tap = sad;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const st = gesta.current;
+    st.prsti.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    st.pomak = 0;
+    if (st.prsti.size === 2) {
+      const [a, b] = [...st.prsti.values()];
+      st.razmak0 = Math.hypot(a!.x - b!.x, a!.y - b!.y) || 1;
+      st.zum0 = zum;
+      st.pan0 = pan;
+    }
+  };
+  const naPomak = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const st = gesta.current;
+    const prije = st.prsti.get(e.pointerId);
+    if (!prije) return;
+    st.pomak += Math.hypot(e.clientX - prije.x, e.clientY - prije.y);
+    st.prsti.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (st.prsti.size >= 2) {
+      const [a, b] = [...st.prsti.values()];
+      const razmak = Math.hypot(a!.x - b!.x, a!.y - b!.y) || 1;
+      const sljedeci = stisniZum(st.zum0 * (razmak / st.razmak0));
+      setZum(sljedeci);
+      setPan(stisniPomak(sljedeci, st.pan0.x, st.pan0.y));
+      return;
+    }
+    if (zum <= 1) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const dx = ((e.clientX - prije.x) / Math.max(1, rect.width)) * 100;
+    const dy = ((e.clientY - prije.y) / Math.max(1, rect.height)) * 100;
+    setPan((cur) => stisniPomak(zum, cur.x + dx, cur.y + dy));
+  };
+  const naGore = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const st = gesta.current;
+    const bio = st.prsti.size;
+    st.prsti.delete(e.pointerId);
+    if (bio === 1 && st.pomak < 8) {
+      const sad = performance.now();
+      if (sad - st.zadnji < 280 && !(e.target as HTMLElement).closest("button")) {
+        setZum(1);
+        setPan({ x: 0, y: 0 });
+        st.zadnji = 0;
+      } else st.zadnji = sad;
     }
   };
 
-  const naPointerMove = (e: PointerEvent<HTMLDivElement>) => {
-    const g = geste.current;
-    if (!g.pointers.has(e.pointerId)) return;
-    g.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (g.pointers.size >= 2) {
-      const pts = [...g.pointers.values()];
-      const dx = pts[0]!.x - pts[1]!.x;
-      const dy = pts[0]!.y - pts[1]!.y;
-      const dist = Math.hypot(dx, dy) || 1;
-      const next = Math.max(1, Math.min(2.4, g.startZum * (dist / g.startDist)));
-      setZum(next);
-      if (next <= 1.02) setOfs({ x: 0, y: 0 });
-    } else if (zum > 1.02 && g.pointers.size === 1) {
-      const dx = e.clientX - g.last.x;
-      const dy = e.clientY - g.last.y;
-      g.last = { x: e.clientX, y: e.clientY };
-      setOfs((o) => {
-        const lim = 80 * (zum - 1);
-        return {
-          x: Math.max(-lim, Math.min(lim, o.x + dx)),
-          y: Math.max(-lim, Math.min(lim, o.y + dy)),
-        };
-      });
-    }
+  const vezaDoSela = (h: HubPrikaz) => {
+    const pred = h.doprinos < 0 ? -1 : 1;
+    const odabran = fokus.vrsta === "selo" || (fokus.vrsta === "hub" && fokus.id === h.id);
+    const puls = !mirno && h.zgrade.some((z) => vezaPulsira(pulsIds, z.id));
+    return (
+      <path
+        key={h.id}
+        className={cn("mreza-veza", !mirno && "mreza-veza-tok", puls && "mreza-veza-puls")}
+        d={krivulja(h, tok.selo, 0.14, pred)}
+        stroke={pred < 0 ? "#c44848" : "#3d8f4a"}
+        strokeWidth={debljinaDoprinos(h.doprinos)}
+        opacity={odabran ? 0.95 : 0.38}
+        markerEnd={pred < 0 ? "url(#mreza-strelica-ne)" : "url(#mreza-strelica-da)"}
+      />
+    );
   };
-
-  const naPointerUp = (e: PointerEvent<HTMLDivElement>) => {
-    geste.current.pointers.delete(e.pointerId);
-  };
-
-  if (!selo) return null;
 
   return (
-    <section className={cn(velika ? "mreza-rub" : "overflow-hidden rounded-2xl border border-line bg-panel")}>
-      <header className="flex items-center justify-between gap-3 px-3 pt-2.5">
-        <h2 className="text-xs font-bold tracking-widest text-dim uppercase">Tok kaube</h2>
-        <p className="text-xs font-bold tabular-nums text-gold">
-          {aktivniSelo ? selo.naziv : aktivniHub?.naziv ?? aktivniExtra?.naziv}
-        </p>
+    <section className="mreza-rub" data-lock-pan onPointerDown={(e) => e.stopPropagation()}>
+      <header className="mreza-glava">
+        <div>
+          <h2 className="mreza-glava-naslov">Tok kaube</h2>
+          <button type="button" className="mreza-natrag" onClick={onZatvori} aria-label="Natrag na kartu">
+            Karta
+          </button>
+        </div>
+        <p className="mreza-glava-rec">{naslov}</p>
       </header>
       <div
-        className={cn("mreza-platno relative overflow-hidden", velika && "mreza-hero")}
-        data-lock-pan
-        onPointerDown={naPointerDown}
-        onPointerMove={naPointerMove}
-        onPointerUp={naPointerUp}
-        onPointerCancel={naPointerUp}
+        className="mreza-platno"
+        data-testid="mreza-platno"
+        onPointerDown={naDolje}
+        onPointerMove={naPomak}
+        onPointerUp={naGore}
+        onPointerCancel={naGore}
         style={{
-          backgroundImage: `linear-gradient(180deg, color-mix(in oklab, var(--color-void) 42%, transparent), color-mix(in oklab, var(--color-void) 70%, #0e2a28)), url(${ART.seloPoster})`,
+          backgroundImage: `linear-gradient(180deg, rgba(20,12,8,.28), rgba(20,12,8,.62)), url(${ART.seloPoster})`,
           backgroundSize: "cover",
-          backgroundPosition: "center 58%",
+          backgroundPosition: "center",
         }}
       >
-        {zum > 1.02 && (
-          <p className="mreza-zum-rec">Zum ×{zum.toFixed(1)} · dvaput za nulu</p>
-        )}
-        <div
-          className="mreza-zum-platno"
-          style={{ transform: `translate(${ofs.x}px, ${ofs.y}px) scale(${zum})` }}
-        >
-        <svg viewBox="0 0 100 100" className="absolute inset-0 size-full" aria-hidden>
-          <defs>
-            <marker id="mreza-pos" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto">
-              <path d="M0 0 L8 4 L0 8 z" className="fill-volt" />
-            </marker>
-            <marker id="mreza-neg" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto">
-              <path d="M0 0 L8 4 L0 8 z" className="fill-ruby" />
-            </marker>
-          </defs>
-          {OBRUC.map(([od, dest]) => {
-            const a = HUB_XY[od];
-            const b = HUB_XY[dest];
-            const ima = utjecaji.some((u) => (u.od === od && u.do === dest) || (u.od === dest && u.do === od));
-            if (ima) return null;
-            return (
-              <path
-                key={`obruc-${od}-${dest}`}
-                d={krivulja(a.x, a.y, b.x, b.y, 1)}
-                className="mreza-veza stroke-gold"
-                strokeWidth={0.45}
-                opacity={0.28}
-              />
-            );
-          })}
-          {hubovi.map((h) => {
-            const xy = HUB_XY[h.id];
-            const puls = h.zgrade.some((z) => pulsIds.includes(`${z.id}>selo`));
-            const ziva = aktivniSelo || fokus === h.id;
-            const plus = h.doprinos >= 0;
-            const d = krivulja(xy.x, xy.y, 50, 50, plus ? 1 : -1);
-            return (
-              <path
-                key={`veza-${h.id}`}
-                d={d}
-                className={cn(
-                  "mreza-veza",
-                  plus ? "stroke-volt" : "stroke-ruby",
-                  ziva && smijeTok && "mreza-veza-tok",
-                  puls && smijeTok && "mreza-veza-puls",
-                )}
-                strokeWidth={0.7 + Math.min(1.4, Math.abs(h.doprinos) / 28)}
-                markerEnd={plus ? "url(#mreza-pos)" : "url(#mreza-neg)"}
-                opacity={ziva ? 0.95 : 0.38}
-              />
-            );
-          })}
-          {utjecaji.map((u) => {
-            const a = HUB_XY[u.od];
-            const b = HUB_XY[u.do];
-            if (!a || !b) return null;
-            const ziva = aktivniSelo || fokus === u.od || fokus === u.do;
-            return (
-              <path
-                key={`utjecaj-${u.od}-${u.do}-${u.predznak}`}
-                d={krivulja(a.x, a.y, b.x, b.y, u.predznak)}
-                className={cn(
-                  "mreza-veza mreza-veza-utjecaj",
-                  u.predznak > 0 ? "stroke-volt" : "stroke-ruby",
-                  ziva && smijeTok && "mreza-veza-tok",
-                )}
-                strokeWidth={0.55 + Math.min(1.1, u.jacina)}
-                markerEnd={u.predznak > 0 ? "url(#mreza-pos)" : "url(#mreza-neg)"}
-                opacity={ziva ? 0.9 : 0.35}
-              />
-            );
-          })}
-        </svg>
-
-        <button
-          type="button"
-          aria-pressed={aktivniSelo}
-          aria-label={`${selo.naziv}, kvaliteta ${selo.kvaliteta}`}
-          onClick={odaberiSelo}
-          className={cn(
-            "mreza-cvor mreza-selo absolute z-[2] size-12 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full border-2 bg-panel-2",
-            aktivniSelo ? "mreza-cvor-fokus border-gold" : "border-line",
-          )}
-          style={{ left: "50%", top: "50%" }}
-        >
-          <img src={HUB_ART.selo} alt="" className="size-full object-cover" draggable={false} />
-        </button>
-
-        {hubovi.map((h) => {
-          const xy = HUB_XY[h.id];
-          const odabran = fokus === h.id;
-          const prazno = h.zgrade.every((z) => z.kvaliteta === 0);
-          return (
+        <div className="mreza-zum-platno" style={{ transform: `translate(${pan.x}%, ${pan.y}%) scale(${zum})` }}>
+          <svg className="mreza-crte" viewBox="0 0 100 100" aria-hidden>
+            <defs>
+              <marker id="mreza-strelica-da" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="3.2" markerHeight="3.2" orient="auto">
+                <path d="M0 0 L8 4 L0 8 Z" fill="#3d8f4a" />
+              </marker>
+              <marker id="mreza-strelica-ne" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="3.2" markerHeight="3.2" orient="auto">
+                <path d="M0 0 L8 4 L0 8 Z" fill="#c44848" />
+              </marker>
+            </defs>
+            {OBRUC.map(([a, b]) => {
+              if (imaUtjecaj(utjecaji, a, b)) return null;
+              const pa = tok.hubovi.find((h) => h.id === a);
+              const pb = tok.hubovi.find((h) => h.id === b);
+              if (!pa || !pb) return null;
+              return <path key={`${a}-${b}`} className="mreza-veza" d={krivulja(pa, pb, 0.14, 1)} stroke="#e7c48a" strokeWidth={0.45} opacity={0.28} />;
+            })}
+            {utjecaji.map((u) => {
+              const a = tok.hubovi.find((h) => h.id === u.od);
+              const b = tok.hubovi.find((h) => h.id === u.do);
+              if (!a || !b) return null;
+              const odabran = fokus.vrsta === "selo" || (fokus.vrsta === "hub" && (fokus.id === u.od || fokus.id === u.do));
+              return (
+                <path
+                  key={`${u.od}>${u.do}:${u.predznak}`}
+                  className={cn("mreza-veza", "mreza-veza-utjecaj", !mirno && "mreza-veza-tok")}
+                  d={krivulja(a, b, 0.14, u.predznak)}
+                  stroke={u.predznak < 0 ? "#c44848" : "#3d8f4a"}
+                  strokeWidth={debljinaJacine(u.jacina)}
+                  opacity={odabran ? 0.95 : 0.38}
+                  markerEnd={u.predznak < 0 ? "url(#mreza-strelica-ne)" : "url(#mreza-strelica-da)"}
+                />
+              );
+            })}
+            {tok.hubovi.map(vezaDoSela)}
+          </svg>
+          <button
+            type="button"
+            className={cn("mreza-cvor", "mreza-selo")}
+            style={{ left: `${tok.selo.x}%`, top: `${tok.selo.y}%` }}
+            aria-label={`${tok.selo.naziv}, kvaliteta ${tok.selo.kvaliteta}`}
+            aria-pressed={fokus.vrsta === "selo"}
+            onClick={() => odaberi({ vrsta: "selo" })}
+          >
+            <img src={HUB_ART.selo} alt="" />
+            <span className="mreza-ime mreza-ime-unutra">{tok.selo.naziv}</span>
+          </button>
+          {tok.hubovi.map((h) => (
             <button
               key={h.id}
               type="button"
-              aria-pressed={odabran}
-              aria-label={h.naziv}
-              onClick={() => odaberiHub(h.id)}
-              className="mreza-cvor absolute z-[2] size-10 -translate-x-1/2 -translate-y-1/2"
-              style={{ left: `${xy.x}%`, top: `${xy.y}%` }}
+              className={cn("mreza-cvor", "mreza-hub-cvor", h.mutan && "is-mutan")}
+              style={{ left: `${h.x}%`, top: `${h.y}%` }}
+              aria-label={`${h.naziv}, kvaliteta ${h.kvaliteta}`}
+              aria-pressed={fokus.vrsta === "hub" && fokus.id === h.id}
+              onClick={() => odaberi({ vrsta: "hub", id: h.id })}
             >
-              <span
-                className={cn(
-                  "flex size-10 items-center justify-center overflow-hidden rounded-full border bg-void/80",
-                  odabran && "mreza-cvor-fokus border-gold",
-                  !odabran && "border-line",
-                  prazno && "opacity-70",
-                )}
-              >
-                <img src={HUB_ART[h.id]} alt="" className="size-full object-cover" draggable={false} />
-              </span>
-              <span
-                className={cn(
-                  "mreza-ime mreza-ime-unutra",
-                  odabran ? "bg-gold text-void" : "bg-void/85 text-ink",
-                )}
-              >
-                {h.naziv}
-              </span>
+              <img src={HUB_ART[h.id] ?? HUB_ART.selo} alt="" />
+              <span className="mreza-ime mreza-ime-unutra">{h.naziv}</span>
             </button>
-          );
-        })}
+          ))}
         </div>
+        {zum > 1 ? <p className="mreza-zum-rec">Zum ×{zum.toFixed(1)} · dvaput za nulu</p> : null}
       </div>
-
-      {velika && (
-        <ul className="mreza-okomito px-3 py-2">
-          {hubovi.map((h) => (
+      {tok.dodaci.length > 0 ? (
+        <div className="mreza-cipovi">
+          {tok.dodaci.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              className={cn("mreza-extra", c.vrsta === "kriza" && "kriza")}
+              aria-pressed={fokus.vrsta === "dodatak" && fokus.id === c.id}
+              aria-label={`${c.naziv}, kvaliteta ${c.kvaliteta}`}
+              onClick={() => odaberi({ vrsta: "dodatak", id: c.id })}
+            >
+              <img src={c.art} alt="" />
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <div className="mreza-ploca">
+        {fokus.vrsta === "selo" ? (
+          <SeloPloca tok={tok} utjecaji={utjecaji} />
+        ) : hub ? (
+          <HubPloca hub={hub} utjecaji={utjecaji} onZgrada={onZgrada} />
+        ) : dodatak ? (
+          <DodatakPloca
+            naziv={dodatak.naziv}
+            id={dodatak.id}
+            veze={tok.veze}
+            pohod={dodatak.akcija === "napad"}
+            onPohod={() => {
+              playSfx("button");
+              setRaidAktivan(true);
+            }}
+          />
+        ) : null}
+        <ul className="mreza-okomito">
+          {tok.hubovi.map((h) => (
             <li key={h.id}>
-              <button
-                type="button"
-                onClick={() => odaberiHub(h.id)}
-                className={cn(
-                  "mreza-ok-red",
-                  fokus === h.id && "mreza-ok-red-on",
-                )}
-              >
-                <span className="min-w-0 flex-1 text-left">
-                  <span className="block text-[11px] font-bold tracking-wide text-gold uppercase">{h.naziv}</span>
-                  <span className="block text-[10px] font-bold text-dim">
-                    {h.zgrade.length === 1
-                      ? "1 zgrada"
-                      : h.zgrade.length >= 2 && h.zgrade.length <= 4
-                        ? `${h.zgrade.length} zgrade`
-                        : `${h.zgrade.length} zgrada`}{" "}
-                    · {h.kvaliteta}
-                  </span>
-                </span>
-                <span className="w-20 shrink-0">
-                  <KvalitetnaTraka n={h.kvaliteta} />
-                </span>
+              <button type="button" className={cn("mreza-ok-red", fokus.vrsta === "hub" && fokus.id === h.id && "mreza-ok-red-on")} onClick={() => odaberi({ vrsta: "hub", id: h.id })}>
+                <span>{h.naziv}</span>
+                <small>{brojZgrada(h.zgrade.length)} · kvaliteta {h.kvaliteta}</small>
+                <i className="mreza-traka"><b style={{ width: `${h.kvaliteta}%`, background: bojaKvalitete(h.kvaliteta) }} /></i>
               </button>
             </li>
           ))}
         </ul>
-      )}
-
-      {extra.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 border-t border-line px-3 py-2">
-          {extra.map((c) => {
-            const odabran = fokus === c.id;
-            return (
-              <button
-                key={c.id}
-                type="button"
-                aria-pressed={odabran}
-                aria-label={c.naziv}
-                onClick={() => odaberiExtra(c)}
-                className={cn(
-                  "inline-flex min-h-9 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-bold",
-                  odabran ? "border-gold bg-gold/15 text-ink" : "border-line bg-panel-2 text-dim",
-                  c.vrsta === "kriza" && "border-ruby text-ruby",
-                )}
-              >
-                <img src={c.art} alt="" className="mreza-glyph size-4" draggable={false} />
-                {c.naziv}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      <div className="border-t border-line px-4 py-3">
-        {aktivniSelo && (
-          <>
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-sm font-bold text-ink">{selo.naziv}</p>
-              <p className="text-xs font-bold tabular-nums text-dim">{selo.kvaliteta}</p>
-            </div>
-            <KvalitetnaTraka n={selo.kvaliteta} />
-            <ul className="mreza-ispis mt-3 flex flex-col gap-1.5">
-              <li className="flex items-start gap-2 text-xs leading-snug">
-                <span className="mt-0.5 w-8 shrink-0 font-bold tabular-nums text-dim">+20</span>
-                <span className="text-dim">tabor stoji</span>
-              </li>
-              {hubovi.map((h) => {
-                const n = Math.round(h.doprinos);
-                if (n === 0 && h.zgrade.every((z) => z.kvaliteta === 0)) return null;
-                return (
-                  <li key={h.id} className="flex items-start gap-2 text-xs leading-snug">
-                    <span className={cn("mt-0.5 w-8 shrink-0 font-bold tabular-nums", n >= 0 ? "text-volt" : "text-ruby")}>
-                      {n >= 0 ? `+${n}` : `${n}`}
-                    </span>
-                    <span className="text-dim">
-                      <span className="font-bold text-ink">{h.naziv}</span>
-                      {" · "}
-                      {h.zgrade.map((z) => z.naziv).join(", ")}
-                    </span>
-                  </li>
-                );
-              })}
-              {extra.map((c) => {
-                const v = veze.find((e) => e.od === c.id && e.do === "selo");
-                if (!v) return null;
-                const n = Math.round(v.doprinos);
-                return (
-                  <li key={c.id} className="flex items-start gap-2 text-xs leading-snug">
-                    <span className={cn("mt-0.5 w-8 shrink-0 font-bold tabular-nums", n >= 0 ? "text-volt" : "text-ruby")}>
-                      {n >= 0 ? `+${n}` : `${n}`}
-                    </span>
-                    <span className="text-dim">
-                      <span className="font-bold text-ink">{c.naziv}</span>
-                      {" · "}
-                      {v.opis}
-                    </span>
-                  </li>
-                );
-              })}
-              {utjecaji.slice(0, 5).map((u) => (
-                <li key={`u-${u.od}-${u.do}-${u.predznak}`} className="flex items-start gap-2 text-xs leading-snug">
-                  <span className={cn("mt-0.5 w-8 shrink-0 font-bold tabular-nums", u.predznak > 0 ? "text-volt" : "text-ruby")}>
-                    {u.predznak > 0 ? "+" : "−"}
-                  </span>
-                  <span className="text-dim">
-                    <span className="font-bold text-ink">{POTREBE_META.find((p) => p.id === u.od)?.naziv}</span>
-                    {" → "}
-                    <span className="font-bold text-ink">{POTREBE_META.find((p) => p.id === u.do)?.naziv}</span>
-                    {" · "}
-                    {u.rec}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-        {aktivniHub && (
-          <>
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-sm font-bold text-ink">{aktivniHub.naziv}</p>
-              <p className="text-xs font-bold tabular-nums text-dim">{aktivniHub.kvaliteta}</p>
-            </div>
-            <KvalitetnaTraka n={aktivniHub.kvaliteta} />
-            <ul className="mreza-ispis mt-3 flex flex-col gap-1.5">
-              {aktivniHub.zgrade.map((z) => (
-                <li key={z.id}>
-                  <button
-                    type="button"
-                    onClick={() => z.zgradaId && onZgrada?.(z.zgradaId)}
-                    className="flex w-full items-start gap-2 text-left text-xs leading-snug"
-                  >
-                    <span className="mt-0.5 w-8 shrink-0 font-bold tabular-nums text-gold">{z.kvaliteta}</span>
-                    <span className="text-dim">
-                      <span className="font-bold text-ink">{z.naziv}</span>
-                      {z.kvaliteta === 0 ? " · još pusto" : " · drži kaubu"}
-                    </span>
-                  </button>
-                </li>
-              ))}
-              {utjecaji
-                .filter((u) => u.od === aktivniHub.id || u.do === aktivniHub.id)
-                .map((u) => (
-                  <li key={`h-${u.od}-${u.do}-${u.predznak}`} className="flex items-start gap-2 text-xs leading-snug">
-                    <span className={cn("mt-0.5 w-8 shrink-0 font-bold tabular-nums", u.predznak > 0 ? "text-volt" : "text-ruby")}>
-                      {u.predznak > 0 ? "+" : "−"}
-                    </span>
-                    <span className="text-dim">
-                      <span className="font-bold text-ink">{POTREBE_META.find((p) => p.id === u.od)?.naziv}</span>
-                      {" → "}
-                      <span className="font-bold text-ink">{POTREBE_META.find((p) => p.id === u.do)?.naziv}</span>
-                      {" · "}
-                      {u.rec}
-                    </span>
-                  </li>
-                ))}
-            </ul>
-          </>
-        )}
-        {aktivniExtra && (
-          <>
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-sm font-bold text-ink">{aktivniExtra.naziv}</p>
-              <p className="text-xs font-bold tabular-nums text-dim">{aktivniExtra.kvaliteta}</p>
-            </div>
-            <KvalitetnaTraka n={aktivniExtra.kvaliteta} />
-            <ul className="mreza-ispis mt-3 flex flex-col gap-1.5">
-              {izlaz.concat(ulaz).map((v) => {
-                const drugi = cvorovi.find((c) => c.id === (v.od === aktivniExtra.id ? v.do : v.od));
-                const n = Math.round(v.doprinos);
-                return (
-                  <li key={v.id} className="flex items-start gap-2 text-xs leading-snug">
-                    <span className={cn("mt-0.5 w-8 shrink-0 font-bold tabular-nums", n >= 0 ? "text-volt" : "text-ruby")}>
-                      {n >= 0 ? `+${n}` : `${n}`}
-                    </span>
-                    <span className="text-dim">
-                      <span className="font-bold text-ink">{drugi?.naziv ?? "Selo"}</span>
-                      {" · "}
-                      {v.opis}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-            {aktivniExtra.akcija === "napad" && (
-              <button
-                type="button"
-                onClick={() => {
-                  playSfx("button");
-                  setRaidAktivan(true);
-                }}
-                className="mt-3 min-h-11 w-full rounded-xl bg-ruby text-sm font-bold tracking-widest text-ink transition-transform duration-150 ease-out active:scale-[0.96]"
-              >
-                POHOD
-              </button>
-            )}
-          </>
-        )}
       </div>
     </section>
+  );
+}
+
+function Traka({ n }: { n: number }) {
+  return (
+    <span className="mreza-traka" aria-hidden>
+      <b style={{ width: `${Math.max(0, Math.min(100, n))}%`, background: bojaKvalitete(n) }} />
+    </span>
+  );
+}
+
+function SeloPloca({
+  tok,
+  utjecaji,
+}: {
+  tok: ReturnType<typeof sloziTok>;
+  utjecaji: ReturnType<typeof spojiUtjecaje>;
+}) {
+  const dodaci = tok.veze.filter((v) => tok.dodaci.some((c) => c.id === v.od || c.id === v.do));
+  return (
+    <>
+      <p className="mreza-kv">Kvaliteta {tok.selo.kvaliteta}</p>
+      <Traka n={tok.selo.kvaliteta} />
+      <p className="mreza-red">+{tok.baza} tabor stoji</p>
+      {tok.hubovi.filter((h) => !h.mutan).map((h) => (
+        <p key={h.id} className="mreza-red">
+          {h.naziv} {h.doprinos >= 0 ? "+" : ""}{h.doprinos.toFixed(1)} · {h.zgrade.filter((z) => z.kvaliteta > 0).map((z) => z.naziv).join(", ")}
+        </p>
+      ))}
+      {dodaci.map((v) => (
+        <p key={v.id} className="mreza-red">{v.opis}</p>
+      ))}
+      {najjaciUtjecaji(utjecaji).map((u) => (
+        <p key={`${u.od}-${u.do}-${u.predznak}`} className="mreza-red">
+          {imeHuba(u.od)} → {imeHuba(u.do)} · {u.rec}
+        </p>
+      ))}
+    </>
+  );
+}
+
+function HubPloca({
+  hub,
+  utjecaji,
+  onZgrada,
+}: {
+  hub: HubPrikaz;
+  utjecaji: ReturnType<typeof spojiUtjecaje>;
+  onZgrada: (id: keyof Gradevine) => void;
+}) {
+  const svoje = utjecaji.filter((u) => u.od === hub.id || u.do === hub.id);
+  return (
+    <>
+      <p className="mreza-kv">Kvaliteta {hub.kvaliteta}</p>
+      <Traka n={hub.kvaliteta} />
+      {hub.zgrade.map((z) => (
+        <button key={z.id} type="button" className="mreza-zgrada" onClick={() => onZgrada(z.id)}>
+          {z.kvaliteta > 0 ? `${z.kvaliteta} · ${z.naziv} · drži kaubu` : `· ${z.naziv} · još pusto`}
+        </button>
+      ))}
+      {svoje.map((u) => (
+        <p key={`${u.od}-${u.do}-${u.predznak}`} className="mreza-red">
+          {imeHuba(u.od)} → {imeHuba(u.do)} · {u.rec}
+        </p>
+      ))}
+    </>
+  );
+}
+
+function DodatakPloca({
+  naziv,
+  id,
+  veze,
+  pohod,
+  onPohod,
+}: {
+  naziv: string;
+  id: string;
+  veze: ReturnType<typeof sloziTok>["veze"];
+  pohod: boolean;
+  onPohod: () => void;
+}) {
+  const ulaz = veze.filter((v) => v.do === id);
+  const izlaz = veze.filter((v) => v.od === id);
+  return (
+    <>
+      <p className="mreza-kv">{naziv}</p>
+      {ulaz.map((v) => (
+        <p key={`u-${v.id}`} className="mreza-red">Ulaz {v.doprinos.toFixed(1)} · {v.opis}</p>
+      ))}
+      {izlaz.map((v) => (
+        <p key={`i-${v.id}`} className="mreza-red">Izlaz {v.doprinos.toFixed(1)} · {v.opis}</p>
+      ))}
+      {ulaz.length + izlaz.length === 0 ? <p className="mreza-red">Nema veza.</p> : null}
+      {pohod ? (
+        <button type="button" className="mreza-pohod" onClick={onPohod}>Pohod</button>
+      ) : null}
+    </>
   );
 }

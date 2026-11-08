@@ -21,8 +21,8 @@ function steal(n: number) {
   return Math.max(1, Math.floor(x * POSTOTAK_KRADJE));
 }
 
-export function izracunajPlijen(resursi: Resursi, razina = 1, radKonja = 0): Plijen {
-  const k = 1 + Math.max(0, radKonja) * 0.06;
+export function izracunajPlijen(resursi: Resursi, razina = 1, radKonja = 0, jato = 0): Plijen {
+  const k = 1 + Math.max(0, radKonja) * 0.06 + Math.max(0, Math.min(3, jato)) * 0.08;
   return {
     drvo: Math.floor(steal(resursi.drvo) * k),
     kamen: Math.floor(steal(resursi.kamen) * k),
@@ -122,19 +122,71 @@ export function pobjednickiPotez(h: Hrpe): NimPotez | null {
   return null;
 }
 
-export function npcPotez(h: Hrpe): NimPotez | null {
-  const win = pobjednickiPotez(h);
-  if (win) return win;
-  let naj = -1;
-  let idx: 0 | 1 | 2 = 0;
+function slucajniPotez(h: Hrpe): NimPotez | null {
+  const opcije: NimPotez[] = [];
   for (let i = 0; i < 3; i++) {
-    if (h[i]! > naj) {
-      naj = h[i]!;
-      idx = i as 0 | 1 | 2;
-    }
+    const n = h[i]!;
+    for (let k = 1; k <= n; k++) opcije.push({ hrpa: i as 0 | 1 | 2, skini: k });
   }
-  if (naj <= 0) return null;
-  return { hrpa: idx, skini: 1 };
+  if (!opcije.length) return null;
+  return opcije[Math.floor(Math.random() * opcije.length)]!;
+}
+
+/** 0.28–0.68: susjed nikad ne igra savršeno, pa pohod nije mrtav zid. Jato spušta vještinu. */
+export function npcVjestina(igracLv: number, metaLv: number, jatoBonus = 0) {
+  const baza = Math.max(0.28, Math.min(0.68, 0.42 + (metaLv - igracLv) * 0.03));
+  return Math.max(0.08, Math.min(0.68, baza - Math.max(0, jatoBonus)));
+}
+
+export const POHOD_JATO_MAX = 3;
+
+export type PohodJatoClan = {
+  posao: string;
+  hub: string;
+  razina: number;
+  glavni?: boolean;
+};
+
+export function jatoPohodBonus(clanovi: PohodJatoClan[]) {
+  let n = 0;
+  for (const p of clanovi.slice(0, POHOD_JATO_MAX)) {
+    n += 0.1;
+    if (p.glavni) n += 0.04;
+    if (p.posao === "Šerif" || p.posao === "Zamjenik") n += 0.06;
+    if (p.hub === "konji" || p.posao === "Šerif" || p.posao === "Zamjenik") n += 0.03;
+    n += Math.min(0.04, Math.max(0, p.razina) * 0.008);
+  }
+  return Math.min(0.45, n);
+}
+
+export { ocistiPohodJato, okupiValter, pohodJato, postaviPohodJato, uPohodu } from "./pohodJato";
+
+export function npcPotez(h: Hrpe, vjestina = 0.5): NimPotez | null {
+  if (jeTerminal(h)) return null;
+  const win = pobjednickiPotez(h);
+  if (win && Math.random() < Math.max(0, Math.min(1, vjestina))) return win;
+  return slucajniPotez(h);
+}
+
+/** Prvi na potezu ne sjeda na izgubljenu (xor 0) ploču. */
+export function osigurajPobjednickiStart(h: Hrpe): Hrpe {
+  let next: Hrpe = [h[0], h[1], h[2]];
+  if (jeTerminal(next)) next = [2, 3, 1];
+  if (nimZbroj(next) === 0) {
+    let idx = 0;
+    let naj = 99;
+    for (let i = 0; i < 3; i++) {
+      if (next[i]! <= naj && next[i]! < MAX_HRPA) {
+        naj = next[i]!;
+        idx = i;
+      }
+    }
+    const copy: Hrpe = [next[0], next[1], next[2]];
+    copy[idx] = Math.min(MAX_HRPA, copy[idx]! + 1);
+    next = copy;
+    if (nimZbroj(next) === 0 || jeTerminal(next)) next = [2, 3, 4];
+  }
+  return next;
 }
 
 function slucajneHrpe(utvrdjeno: boolean): Hrpe {

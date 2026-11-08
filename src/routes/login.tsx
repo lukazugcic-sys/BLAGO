@@ -4,6 +4,7 @@ import {
   GROK_PROVIDERS,
   authEnabled,
   authClient,
+  hrPrijava,
   signIn,
 } from "@/lib/auth/client";
 import { ART } from "@/lib/game/art";
@@ -29,14 +30,14 @@ function Login() {
           name: name.trim() || email.split("@")[0] || "Igrač",
           callbackURL: "/",
         });
-        if (err) throw new Error(err.message);
+        if (err) throw new Error(hrPrijava(err.message));
       } else {
         const { error: err } = await authClient.signIn.email({
           email,
           password,
           callbackURL: "/",
         });
-        if (err) throw new Error(err.message);
+        if (err) throw new Error(hrPrijava(err.message));
       }
       window.location.href = "/";
     } catch (e) {
@@ -67,7 +68,12 @@ function Login() {
               <button
                 key={p.providerId}
                 type="button"
-                onClick={() => signIn(p.providerId, { callbackURL: "/" })}
+                onClick={() => {
+                  setError(null);
+                  void signIn(p.providerId, { callbackURL: "/" }).catch((e: unknown) => {
+                    setError(e instanceof Error ? e.message : "Prijava nije uspjela.");
+                  });
+                }}
                 className="min-h-12 w-full rounded-xl border border-line bg-panel py-3 text-sm font-bold tracking-wide text-ink"
               >
                 Nastavi s {p.label}

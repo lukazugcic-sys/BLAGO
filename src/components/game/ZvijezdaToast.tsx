@@ -13,7 +13,7 @@ export function ZvijezdaToast() {
   useEffect(() => {
     if (!id) return;
     playSfx("collect");
-    const t = window.setTimeout(() => skloni(), 4200);
+    const t = window.setTimeout(() => skloni(), 1800);
     return () => window.clearTimeout(t);
   }, [id, skloni]);
   if (!d) return null;
@@ -28,7 +28,7 @@ export function ZvijezdaToast() {
     >
       <IconBadge src={SYMBOL_ART[d.art]} size="md" />
       <span className="min-w-0 flex-1 text-left">
-        <span className="block text-[10px] font-bold tracking-[0.2em] text-gold uppercase">Zvijezda</span>
+        <span className="block text-[11px] font-bold tracking-[0.14em] text-gold uppercase">Zvijezda</span>
         <span className="block text-sm font-bold text-ink">{d.naziv}</span>
         <span className="block text-[11px] font-bold text-dim">{d.opis}</span>
       </span>

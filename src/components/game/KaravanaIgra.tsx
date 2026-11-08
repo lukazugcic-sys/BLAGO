@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useGameStore } from "@/lib/stores/gameStore";
 import {
   SUSJEDI,
@@ -10,8 +10,11 @@ import {
 import { tjedanSad } from "@/lib/game/tjedan";
 import { playSfx } from "@/lib/game/audio";
 import { cn } from "@/lib/utils";
+import { useSekunda } from "@/lib/game/sat";
 import { ART } from "@/lib/game/art";
 import type { KaravanaPutId } from "@/lib/game/types";
+import { SideGateKartica } from "./SideGateKartica";
+import { jeSideOtkljucan } from "@/lib/game/sideGate";
 
 const RES_REC: Record<"drvo" | "kamen" | "zeljezo", string> = {
   drvo: "drvo",
@@ -20,6 +23,7 @@ const RES_REC: Record<"drvo" | "kamen" | "zeljezo", string> = {
 };
 
 export function KaravanaIgra() {
+  const otkljucan = useGameStore((s) => jeSideOtkljucan(s.gradevine));
   const karavana = useGameStore((s) => s.karavana);
   const resursi = useGameStore((s) => s.resursi);
   const posalji = useGameStore((s) => s.posaljiKaravanu);
@@ -28,14 +32,7 @@ export function KaravanaIgra() {
   const [res, setRes] = useState<"drvo" | "kamen" | "zeljezo">("drvo");
   const [lot, setLot] = useState(10);
   const [put, setPut] = useState<KaravanaPutId>("staza");
-  const [sad, setSad] = useState(() => Date.now());
-
-  useEffect(() => {
-    if (!karavana) return;
-    setSad(Date.now());
-    const t = window.setInterval(() => setSad(Date.now()), 500);
-    return () => window.clearInterval(t);
-  }, [karavana]);
+  const sad = useSekunda(!!karavana);
 
   if (karavana) {
     const traje = Math.max(1, karavana.kraj - karavana.start);
@@ -49,6 +46,9 @@ export function KaravanaIgra() {
             src={ART.kola}
             alt=""
             draggable={false}
+            decoding="async"
+            width={640}
+            height={280}
             className="karavana-kola-slika"
             style={{ left: `${pct}%` }}
           />
@@ -84,6 +84,10 @@ export function KaravanaIgra() {
         </div>
       </article>
     );
+  }
+
+  if (!otkljucan) {
+    return <SideGateKartica naslov="Karavana" />;
   }
 
   const ima = Math.floor(resursi[res]);
@@ -188,7 +192,7 @@ export function KaravanaIgra() {
               }}
               className={cn(
                 "min-h-8 rounded-full px-2.5 text-[10px] font-bold",
-                lot === n ? "bg-ink text-gold" : "border border-line text-dim",
+                lot === n ? "bg-void text-gold" : "border border-line text-dim",
               )}
             >
               ×{n}

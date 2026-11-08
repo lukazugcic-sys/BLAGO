@@ -19,6 +19,7 @@ import {
 } from "@/lib/game/blackjack";
 import { UlogTraka } from "./UtrkaStaza";
 import { cn } from "@/lib/utils";
+import { jeSideOtkljucan, SIDE_GATE_REC } from "@/lib/game/sideGate";
 
 type Faza = "ulog" | "igra" | "banka" | "kraj";
 
@@ -42,7 +43,6 @@ function Karta({ k, otvorena, delay }: { k?: BjKarta; otvorena: boolean; delay?:
 
 export function IgraBlackjack() {
   const zlato = useGameStore((s) => Math.floor(s.zlato));
-  const salun = useGameStore((s) => s.gradevine.salun || 0);
   const karteLv = useGameStore((s) => s.gradevine.karte || 0);
   const [ulogRaw, setUlogRaw] = useState(FARO_ULOG);
   const [faza, setFaza] = useState<Faza>("ulog");
@@ -104,8 +104,12 @@ export function IgraBlackjack() {
 
   const dijeli = () => {
     if (faza !== "ulog") return;
-    if (salun < 1) {
-      useGameStore.getState().setPoruka("PRVO SALUN");
+    if (!jeSideOtkljucan(useGameStore.getState().gradevine)) {
+      useGameStore.getState().setPoruka(SIDE_GATE_REC);
+      return;
+    }
+    if (karteLv < 1) {
+      useGameStore.getState().setPoruka("PRVO CASINO");
       return;
     }
     const u = Math.min(Math.floor(useGameStore.getState().zlato), Math.max(FARO_MIN, Math.floor(ulogRaw)));
@@ -180,7 +184,7 @@ export function IgraBlackjack() {
   return (
     <article className="mb-2.5 overflow-hidden rounded-2xl border border-line bg-panel">
       <div className="relative h-16 overflow-hidden" aria-hidden>
-        <img src={ZGRADA_ART.salun} alt="" className="size-full object-cover object-[center_40%]" draggable={false} />
+        <img src={ZGRADA_ART.karte} alt="" className="size-full object-cover object-[center_40%]" draggable={false} />
         <div className="absolute inset-0 bg-gradient-to-t from-panel to-transparent" />
       </div>
       <div className="p-4 pt-2">
@@ -188,8 +192,8 @@ export function IgraBlackjack() {
           <div>
             <h3 className="text-sm font-bold tracking-widest text-gold uppercase">Blackjack</h3>
             <p className="mt-0.5 text-xs font-semibold text-dim">
-              {salun < 1
-                ? "Otvori salun pa igraj."
+              {karteLv < 1
+                ? "Otvori casino pa igraj."
                 : faza === "igra"
                   ? `Ti ${igracN}. Vuči ili stoji.`
                   : faza === "banka"
@@ -227,7 +231,7 @@ export function IgraBlackjack() {
           </div>
         )}
 
-        {faza === "ulog" && salun >= 1 && (
+        {faza === "ulog" && karteLv >= 1 && (
           <div className="mb-3">
             <UlogTraka ulog={ulogSad} max={maxUlog} onUlog={setUlogRaw} />
           </div>
@@ -236,7 +240,7 @@ export function IgraBlackjack() {
         {faza === "ulog" && (
           <button
             type="button"
-            disabled={salun < 1 || ulogSad < FARO_MIN}
+            disabled={karteLv < 1 || ulogSad < FARO_MIN}
             onClick={dijeli}
             className="min-h-11 w-full rounded-xl bg-gold text-xs font-bold tracking-widest text-void uppercase disabled:bg-panel-2 disabled:text-dim"
           >

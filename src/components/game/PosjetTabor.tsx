@@ -4,6 +4,7 @@ import { ART, SYMBOL_ART } from "@/lib/game/art";
 import { playSfx } from "@/lib/game/audio";
 import { formatHud } from "@/lib/game/helpers";
 import { IconBadge } from "./IconBadge";
+import { portalKorijen } from "@/lib/game/portal";
 
 const HUB: Array<{ id: "krov" | "jelo" | "zabava" | "voda" | "posao" | "red" | "konjiHub" | "zdravlje"; naziv: string }> = [
   { id: "krov", naziv: "Krov" },
@@ -199,6 +200,6 @@ export function PosjetTabor() {
         )}
       </div>
     </div>,
-    document.body,
+    portalKorijen(),
   );
 }

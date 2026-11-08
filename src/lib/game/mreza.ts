@@ -68,6 +68,9 @@ export const STAZA_RED: Array<keyof Gradevine> = [
   "banja",
   "trgovina",
   "banka",
+  "kovacnica",
+  "barutana",
+  "tvornica",
 ];
 
 const ZGRADA_XY: Record<keyof Gradevine, { x: number; y: number }> = {
@@ -95,6 +98,9 @@ const ZGRADA_XY: Record<keyof Gradevine, { x: number; y: number }> = {
   banja: { x: 54, y: 16 },
   trgovina: { x: 36, y: 36 },
   banka: { x: 62, y: 42 },
+  kovacnica: { x: 84, y: 70 },
+  barutana: { x: 92, y: 62 },
+  tvornica: { x: 88, y: 78 },
 };
 
 function clampK(n: number) {

@@ -148,8 +148,26 @@ function downloadHeadersPlugin(): Plugin {
     "/BLAGO.apk": ["application/vnd.android.package-archive", "BLAGO.apk"],
     "/BLAGO-android.zip": ["application/zip", "BLAGO-android.zip"],
     "/BLAGO-github.zip": ["application/zip", "BLAGO-github.zip"],
+    "/dl/BLAGO.apk": ["application/vnd.android.package-archive", "BLAGO.apk"],
+    "/dl/BLAGO-android.zip": ["application/zip", "BLAGO-android.zip"],
   };
-  const packDir = join(process.cwd(), "artifacts/apk-pack");
+  const packDirs = [
+    join(process.cwd(), "artifacts/apk-pack"),
+    join(process.cwd(), "public"),
+    process.cwd(),
+    join(process.cwd(), "artifacts"),
+    join(process.cwd(), ".vercel/output/static"),
+  ];
+  const resolveFile = (name: string) => {
+    for (const dir of packDirs) {
+      const filePath = join(dir, name);
+      if (existsSync(filePath)) {
+        const st = statSync(filePath);
+        if (st.isFile()) return { filePath, st };
+      }
+    }
+    return null;
+  };
   const mw = (req: IncomingMessage, res: ServerResponse, next: () => void) => {
     const pathOnly = (req.url ?? "").split("?", 1)[0] ?? "";
     const hit = files[pathOnly];
@@ -157,21 +175,20 @@ function downloadHeadersPlugin(): Plugin {
       next();
       return;
     }
-    const filePath = join(packDir, hit[1]);
-    if (!existsSync(filePath)) {
+    const found = resolveFile(hit[1]);
+    if (!found) {
       next();
       return;
     }
-    const st = statSync(filePath);
     res.setHeader("Content-Type", hit[0]);
     res.setHeader("Content-Disposition", `attachment; filename="${hit[1]}"`);
     res.setHeader("Cache-Control", "no-store");
-    res.setHeader("Content-Length", String(st.size));
+    res.setHeader("Content-Length", String(found.st.size));
     if ((req.method ?? "GET").toUpperCase() === "HEAD") {
       res.end();
       return;
     }
-    createReadStream(filePath).pipe(res);
+    createReadStream(found.filePath).pipe(res);
   };
   return {
     name: "blago-download-headers",
@@ -203,6 +220,9 @@ export default defineConfig(({ command, isPreview }) => ({
         "**/attachments/**",
         "**/screenshots/**",
         "**/.jdk/**",
+        "**/BLAGO.apk",
+        "**/BLAGO-android.zip",
+        "**/BLAGO-github.zip",
       ],
     },
   },

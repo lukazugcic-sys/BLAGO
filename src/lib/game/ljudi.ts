@@ -1,8 +1,10 @@
 import type { Gradevine, Gradnja, Karavana, Ostecenja, Resursi } from "@/lib/game/types";
-import { POKRICE, izracunajKauba, konjaKap, type KaubaDuznost, type KaubaExtra, type GovedoDuznost } from "./economy";
+import { POKRICE, izracunajKauba, konjaKap, hubBroj, hubZaZgradu, type KaubaDuznost, type KaubaExtra, type GovedoDuznost } from "./economy";
+import { recFilma, recUlicaFilma } from "./dijalozi";
+import { uPohodu } from "./pohodJato";
 
 export type LikAlat = "sjekira" | "kosar" | "kanta" | "casa" | "cekic" | "kruh" | "zvezda" | "uzda" | "torba" | "prazno";
-export type LikHub = "krov" | "jelo" | "voda" | "zabava" | "posao" | "red" | "konji" | "zdravlje";
+export type LikHub = "krov" | "jelo" | "voda" | "zabava" | "posao" | "red" | "konji" | "zdravlje" | "oruzje";
 export type DanDoba = "jutro" | "dan" | "suton" | "noc";
 
 export type Stanovnik = {
@@ -19,10 +21,14 @@ export type Stanovnik = {
   mane: string[];
 };
 
-export const GLAVNI_ID = ["boro", "kata", "ivo", "mara", "mile"] as const;
+export const GLAVNI_ID = ["boro", "kata", "ivo", "mara", "mile", "pero", "simun", "ruza"] as const;
 
 export function jeGlavni(id: string) {
   return (GLAVNI_ID as readonly string[]).includes(id);
+}
+
+export function hubHeroja(hub: LikHub): string | undefined {
+  return POOL.find((p) => jeGlavni(p.id) && p.hub === hub)?.id;
 }
 
 export function poredajGlavne<T extends { id: string }>(list: T[]): T[] {
@@ -35,6 +41,16 @@ export function poredajGlavne<T extends { id: string }>(list: T[]): T[] {
     return ga - gb;
   });
 }
+export function jeLovac(posao: string) {
+  return posao === "Lovac" || posao === "Lovačica";
+}
+
+export function normalizirajPosao(posao: string) {
+  return posao === "Lovačica" ? "Lovac" : posao;
+}
+
+const JEDINSTVENI_POSAO = new Set(["Šerif"]);
+
 export const LIK_XP_PO_LV = 96;
 export const LIK_MAX_RAZINA = 20;
 
@@ -80,7 +96,7 @@ type LikPredlozak = Omit<Stanovnik, "xp" | "razina" | "buffovi" | "mane"> & {
 
 const POCETAK: LikPredlozak[] = [
   { id: "ivo", ime: "Ivo", spol: "m", posao: "Građevinac", hub: "krov", alat: "cekic", rec: "Diže krov. Čekić mu je u ruci.", startBuff: "jaka-leda" },
-  { id: "kata", ime: "Kata", spol: "z", posao: "Lovačica", hub: "jelo", alat: "kosar", rec: "Budi se prije pijetla. Donosi meso.", startBuff: "ostro-oko" },
+  { id: "kata", ime: "Kata", spol: "z", posao: "Lovac", hub: "jelo", alat: "kosar", rec: "Budi se prije pijetla. Donosi meso.", startBuff: "ostro-oko" },
   { id: "mile", ime: "Mile", spol: "m", posao: "Vodonoša", hub: "voda", alat: "kanta", rec: "Čuva bunar kao oko u glavi.", startMana: "strah-od-konja" },
   { id: "mara", ime: "Mara", spol: "z", posao: "Gostioničarka", hub: "zabava", alat: "casa", rec: "Salun drži na nogama.", startBuff: "sretan-dlan" },
   { id: "boro", ime: "Boro", spol: "m", posao: "Šerif", hub: "red", alat: "zvezda", rec: "Zvijezda na prsima. Red u ulici.", startBuff: "tvrda-glava" },
@@ -121,7 +137,7 @@ const POOL: LikPredlozak[] = [
   { id: "jozo", ime: "Jozo", spol: "m", posao: "Rudar", hub: "posao", alat: "cekic", rec: "Željezo mu je u dlanu." },
   { id: "tonka", ime: "Tonka", spol: "z", posao: "Djeliteljica", hub: "zabava", alat: "casa", rec: "Asove dijeli bez treptaja.", startBuff: "sretan-dlan", startMana: "crna-sreca" },
   { id: "ante", ime: "Ante", spol: "m", posao: "Tesar", hub: "krov", alat: "sjekira", rec: "Greda mora sjediti ravno.", startBuff: "tesarski-udar" },
-  { id: "ika", ime: "Ika", spol: "z", posao: "Lovačica", hub: "jelo", alat: "kosar", rec: "Puška je lakša od brige.", startBuff: "ostro-oko" },
+  { id: "ika", ime: "Ika", spol: "z", posao: "Lovac", hub: "jelo", alat: "kosar", rec: "Puška je lakša od brige.", startBuff: "ostro-oko" },
 ];
 
 export const LIK_CRTE: Record<string, string> = {
@@ -173,6 +189,50 @@ export const LIK_CRTE: Record<string, string> = {
 
 export function likCrta(p: Stanovnik) {
   return LIK_CRTE[p.id] ?? p.rec;
+}
+
+/** Sreća jednog kauboja, 1–99. Ne dira sreću cijele kaube. */
+export function srecaLika(p: Stanovnik) {
+  let n = 42 + Math.min(18, Math.max(0, p.razina)) * 2;
+  for (const id of p.buffovi ?? []) {
+    if (LIK_BUFFOVI.find((b) => b.id === id)?.sto === "sreca") n += 11;
+  }
+  for (const id of p.mane ?? []) {
+    if (LIK_MANE.find((m) => m.id === id)?.sto === "sreca") n -= 13;
+  }
+  return Math.max(1, Math.min(99, n));
+}
+
+export function tokDoprinos(
+  p: Stanovnik,
+  gdje: { mjesto: "ulica" | "zgrada" | "put"; zgrada?: keyof Gradevine },
+  jaše: boolean,
+): { n: number; rec: string } {
+  const hero = jeGlavni(p.id) ? 4 : 0;
+  const mjesto = gdje.mjesto === "zgrada" ? 8 : gdje.mjesto === "put" ? 3 : 4;
+  const konj = jaše ? 3 : 0;
+  const lv = Math.min(6, Math.max(0, p.razina));
+  const mana = Math.min(4, p.mane?.length ?? 0);
+  const n = Math.max(1, mjesto + hero + konj + lv - mana);
+  const rec =
+    gdje.mjesto === "put"
+      ? "Na putu"
+      : gdje.mjesto === "zgrada" && gdje.zgrada
+        ? likCrta(p)
+        : "Na ulici";
+  return { n, rec };
+}
+
+export function uTokuHub(
+  p: Stanovnik,
+  filter: string,
+): boolean {
+  if (filter === "selo") return true;
+  if (filter === "oklop" || filter === "stav") {
+    return p.posao === "Šerif" || p.posao === "Zamjenik" || p.hub === "red";
+  }
+  if (filter === "kriza" || filter === "pozar" || filter.startsWith("m:")) return true;
+  return p.hub === filter;
 }
 
 export function razinaLika(xp: number) {
@@ -294,7 +354,7 @@ export function tkoJaše(
         if (p.posao === "Šerif") return 120 + p.razina;
         if (p.posao === "Zamjenik") return 110 + p.razina;
         if (p.hub === "konji") return 90 + p.razina;
-        if (p.posao === "Lovačica" || p.posao === "Lovac") return 70 + p.razina;
+        if (jeLovac(p.posao)) return 70 + p.razina;
         if (imaBuff(p, "konj")) return 60 + p.razina;
         return 20 + p.razina;
       };
@@ -309,8 +369,7 @@ export function trebaKonja(p: Stanovnik) {
     p.hub === "konji" ||
     p.posao === "Šerif" ||
     p.posao === "Zamjenik" ||
-    p.posao === "Lovac" ||
-    p.posao === "Lovačica" ||
+    jeLovac(p.posao) ||
     imaBuff(p, "konj")
   );
 }
@@ -393,24 +452,47 @@ export function kaubaSaRedom(
 export function kaubaOd(s: {
   gradevine: Gradevine;
   stanovnici: number;
-  zamjenici?: { spreman?: boolean }[];
+  zamjenici?: { spreman?: boolean; hub?: string | null }[];
   konjiBroj?: number;
   konjiDuznost?: KaubaDuznost;
   sijenoDo?: number;
+  potkoveDo?: number;
   kisaDo?: number;
+  travaDo?: number;
   govedaBroj?: number;
   govedaDuznost?: GovedoDuznost;
   celijaBroj?: number;
+  ljudi?: Array<{ hub?: string | null }>;
+  segrti?: Array<{ hub?: string | null }>;
 }) {
+  const svi = [...(s.ljudi ?? []), ...(s.segrti ?? []), ...(s.zamjenici ?? [])];
   return kaubaSaRedom(s.gradevine, s.stanovnici, s.zamjenici ?? [], {
     konjiBroj: s.konjiBroj,
     duznost: s.konjiDuznost,
     sijeno: (s.sijenoDo ?? 0) > Date.now(),
+    potkova: (s.potkoveDo ?? 0) > Date.now(),
     kisa: (s.kisaDo ?? 0) > Date.now(),
+    trava: (s.travaDo ?? 0) > Date.now(),
     govedaBroj: s.govedaBroj,
     govedaDuznost: s.govedaDuznost,
     celija: s.celijaBroj,
+    hubovi: svi.length ? hubBroj(svi) : undefined,
   });
+}
+
+export function recPremjesti(p: { ime: string }, hub: LikHub) {
+  const gdje: Record<LikHub, string> = {
+    krov: "diže krov",
+    jelo: "ide u kuhinju",
+    voda: "ide na bunar",
+    zabava: "sjeda u salun",
+    posao: "ide na posao",
+    red: "ide u ured",
+    konji: "ide u staju",
+    zdravlje: "ide liječiti",
+    oruzje: "ide u kovačnicu",
+  };
+  return `${p.ime} ${gdje[hub]}.`;
 }
 
 const ZAMJENIK_IMENA: Array<{ id: string; ime: string; spol: "m" | "z" }> = [
@@ -469,20 +551,33 @@ export function vozar(ljudi: Stanovnik[], zauzetId?: string | null) {
 }
 
 export function vrijemeGradnjeMs(ciljLv: number, razina: number, brzina = false, naKonju = false) {
-  const sec = Math.min(60, 6 + Math.max(1, ciljLv) * 6);
-  return Math.round((sec * 1000) / ((1 + Math.max(0, razina - 1) * 0.12) * (brzina ? 1.18 : 1) * (naKonju ? 1.16 : 1)));
+  const lv = Math.max(1, ciljLv);
+  const sec = 28 + lv * 18 + lv * lv * 9;
+  return Math.round((sec * 1000) / ((1 + Math.max(0, razina - 1) * 0.1) * (brzina ? 1.16 : 1) * (naKonju ? 1.14 : 1)));
 }
 
 function noviId() {
   return `l-${Date.now().toString(36)}-${Math.floor(Math.random() * 999)}`;
 }
 
-function izPoola(ime: string) {
-  return POOL.find((p) => p.ime === ime) ?? null;
+function izPredloska(p: Partial<Stanovnik> & Pick<Stanovnik, "ime">): LikPredlozak | null {
+  if (p.id) return POOL.find((x) => x.id === p.id) ?? null;
+  return POOL.find((x) => x.ime === p.ime) ?? null;
+}
+
+function jedanNaPoslu(ljudi: Stanovnik[], posao: string): Stanovnik[] {
+  const svi = ljudi.filter((p) => p.posao === posao);
+  if (svi.length <= 1) return ljudi;
+  const keep =
+    svi.find((p) => p.id !== "boro" && p.ime !== "Boro") ??
+    svi.find((p) => p.ime !== "Boro") ??
+    svi.find((p) => p.id === "boro") ??
+    svi[0]!;
+  return ljudi.filter((p) => p.posao !== posao || p.id === keep.id);
 }
 
 export function dopuniLika(p: Partial<Stanovnik> & Pick<Stanovnik, "ime">): Stanovnik {
-  const iz = izPoola(p.ime);
+  const iz = izPredloska(p);
   const baza = iz ?? {
     id: p.id ?? noviId(),
     ime: p.ime,
@@ -508,7 +603,7 @@ export function dopuniLika(p: Partial<Stanovnik> & Pick<Stanovnik, "ime">): Stan
     id: p.id ?? baza.id,
     ime: p.ime,
     spol: p.spol === "z" || p.spol === "m" ? p.spol : baza.spol,
-    posao: p.posao ?? baza.posao,
+    posao: normalizirajPosao(p.posao ?? baza.posao),
     hub: p.hub ?? baza.hub,
     rec: p.rec ?? baza.rec,
     alat: p.alat ?? baza.alat,
@@ -548,19 +643,30 @@ export function parsirajLjude(raw: unknown, n: number): Stanovnik[] {
 
 export function uskladiLjude(ljudi: Stanovnik[], cilj: number) {
   const n = Math.max(1, Math.min(POOL.length, Math.floor(cilj)));
-  const ima = [...ljudi];
+  const vidjeno = new Set<string>();
+  let ima: Stanovnik[] = [];
+  for (const p of ljudi) {
+    const lik = { ...p, posao: normalizirajPosao(p.posao) };
+    if (vidjeno.has(lik.id)) continue;
+    vidjeno.add(lik.id);
+    ima.push(lik);
+  }
+  ima = jedanNaPoslu(ima, "Šerif");
   const dosli: Stanovnik[] = [];
   const otisli: Stanovnik[] = [];
   while (ima.length < n) {
-    const zauzeti = new Set(ima.map((p) => p.ime));
-    const sljedeci = POOL.find((p) => !zauzeti.has(p.ime));
+    const zauzeti = new Set(ima.map((p) => p.id));
+    const zauzetiPosao = new Set(ima.map((p) => p.posao).filter((posao) => JEDINSTVENI_POSAO.has(posao)));
+    const sljedeci =
+      POOL.find((p) => jeGlavni(p.id) && !zauzeti.has(p.id) && !zauzetiPosao.has(p.posao)) ??
+      POOL.find((p) => !zauzeti.has(p.id) && !zauzetiPosao.has(p.posao));
     if (!sljedeci) break;
     const novi = dopuniLika(sljedeci);
     ima.push(novi);
     dosli.push(novi);
   }
   while (ima.length > n) {
-    const idx = ima.findIndex((p) => !POCETAK.some((z) => z.id === p.id));
+    const idx = ima.findIndex((p) => !jeGlavni(p.id) && p.posao !== "Šerif");
     const i = idx >= 0 ? idx : ima.length - 1;
     const [off] = ima.splice(i, 1);
     if (off) otisli.push(off);
@@ -595,15 +701,15 @@ const ZGRADA_AKUZATIV: Record<keyof Gradevine, string> = {
   kamenolom: "kamenolom",
   rudnik: "rudnik",
   kuca: "kuću",
-  blok: "zgradu",
+  blok: "konak",
   salun: "salun",
   bunar: "bunar",
   cisterna: "cisternu",
   mlin: "mlin",
-  lov: "lov",
+  lov: "lovački dom",
   mesnica: "mesnicu",
   pekara: "pekarnu",
-  karte: "stol za asove",
+  karte: "casino",
   ured: "ured",
   staja: "staju",
   korali: "ispust",
@@ -615,6 +721,9 @@ const ZGRADA_AKUZATIV: Record<keyof Gradevine, string> = {
   banja: "banju",
   trgovina: "trgovinu",
   banka: "banku",
+  kovacnica: "kovačnicu",
+  barutana: "barutanu",
+  tvornica: "tvornicu",
 };
 
 const ZGRADA_LOKATIV: Record<keyof Gradevine, string> = {
@@ -622,15 +731,15 @@ const ZGRADA_LOKATIV: Record<keyof Gradevine, string> = {
   kamenolom: "kamenolomu",
   rudnik: "rudniku",
   kuca: "kući",
-  blok: "zgradi",
+  blok: "konaku",
   salun: "salunu",
   bunar: "bunaru",
   cisterna: "cisterni",
   mlin: "mlinu",
-  lov: "lovu",
+  lov: "lovačkom domu",
   mesnica: "mesnici",
   pekara: "pekarni",
-  karte: "faru",
+  karte: "casinu",
   ured: "uredu",
   staja: "staji",
   korali: "koralima",
@@ -642,9 +751,12 @@ const ZGRADA_LOKATIV: Record<keyof Gradevine, string> = {
   banja: "banji",
   trgovina: "trgovini",
   banka: "banci",
+  kovacnica: "kovačnici",
+  barutana: "barutani",
+  tvornica: "tvornici",
 };
 
-const ZGRADA_ZENSKA = new Set<keyof Gradevine>(["pilana", "kuca", "blok", "mesnica", "pekara", "staja", "staza", "farma", "ordinacija", "banja", "cisterna", "trgovina", "banka"]);
+const ZGRADA_ZENSKA = new Set<keyof Gradevine>(["pilana", "kuca", "blok", "mesnica", "pekara", "staja", "staza", "farma", "ordinacija", "banja", "cisterna", "trgovina", "banka", "kovacnica", "barutana", "tvornica"]);
 
 export function zgradaAkuzativ(id: keyof Gradevine) {
   return ZGRADA_AKUZATIV[id];
@@ -749,10 +861,7 @@ export const DOBA_REC: Record<DanDoba, string> = {
 };
 
 export function praznaUlicaRec(doba: DanDoba) {
-  if (doba === "jutro") return "Ulica se budi.";
-  if (doba === "dan") return "Svi su na poslu.";
-  if (doba === "suton") return "Tko može, sjedi u salunu.";
-  return "Noć. Samo šerif hoda.";
+  return recUlicaFilma(doba);
 }
 
 export function radnoMjesto(p: Stanovnik): keyof Gradevine {
@@ -760,7 +869,7 @@ export function radnoMjesto(p: Stanovnik): keyof Gradevine {
   if (p.posao === "Građevinac" || p.hub === "krov") return "kuca";
   if (p.posao === "Konjušar" || p.posao === "Konjušarica" || p.posao === "Kauboj" || p.posao === "Kaubojka" || p.posao === "Jahač" || p.hub === "konji")
     return "staja";
-  if (p.posao === "Lovačica" || p.posao === "Lovac") return "lov";
+  if (jeLovac(p.posao)) return "lov";
   if (p.posao === "Mesarica") return "mesnica";
   if (p.posao === "Pekarica") return "pekara";
   if (p.posao === "Farmer") return "farma";
@@ -782,7 +891,7 @@ export function radnoMjesto(p: Stanovnik): keyof Gradevine {
   if (p.hub === "zabava") return "salun";
   if (p.hub === "posao") return "pilana";
   if (p.hub === "red") return "ured";
-  if (p.hub === "konji") return "staja";
+  if (p.hub === "oruzje") return "kovacnica";
   return "kuca";
 }
 
@@ -828,6 +937,7 @@ export function gdjeJe(
   karavana: Karavana | null = null,
   svi: Stanovnik[] = [],
 ): { mjesto: "ulica" | "zgrada" | "put"; zgrada?: keyof Gradevine } {
+  if (uPohodu(p.id)) return { mjesto: "put" };
   if (karavana && p.id === karavana.vozacId) return { mjesto: "put" };
   const gradnje = kaoGradnje(gradnja);
   const moj = gradnje.find((x) => x.majstorId === p.id);
@@ -864,6 +974,23 @@ export function gdjeJe(
   return { mjesto: "ulica" };
 }
 
+/** Gdje stoji sad: ulica = selo, zgrada = hub, put = pohod. */
+export function hubSada(
+  p: Stanovnik,
+  g: Gradevine,
+  gradnja: Gradnja | Gradnja[] | null,
+  ostecenja: Ostecenja,
+  doba: DanDoba = danDoba(),
+  karavana: Karavana | null = null,
+  svi: Stanovnik[] = [],
+): LikHub | "selo" | "put" {
+  const gdje = gdjeJe(p, g, gradnja, ostecenja, doba, karavana, svi);
+  if (gdje.mjesto === "put") return "put";
+  if (gdje.mjesto === "ulica") return "selo";
+  if (gdje.zgrada) return hubZaZgradu(gdje.zgrada) ?? p.hub;
+  return p.hub;
+}
+
 export function naUlici(
   ljudi: Stanovnik[],
   g: Gradevine,
@@ -888,15 +1015,17 @@ export function ljudiUZgradi(
 }
 
 export function recOsoba(p: Stanovnik, mood: string) {
-  if (mood === "glad") return p.hub === "jelo" ? `${p.ime}: kuhinja je prazna.` : `${p.ime}: želudac vrije.`;
-  if (mood === "susa") return p.hub === "voda" ? `${p.ime}: nema kapi.` : `${p.ime}: grlo je suho.`;
-  if (mood === "nered") return p.posao === "Šerif" || p.posao === "Zamjenik" ? `${p.ime}: red puca.` : `${p.ime}: noć je glasna.`;
-  if (mood === "tiho" || mood === "dosada") return p.hub === "zabava" ? `${p.ime}: salun zijeva.` : `${p.ime}: tišina bode.`;
-  if (mood === "dokolica" || mood === "posao") return `${p.ime}: ruke vise. Daj posao.`;
-  if (mood === "krov") return `${p.ime}: krov prokišnjava.`;
+  if (mood === "glad") return p.hub === "jelo" ? `${p.ime}: kuhinja je prazna.` : `${p.ime}: ${recFilma(p, mood)}`;
+  if (mood === "susa") return p.hub === "voda" ? `${p.ime}: nema kapi.` : `${p.ime}: ${recFilma(p, mood)}`;
+  if (mood === "nered") return p.posao === "Šerif" || p.posao === "Zamjenik" ? `${p.ime}: ${recFilma(p, mood)}` : `${p.ime}: noć je glasna.`;
+  if (mood === "tiho" || mood === "dosada") return p.hub === "zabava" ? `${p.ime}: salun zijeva.` : `${p.ime}: ${recFilma(p, mood)}`;
+  if (mood === "dokolica" || mood === "posao") return `${p.ime}: ruke vise. ${recFilma(p, mood)}`;
+  if (mood === "krov") return `${p.ime}: krov prokišnjava. ${recFilma(p, "krov")}`;
   if (mood === "pjeske") return p.hub === "konji" ? `${p.ime}: staja je prazna.` : `${p.ime}: kauboj pješke nije kauboj.`;
   if (mood === "bolesno") return p.hub === "zdravlje" ? `${p.ime}: nema trave ni rane.` : `${p.ime}: kašalj ide ulicom.`;
-  if (p.posao === "Referent") return `${p.ime}: plaća tanka. Gazda hoće još.`;
+  if (p.posao === "Referent") return `${p.ime}: ${recFilma(p, "glad")}`;
+  if (p.posao === "Gazda") return `${p.ime}: ${recFilma(p, "glad")}`;
+  if (p.posao === "Šerif") return `${p.ime}: ${recFilma(p, "nered")}`;
   return p.rec;
 }
 
@@ -948,8 +1077,8 @@ export function razgovor(
   if (unutra && zgrada === "banja") return { rec: `${p.ime} pere prašinu.`, dar };
   if (unutra && zgrada === "farma") return { rec: `${p.ime} gleda žito.`, dar };
   if (unutra && zgrada === "tor") {
-    if (p.posao === "Gazda") return { rec: `${p.ime}: firma mora rasti. Koža pa šta.`, dar };
-    if (p.posao === "Referent") return { rec: `${p.ime} broji. Plaća stoji. Šuti.`, dar };
+    if (p.posao === "Gazda") return { rec: `${p.ime}: ${recFilma(p, "glad")}`, dar };
+    if (p.posao === "Referent") return { rec: `${p.ime}: ${recFilma(p, "glad")}`, dar };
     return { rec: `${p.ime} broji krdo. Koža je tijesna.`, dar };
   }
   if (unutra && zgrada === "trgovina") return { rec: `${p.ime} broji vreće.`, dar };
@@ -957,10 +1086,10 @@ export function razgovor(
   if (unutra && zgrada) {
     return { rec: `${p.ime} je u ${zgradaLokativ(zgrada)}.`, dar };
   }
-  if (doba === "jutro") return { rec: `${p.ime}: jutro je kratko. Hajde.`, dar };
+  if (doba === "jutro") return { rec: `${p.ime}: jutro je kratko. ${recFilma(p, "jutro")}`, dar };
   if (doba === "noc") {
-    if (p.posao === "Šerif" || p.posao === "Zamjenik") return { rec: `${p.ime}: noć je moja. Ti spavaj.`, dar };
-    return { rec: `${p.ime}: sutra. Sad mir.`, dar };
+    if (p.posao === "Šerif" || p.posao === "Zamjenik") return { rec: `${p.ime}: ${recFilma(p, "nered")}`, dar };
+    return { rec: `${p.ime}: sutra. ${recFilma(p, "noc")}`, dar };
   }
   return { rec: recOsoba(p, mood), dar };
 }

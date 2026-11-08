@@ -732,7 +732,9 @@ export function LiveProvider({
   }, [p2p.peers]);
 
   useEffect(() => {
+    if (!p2p.peers.length) return;
     const tick = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
       const s = useGameStore.getState();
       const packet: Presence = {
         k: "p",
@@ -766,8 +768,15 @@ export function LiveProvider({
     };
     tick();
     const id = window.setInterval(tick, 5000);
-    return () => window.clearInterval(id);
-  }, [p2p.broadcast]);
+    const onVis = () => {
+      if (document.visibilityState === "visible") tick();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [p2p.broadcast, p2p.peers.length]);
 
   useEffect(() => {
     let last: string | null = null;

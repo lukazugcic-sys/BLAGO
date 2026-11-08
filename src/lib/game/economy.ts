@@ -1,4 +1,4 @@
-import type { Gradevine } from "./types";
+import type { Gradevine, Ostecenja } from "./types";
 import {
   alatLv,
   ENERGY_BASE_MAX,
@@ -34,6 +34,7 @@ import {
   PRESTIGE_PER_LV,
   PASIVNI_PO_RAZINI,
   CIJENA_RAST,
+  KRUNA_CIJENA,
   GAMBLE_MAX,
   GAMBLE_WIN_P,
   KONJ_HRANA,
@@ -41,6 +42,7 @@ import {
   BANJA_VODA,
   GOVEDO_HRANA,
   GOVEDO_VODA,
+  TRAVA_ZABAVA,
 } from "./tuning";
 
 export {
@@ -56,6 +58,35 @@ export {
 
 export function rast(baza: number, lv: number, k = CIJENA_RAST) {
   return Math.max(0, Math.floor(baza * Math.pow(k, Math.max(0, lv - 1))));
+}
+
+export function krunaCijenaMnoz(prestige: number) {
+  const p = Math.max(0, Math.floor(Number(prestige) || 0));
+  return p <= 0 ? 1 : Math.pow(KRUNA_CIJENA, p);
+}
+
+export function cijenaUzKrunu(iznos: number, prestige: number) {
+  if (!(iznos > 0)) return 0;
+  return Math.floor(iznos * krunaCijenaMnoz(prestige) + 1e-9);
+}
+
+export function skalaCijene<T extends Record<string, number>>(c: T, prestige: number): T {
+  const m = krunaCijenaMnoz(prestige);
+  if (m === 1) return c;
+  const out = { ...c };
+  for (const k of Object.keys(out)) {
+    const v = out[k];
+    if (typeof v === "number" && v > 0) (out as Record<string, number>)[k] = Math.floor(v * m + 1e-9);
+  }
+  return out;
+}
+
+export function cijenaZgrade(
+  z: { cijena: (lv: number) => { zlato: number; drvo: number; kamen: number; zeljezo: number } },
+  lv: number,
+  prestige: number,
+) {
+  return skalaCijene(z.cijena(lv), prestige);
 }
 
 export const PRAZNE_GRADEVINE: Gradevine = {
@@ -83,6 +114,9 @@ export const PRAZNE_GRADEVINE: Gradevine = {
   banja: 0,
   trgovina: 0,
   banka: 0,
+  kovacnica: 0,
+  barutana: 0,
+  tvornica: 0,
 };
 
 export const PRAZNA_OSTECENJA: { [K in keyof Gradevine]: boolean } = {
@@ -110,6 +144,9 @@ export const PRAZNA_OSTECENJA: { [K in keyof Gradevine]: boolean } = {
   banja: false,
   trgovina: false,
   banka: false,
+  kovacnica: false,
+  barutana: false,
+  tvornica: false,
 };
 
 export const popravakCijena = (lv: number) => ({
@@ -123,17 +160,19 @@ export const izracunajMaxEnergiju = (baterija: number) =>
 export const capEnergija = (e: number, baterija: number) =>
   Math.max(0, Math.min(izracunajMaxEnergiju(baterija), e));
 
-/** Regen i bunar ne diraju višak iz munje. Munja i bonus smiju prijeći max. */
+/** Regen puni do max i ne dira višak. Bonus (`preko`) smije prijeći granicu. */
 export function dodajEnergiju(e: number, gain: number, baterija: number, preko = false) {
-  const next = Math.max(0, e + gain);
-  if (gain <= 0) return next;
+  const cur = Number.isFinite(e) ? e : 0;
+  const g = Number.isFinite(gain) ? gain : 0;
+  const next = Math.max(0, cur + g);
+  if (g <= 0) return next;
   if (preko) return next;
-  const max = izracunajMaxEnergiju(baterija);
-  if (e >= max) return e;
+  const max = izracunajMaxEnergiju(Number.isFinite(baterija) ? baterija : 0);
+  if (cur >= max) return cur;
   return Math.min(max, next);
 }
 
-/** 4.5s at rank 0, faster with Volt-remen, floor 2s. */
+/** Regen 8s at rank 0, faster with Volt-remen, floor 3.8s. */
 export const izracunajEnergijaRegenMs = (baterija: number) =>
   Math.max(ENERGY_REGEN_FLOOR_MS, ENERGY_REGEN_MS - alatLv("baterija", baterija) * ENERGY_REGEN_PER_LV);
 
@@ -154,6 +193,7 @@ export type KaubaPotrebe = {
   red: number;
   konji: number;
   zdravlje: number;
+  oruzje: number;
 };
 
 export type KaubaUsko = keyof KaubaPotrebe;
@@ -191,9 +231,12 @@ export type KaubaExtra = {
   duznost?: Partial<KaubaDuznost>;
   sijeno?: boolean;
   kisa?: boolean;
+  trava?: boolean;
+  potkova?: boolean;
   govedaBroj?: number;
   govedaDuznost?: Partial<GovedoDuznost>;
   celija?: number;
+  hubovi?: Partial<Record<KaubaUsko, number>>;
 };
 
 export type KaubaStanje = {
@@ -231,7 +274,40 @@ export const POTREBE_META: Array<{
   { id: "red", naziv: "Zakon", zgrade: ["ured", "banka"] },
   { id: "konji", naziv: "Konji", zgrade: ["staja", "korali", "staza"] },
   { id: "zdravlje", naziv: "Zdravlje", zgrade: ["ordinacija", "travar", "banja"] },
+  { id: "oruzje", naziv: "Oružje", zgrade: ["kovacnica", "barutana", "tvornica"] },
 ];
+
+export const POTREBA_BOJA: Record<KaubaUsko, string> = {
+  krov: "#d4a06a",
+  jelo: "#8aab54",
+  zabava: "#e8b84a",
+  voda: "#5a9aaa",
+  posao: "#c4844a",
+  red: "#c9a35a",
+  konji: "#b07848",
+  zdravlje: "#7aaa72",
+  oruzje: "#c45c38",
+};
+
+/** Ruke na hubu. Ne zamjenjuje zgradu — 5 ljudi na hrani bez lova i dalje gladuje. */
+export const RADNIK_POKRICE = 0.4;
+
+export function hubBroj(ljudi: Array<{ hub?: string | null }>): Partial<Record<KaubaUsko, number>> {
+  const out: Partial<Record<KaubaUsko, number>> = {};
+  for (const p of ljudi) {
+    const h = p.hub;
+    if (!h || !(h in POTREBA_BOJA)) continue;
+    const id = h as KaubaUsko;
+    out[id] = (out[id] ?? 0) + 1;
+  }
+  return out;
+}
+
+/** Mjesta u sobi: pusto drži dvoje, svaka zgrada +2, do 8. */
+export function hubKap(zgrade: Array<{ kvaliteta: number }>): number {
+  const puni = zgrade.filter((z) => z.kvaliteta > 0).length;
+  return Math.max(2, Math.min(8, 2 + puni * 2));
+}
 
 export function hubZaZgradu(id: keyof Gradevine): KaubaUsko | null {
   for (const p of POTREBE_META) {
@@ -242,8 +318,9 @@ export function hubZaZgradu(id: keyof Gradevine): KaubaUsko | null {
 
 export function zgradaUvjet(id: keyof Gradevine, g: Gradevine): string | null {
   if (id === "blok" && (g.kuca || 0) < 2) return "Prvo dvije kuće";
-  if (id === "mesnica" && (g.lov || 0) < 1) return "Prvo lov";
-  if (id === "pekara" && (g.lov || 0) < 1) return "Prvo lov";
+  if (id === "mesnica" && (g.lov || 0) < 1) return "Prvo lovački dom";
+  if (id === "pekara" && (g.lov || 0) < 1) return "Prvo lovački dom";
+  if (id === "salun" && (g.kuca || 0) < 1) return "Prvo kuću";
   if (id === "karte" && (g.salun || 0) < 1) return "Prvo salun";
   if (id === "mlin" && (g.bunar || 0) < 1) return "Prvo bunar";
   if (id === "cisterna" && (g.kuca || 0) < 1) return "Prvo kuću";
@@ -257,7 +334,27 @@ export function zgradaUvjet(id: keyof Gradevine, g: Gradevine): string | null {
   if (id === "banja" && (g.bunar || 0) < 1 && (g.cisterna || 0) < 1) return "Prvo bunar ili cisternu";
   if (id === "trgovina" && (g.kuca || 0) < 2) return "Prvo dvije kuće";
   if (id === "banka" && (g.ured || 0) < 1) return "Prvo ured";
+  if (id === "kovacnica" && (g.rudnik || 0) < 1) return "Prvo rudnik";
+  if (id === "barutana" && (g.kovacnica || 0) < 1) return "Prvo kovačnicu";
+  if (id === "tvornica" && (g.barutana || 0) < 1) return "Prvo barutanu";
   return null;
+}
+
+/** Jedan metak na prvoj zajedničkoj razini kovačnice i barutane. Tvornica dodaje svoju. */
+export const METAK_OBNOVA_MS = 6 * 60 * 1000;
+
+export function metciPoObnovi(g: Gradevine, o: Ostecenja) {
+  const k = o.kovacnica ? 0 : g.kovacnica || 0;
+  const b = o.barutana ? 0 : g.barutana || 0;
+  if (k < 1 || b < 1) return 0;
+  const tvornica = o.tvornica ? 0 : g.tvornica || 0;
+  return Math.min(k, b) + tvornica;
+}
+
+/** Kovačnica kuje potkove i bez barutane. Prva razina = jedna na 6 min. */
+export function potkovePoObnovi(g: Gradevine, o: Ostecenja) {
+  if (o.kovacnica) return 0;
+  return Math.max(0, g.kovacnica || 0);
 }
 
 const TEZINA: KaubaPotrebe = {
@@ -269,6 +366,7 @@ const TEZINA: KaubaPotrebe = {
   red: 0.95,
   konji: 0.9,
   zdravlje: 0.85,
+  oruzje: 0.75,
 };
 const TEZINA_ZBROJ = Object.values(TEZINA).reduce((a, b) => a + b, 0);
 
@@ -368,9 +466,10 @@ export function izracunajKauba(g: Gradevine, ljudi: number, extra?: KaubaExtra):
   const n = Math.max(0, ljudi);
   const kapacitet = izracunajKapacitet(g);
   const konjiKapN = konjaKap(g);
-  const konjiBroj = Math.max(0, Math.min(konjiKapN, Math.floor(extra?.konjiBroj ?? konjiKapN)));
+  const konjiBroj = Math.max(0, Math.min(konjiKapN, Math.floor(extra?.konjiBroj ?? 0)));
   const duznost = normalizirajDuznost(konjiBroj, extra?.duznost);
   const sijeno = !!extra?.sijeno;
+  const potkova = !!extra?.potkova;
   const kisa = !!extra?.kisa;
   const govedaKapN = govedaKap(g);
   const govedaBroj = Math.max(0, Math.min(govedaKapN, Math.floor(extra?.govedaBroj ?? 0)));
@@ -392,6 +491,7 @@ export function izracunajKauba(g: Gradevine, ljudi: number, extra?: KaubaExtra):
   let red = (g.ured || 0) * POKRICE.ured + (g.banka || 0) * POKRICE.banka + (extra?.red ?? 0);
   let konji = konjiBroj;
   let zdravlje = (g.ordinacija || 0) * POKRICE.ordinacija;
+  let oruzje = (g.kovacnica || 0) * 6 + (g.barutana || 0) * 6 + (g.tvornica || 0) * 8;
   const utjecaji: KaubaUtjecaj[] = [];
   const veza = (od: KaubaUsko, dest: KaubaUsko, predznak: 1 | -1, jacina: number, rec: string) => {
     if (jacina < 0.07) return;
@@ -448,6 +548,10 @@ export function izracunajKauba(g: Gradevine, ljudi: number, extra?: KaubaExtra):
     zabava += (g.staza || 0) * 2.2;
     veza("konji", "zabava", 1, Math.min(1, 0.14 + (g.staza || 0) * 0.04), "Staza puni ogradu.");
   }
+  if (potkova && konjiBroj > 0) {
+    konji += konjiBroj * 0.45;
+    veza("oruzje", "konji", 1, 0.32, "Potkova drži kopito.");
+  }
   if ((g.trgovina || 0) > 0 && konjiBroj > 0) {
     posao += (g.trgovina || 0) * 1.1;
     veza("konji", "posao", 1, 0.18, "Vreće idu na konju.");
@@ -495,6 +599,10 @@ export function izracunajKauba(g: Gradevine, ljudi: number, extra?: KaubaExtra):
     zdravlje += travarBaza * (0.62 + 0.38 * farmK);
     veza("jelo", "zdravlje", farmK >= 0.5 ? 1 : -1, 0.16 + 0.2 * farmK, "Trava raste uz žito.");
   }
+  if (extra?.trava) {
+    zabava += TRAVA_ZABAVA;
+    veza("zdravlje", "zabava", 1, 0.28, "Trava diže salun.");
+  }
   if ((g.banja || 0) > 0) {
     const pijeBanja = (g.banja || 0) * BANJA_VODA;
     voda = Math.max(0, voda - pijeBanja);
@@ -511,6 +619,36 @@ export function izracunajKauba(g: Gradevine, ljudi: number, extra?: KaubaExtra):
     const nered = gosti * 0.28;
     red = Math.max(0, red - nered);
     veza("zabava", "red", -1, Math.min(1, 0.14 + gosti * 0.02), "Salun toči. Ulica se trese.");
+  }
+
+  const ruke = extra?.hubovi;
+  if (ruke) {
+    const r = (h: KaubaUsko) => {
+      const nRuku = ruke[h] ?? 0;
+      const zids = POTREBE_META.find((p) => p.id === h)?.zgrade ?? [];
+      const kap = hubKap(zids.map((id) => ({ kvaliteta: g[id] || 0 })));
+      return Math.min(nRuku, kap) * RADNIK_POKRICE;
+    };
+    jelo += r("jelo");
+    voda += r("voda");
+    zabava += r("zabava");
+    posao += r("posao");
+    red += r("red");
+    konji += r("konji");
+    zdravlje += r("zdravlje");
+    oruzje += r("oruzje");
+    if ((ruke.red ?? 0) > 0) {
+      veza("red", "zabava", 1, Math.min(0.24, 0.07 * (ruke.red ?? 0)), "Šerif drži ulicu.");
+    }
+    if ((ruke.zabava ?? 0) > 0) {
+      veza("zabava", "red", -1, Math.min(0.18, 0.05 * (ruke.zabava ?? 0)), "Salun pun. Ulica glasna.");
+    }
+    if ((ruke.jelo ?? 0) > 0) {
+      veza("jelo", "zdravlje", 1, Math.min(0.2, 0.05 * (ruke.jelo ?? 0)), "Ruke u kuhinji. Kotao diše.");
+    }
+    if ((ruke.zdravlje ?? 0) > 0) {
+      veza("zdravlje", "red", 1, Math.min(0.16, 0.05 * (ruke.zdravlje ?? 0)), "Trava i zavoj. Kauba stoji.");
+    }
   }
 
   const krovRaw = kapacitet;
@@ -555,6 +693,7 @@ export function izracunajKauba(g: Gradevine, ljudi: number, extra?: KaubaExtra):
     red,
     konji,
     zdravlje,
+    oruzje,
   };
   const poslovi = Math.max(0, posao);
   const zaposleni = Math.min(n, poslovi);
@@ -567,6 +706,7 @@ export function izracunajKauba(g: Gradevine, ljudi: number, extra?: KaubaExtra):
     red: pokrice(pokrivaju.red, n),
     konji: n < 8 ? 1 : pokrice(pokrivaju.konji, n),
     zdravlje: n < 10 ? 1 : pokrice(pokrivaju.zdravlje, n),
+    oruzje: n < 6 ? 1 : pokrice(pokrivaju.oruzje, n),
   };
 
   if (n >= 8 && potrebe.posao < 0.45) {
@@ -592,13 +732,14 @@ export function izracunajKauba(g: Gradevine, ljudi: number, extra?: KaubaExtra):
         potrebe.posao * TEZINA.posao +
         potrebe.red * TEZINA.red +
         potrebe.konji * TEZINA.konji +
-        potrebe.zdravlje * TEZINA.zdravlje)) /
+        potrebe.zdravlje * TEZINA.zdravlje +
+        potrebe.oruzje * TEZINA.oruzje)) /
       TEZINA_ZBROJ,
   );
   const rad = poslovi <= 0 ? 0 : zaposleni / poslovi;
   const zdravljeK = 0.82 + 0.18 * potrebe.zdravlje;
   const efikasnost = izracunajEfikasnost(sreca) * zdravljeK;
-  const radKonja = 1 + duznost.rad * 0.055;
+  const radKonja = 1 + duznost.rad * 0.055 + (potkova ? 0.12 : 0);
   let usko: KaubaUsko | null = null;
   let minV = 1;
   (Object.keys(potrebe) as KaubaUsko[]).forEach((k) => {
@@ -717,14 +858,15 @@ export function raspolozenjeKaube(kauba: KaubaStanje): SeloMood {
   const n = Math.floor(kauba.ljudi);
   if (n <= 0) return { id: "pusto", rec: "Pusto. Samo vjetar.", usko: "krov" };
   const u = kauba.usko;
-  if (u === "jelo") return { id: "glad", rec: "Želudac vrije.", usko: "jelo" };
+  if (u === "jelo") return { id: "glad", rec: "Kauba je gladna.", usko: "jelo" };
   if (u === "voda") return { id: "susa", rec: "Nema kapi.", usko: "voda" };
   if (u === "krov") return { id: "krov", rec: "Nema krova za sve.", usko: "krov" };
   if (u === "zabava") return { id: "tiho", rec: "Ulica je tiha.", usko: "zabava" };
   if (u === "posao") return { id: "dokolica", rec: "Ruke vise.", usko: "posao" };
-  if (u === "red") return { id: "nered", rec: "Nema reda u kaubi.", usko: "red" };
+  if (u === "red") return { id: "nered", rec: "U kaubi nema reda.", usko: "red" };
   if (u === "konji") return { id: "pjeske", rec: "Kauboj pješke nije kauboj.", usko: "konji" };
   if (u === "zdravlje") return { id: "bolesno", rec: "Kauba kašlje. Nema lijeka.", usko: "zdravlje" };
+  if (u === "oruzje") return { id: "dokolica", rec: "Kovačnica šuti. Nema metka.", usko: "oruzje" };
   if (kauba.sreca >= 78 && kauba.potrebe.zabava >= 0.8) {
     return { id: "zurka", rec: "U salunu svira.", usko: "zabava" };
   }
@@ -742,18 +884,20 @@ export function modifikatorBlagaZaUsko(u: KaubaUsko | null): Partial<Record<stri
   if (u === "red") return { shield: 1.8, iron: 1.4, gold: 1.15 };
   if (u === "konji") return { wood: 1.6, gold: 1.35, iron: 1.15 };
   if (u === "zdravlje") return { gold: 1.55, wood: 1.2 };
+  if (u === "oruzje") return { iron: 1.8, gold: 1.25, stone: 1.15 };
   return { iron: 1.55, stone: 1.35, wood: 1.3 };
 }
 
 export function uskoVrtnjaRec(u: KaubaUsko | null): string | null {
   if (!u) return null;
   if (u === "krov") return "Vrtnja ide u drvo za kuće.";
-  if (u === "jelo") return "Vrtnja ide u drvo i zlato za hranu.";
+  if (u === "jelo") return "Vrtnja češće daje drvo i zlato za hranu.";
   if (u === "voda") return "Vrtnja ide u kamen za bunar i cisternu.";
   if (u === "zabava") return "Vrtnja ide u zlato za salun.";
   if (u === "red") return "Vrtnja ide u štit za ured.";
   if (u === "konji") return "Vrtnja ide u drvo za staju i ispust.";
   if (u === "zdravlje") return "Vrtnja ide u zlato za lijek.";
+  if (u === "oruzje") return "Vrtnja ide u željezo za kovačnicu.";
   return "Vrtnja ide u željezo za posao.";
 }
 

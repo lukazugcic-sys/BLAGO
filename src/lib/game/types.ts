@@ -93,6 +93,9 @@ export type Gradevine = {
   banja: number;
   trgovina: number;
   banka: number;
+  kovacnica: number;
+  barutana: number;
+  tvornica: number;
 };
 
 export type KaravanaPutId = "staza" | "noc" | "rijeka";
@@ -145,7 +148,7 @@ export type Zgrada = {
   maxLv: number;
   ikona: LucideIcon;
   bazaBoja: string;
-  tip: "resurs" | "kuca" | "blok" | "salun" | "bunar" | "cisterna" | "mlin" | "lov" | "mesnica" | "pekara" | "karte" | "ured" | "staja" | "korali" | "staza" | "farma" | "tor" | "ordinacija" | "travar" | "banja" | "trgovina" | "banka";
+  tip: "resurs" | "kuca" | "blok" | "salun" | "bunar" | "cisterna" | "mlin" | "lov" | "mesnica" | "pekara" | "karte" | "ured" | "staja" | "korali" | "staza" | "farma" | "tor" | "ordinacija" | "travar" | "banja" | "trgovina" | "banka" | "kovacnica" | "barutana" | "tvornica";
   cijena: (lv: number) => {
     zlato: number;
     drvo: number;

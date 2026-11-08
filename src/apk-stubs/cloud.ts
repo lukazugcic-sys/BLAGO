@@ -8,6 +8,10 @@ export async function pushCloudSave(_args?: unknown) {
   return;
 }
 
+export async function deleteCloudSave() {
+  return { ok: true as const };
+}
+
 export async function listLeaderboard() {
   return [] as Array<{
     uid: string;

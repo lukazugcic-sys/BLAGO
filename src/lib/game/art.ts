@@ -1,6 +1,6 @@
 import type { SimbolId } from "./types";
 
-const V = "v=44";
+const V = "v=56";
 
 export function asset(path: string) {
   const raw = (path.startsWith("/") ? path.slice(1) : path).split("?")[0];
@@ -13,48 +13,49 @@ export function artSrc(src: string) {
 }
 
 export const ART = {
-  hall: asset("/art/hall.jpg"),
-  aurora: asset("/art/aurora.jpg"),
-  snow: asset("/art/zvjezdarnica.jpg"),
-  cabin: asset("/art/cabin.jpg"),
-  seloPoster: asset("/art/selo-poster.jpg"),
-  raid: asset("/art/pohod-opsada.jpg"),
-  pohodJahanje: asset("/art/pohod-jahanje.jpg"),
-  pohodOpsada: asset("/art/pohod-opsada.jpg"),
-  stazaUtrka: asset("/art/staza-utrka.jpg"),
-  splash: asset("/art/pustinjaci.jpg"),
+  hall: asset("/art/hall.webp"),
+  aurora: asset("/art/aurora.webp"),
+  snow: asset("/art/zvjezdarnica.webp"),
+  cabin: asset("/art/cabin.webp"),
+  seloPoster: asset("/art/selo-poster.webp"),
+  raid: asset("/art/pohod-opsada.webp"),
+  pohodJahanje: asset("/art/pohod-jahanje.webp"),
+  pohodOpsada: asset("/art/pohod-opsada.webp"),
+  stazaUtrka: asset("/art/staza-utrka.webp"),
+  splash: asset("/art/pustinjaci.webp"),
   seloVideo: asset("/art/selo.mp4"),
-  ceh: asset("/art/ceh.jpg"),
-  misije: asset("/art/kukuruz.jpg"),
-  trznica: asset("/art/trznica.jpg"),
-  lov: asset("/art/lov.jpg"),
-  svemir: asset("/art/svemir.jpg"),
+  ceh: asset("/art/ceh.webp"),
+  misije: asset("/art/kukuruz.webp"),
+  trznica: asset("/art/trznica.webp"),
+  lov: asset("/art/lov.webp"),
+  svemir: asset("/art/svemir.webp"),
   isoMill: asset("/art/iso-mill.png"),
   isoQuarry: asset("/art/iso-quarry.png"),
   isoForge: asset("/art/iso-forge.png"),
-  village: asset("/art/village.jpg"),
-  cowboy: asset("/art/cowboy.jpg"),
-  kauba: asset("/art/kauba.jpg"),
-  kaubaCowboy: asset("/art/kauba-cowboy.jpg"),
-  knjigaKorice: asset("/art/knjiga-korice.jpg"),
-  knjigaList: asset("/art/knjiga-list.jpg"),
-  kuhar: asset("/art/kuhar.jpg"),
-  prase: asset("/art/prase.jpg"),
-  kukuruz: asset("/art/kukuruz.jpg"),
-  bubbles: asset("/art/bubbles.jpg"),
-  dobitak: asset("/art/dobitak.jpg"),
-  selfie: asset("/art/selfie.jpg"),
-  drustvo: asset("/art/drustvo.jpg"),
-  pustinjaci: asset("/art/pustinjaci.jpg"),
-  zvjezdarnica: asset("/art/zvjezdarnica.jpg"),
-  polje: asset("/art/polje.jpg"),
-  oblaci: asset("/art/oblaci.jpg"),
-  vinograd: asset("/art/vinograd.jpg"),
+  village: asset("/art/village.webp"),
+  cowboy: asset("/art/cowboy.webp"),
+  kauba: asset("/art/kauba.webp"),
+  kaubaCowboy: asset("/art/kauba-cowboy.webp"),
+  knjigaKorice: asset("/art/knjiga-korice.webp"),
+  knjigaList: asset("/art/knjiga-list.webp"),
+  kuhar: asset("/art/kuhar.webp"),
+  prase: asset("/art/prase.webp"),
+  kukuruz: asset("/art/kukuruz.webp"),
+  bubbles: asset("/art/bubbles.webp"),
+  dobitak: asset("/art/dobitak.webp"),
+  selfie: asset("/art/selfie.webp"),
+  drustvo: asset("/art/drustvo.webp"),
+  pustinjaci: asset("/art/pustinjaci.webp"),
+  zvjezdarnica: asset("/art/zvjezdarnica.webp"),
+  polje: asset("/art/polje.webp"),
+  oblaci: asset("/art/oblaci.webp"),
+  vinograd: asset("/art/vinograd.webp"),
   tractor: asset("/art/video/tractor.mp4"),
   vatra: asset("/art/video/vatra.mp4"),
   duga: asset("/art/video/duga.mp4"),
-  ulica: asset("/art/hub/ulica.jpg"),
-  kola: asset("/art/hub/kola.jpg"),
+  ulica: asset("/art/hub/ulica.webp"),
+  kola: asset("/art/hub/kola.webp"),
+  bubanj: asset("/art/bubanj.png"),
 } as const;
 
 export const SYMBOL_ART: Record<SimbolId, string> = {
@@ -81,42 +82,108 @@ export const RESURS_ART = {
 } as const;
 
 export const ZGRADA_ART: Record<string, string> = {
-  pilana: asset("/art/zgrade/pilana.jpg"),
-  kamenolom: asset("/art/zgrade/kamenolom.jpg"),
-  rudnik: asset("/art/zgrade/rudnik.jpg"),
-  kuca: asset("/art/zgrade/kuca.jpg"),
-  blok: asset("/art/zgrade/blok.jpg"),
-  salun: asset("/art/zgrade/salun.jpg"),
-  bunar: asset("/art/zgrade/bunar.jpg"),
-  cisterna: asset("/art/zgrade/cisterna.jpg"),
-  mlin: asset("/art/zgrade/mlin.jpg"),
-  lov: asset("/art/lov.jpg"),
-  mesnica: asset("/art/zgrade/mesnica.jpg"),
-  pekara: asset("/art/zgrade/pekara.jpg"),
-  karte: asset("/art/zgrade/karte.jpg"),
-  ured: asset("/art/cowboy.jpg"),
-  staja: asset("/art/zgrade/staja.jpg"),
-  korali: asset("/art/polje.jpg"),
-  staza: asset("/art/zgrade/staza.jpg"),
-  farma: asset("/art/zgrade/farma.jpg"),
-  tor: asset("/art/zgrade/tor.jpg"),
-  ordinacija: asset("/art/zgrade/ordinacija.jpg"),
-  travar: asset("/art/zgrade/travar.jpg"),
-  banja: asset("/art/zgrade/banja.jpg"),
-  trgovina: asset("/art/zgrade/trgovina.jpg"),
-  banka: asset("/art/zgrade/banka.jpg"),
+  pilana: asset("/art/zgrade/pilana.webp"),
+  kamenolom: asset("/art/zgrade/kamenolom.webp"),
+  rudnik: asset("/art/zgrade/rudnik.webp"),
+  kuca: asset("/art/zgrade/kuca-w.webp"),
+  blok: asset("/art/zgrade/blok-w.webp"),
+  salun: asset("/art/zgrade/salun.webp"),
+  bunar: asset("/art/zgrade/bunar.webp"),
+  cisterna: asset("/art/zgrade/cisterna.webp"),
+  mlin: asset("/art/zgrade/mlin.webp"),
+  lov: asset("/art/lov.webp"),
+  mesnica: asset("/art/zgrade/mesnica-w.webp"),
+  pekara: asset("/art/zgrade/pekara-w.webp"),
+  karte: asset("/art/zgrade/karte.webp"),
+  ured: asset("/art/zgrade/ured.webp"),
+  staja: asset("/art/zgrade/staja.webp"),
+  korali: asset("/art/polje.webp"),
+  staza: asset("/art/zgrade/staza.webp"),
+  farma: asset("/art/zgrade/farma.webp"),
+  tor: asset("/art/zgrade/tor.webp"),
+  ordinacija: asset("/art/zgrade/ordinacija.webp"),
+  travar: asset("/art/zgrade/travar.webp"),
+  banja: asset("/art/zgrade/banja.webp"),
+  trgovina: asset("/art/zgrade/trgovina.webp"),
+  banka: asset("/art/zgrade/banka.webp"),
+  kovacnica: asset("/art/zgrade/kovacnica.webp"),
+  barutana: asset("/art/zgrade/barutana.webp"),
+  tvornica: asset("/art/zgrade/tvornica.webp"),
 };
 
+const izo = (ime: string) => asset(`/art/zgrade/izo/${ime}.webp`);
+
+/** Prazna parcela, skela, sjena i dekor ulice. Prozirni WebP. */
+export const IZO_DEKOR = {
+  kolci: izo("kolci"),
+  skela: izo("skela"),
+  sjena: izo("sjena"),
+  bacva: izo("bacva"),
+  kaktus: izo("kaktus"),
+  ograda: izo("ograda"),
+  kola: izo("kola"),
+} as const;
+
+/**
+ * Izometrijski sprite zgrade.
+ * a = razina 1–2, b = 3–5, c = 6+.
+ * Svaka zgrada ima barem a/b. c imaju one čiji strop ide na 6 ili više.
+ */
+export const ZGRADA_IZO: Record<string, { a: string; b?: string; c?: string }> = {
+  kuca: { a: izo("kuca-a"), b: izo("kuca-b"), c: izo("kuca-c") },
+  blok: { a: izo("blok-a"), b: izo("blok-b"), c: izo("blok-c") },
+  lov: { a: izo("lov-a"), b: izo("lov-b"), c: izo("lov-c") },
+  mesnica: { a: izo("mesnica-a"), b: izo("mesnica-b") },
+  pekara: { a: izo("pekara-a"), b: izo("pekara-b") },
+  farma: { a: izo("farma-a"), b: izo("farma-b"), c: izo("farma-c") },
+  tor: { a: izo("tor-a"), b: izo("tor-b"), c: izo("tor-c") },
+  salun: { a: izo("salun-a"), b: izo("salun-b"), c: izo("salun-c") },
+  karte: { a: izo("karte-a"), b: izo("karte-b") },
+  bunar: { a: izo("bunar-a"), b: izo("bunar-b") },
+  cisterna: { a: izo("cisterna-a"), b: izo("cisterna-b"), c: izo("cisterna-c") },
+  mlin: { a: izo("mlin-a"), b: izo("mlin-b") },
+  pilana: { a: izo("pilana-a"), b: izo("pilana-b") },
+  kamenolom: { a: izo("kamenolom-a"), b: izo("kamenolom-b"), c: izo("kamenolom-c") },
+  rudnik: { a: izo("rudnik-a"), b: izo("rudnik-b"), c: izo("rudnik-c") },
+  trgovina: { a: izo("trgovina-a"), b: izo("trgovina-b") },
+  ured: { a: izo("ured-a"), b: izo("ured-b"), c: izo("ured-c") },
+  banka: { a: izo("banka-a"), b: izo("banka-b") },
+  staja: { a: izo("staja-a"), b: izo("staja-b") },
+  korali: { a: izo("korali-a"), b: izo("korali-b"), c: izo("korali-c") },
+  staza: { a: izo("staza-a"), b: izo("staza-b"), c: izo("staza-c") },
+  ordinacija: { a: izo("ordinacija-a"), b: izo("ordinacija-b") },
+  travar: { a: izo("travar-a"), b: izo("travar-b"), c: izo("travar-c") },
+  banja: { a: izo("banja-a"), b: izo("banja-b") },
+  kovacnica: { a: izo("kovacnica-a"), b: izo("kovacnica-b") },
+  barutana: { a: izo("barutana-a"), b: izo("barutana-b") },
+  tvornica: { a: izo("tvornica-a"), b: izo("tvornica-b") },
+};
+
+export function izoZgrada(id: string, lv: number) {
+  const s = ZGRADA_IZO[id];
+  if (!s) return undefined;
+  if (lv >= 6 && s.c) return s.c;
+  if (lv >= 3 && s.b) return s.b;
+  return s.a;
+}
+
+export const JACKPOT_POSTERI = [
+  asset("/art/jackpot/ulica.webp"),
+  asset("/art/jackpot/san.webp"),
+  asset("/art/jackpot/knjige.webp"),
+];
+
 export const HUB_ART: Record<string, string> = {
-  krov: asset("/art/hub/krov.jpg"),
-  jelo: asset("/art/hub/jelo.jpg"),
-  zabava: asset("/art/hub/zabava.jpg"),
-  voda: asset("/art/hub/voda.jpg"),
-  posao: asset("/art/hub/posao.jpg"),
-  red: asset("/art/hub/red.jpg"),
-  konji: asset("/art/hub/konji.jpg"),
-  zdravlje: asset("/art/hub/zdravlje.jpg"),
-  selo: asset("/art/hub/ulica.jpg"),
+  krov: asset("/art/hub/krov.webp"),
+  jelo: asset("/art/hub/jelo.webp"),
+  zabava: asset("/art/hub/zabava.webp"),
+  voda: asset("/art/hub/voda.webp"),
+  posao: asset("/art/hub/posao.webp"),
+  red: asset("/art/hub/red.webp"),
+  konji: asset("/art/hub/konji.webp"),
+  zdravlje: asset("/art/hub/zdravlje.webp"),
+  oruzje: asset("/art/zgrade/tvornica.webp"),
+  selo: asset("/art/kauba.webp"),
 };
 
 export const HUB_VIDEO: Record<string, string> = {
@@ -128,6 +195,7 @@ export const HUB_VIDEO: Record<string, string> = {
   red: asset("/art/hub/red.mp4"),
   konji: asset("/art/hub/konji.mp4"),
   zdravlje: asset("/art/hub/zdravlje.mp4"),
+  selo: asset("/art/selo.mp4"),
 };
 
 export const MREZA_ART = {
@@ -156,6 +224,9 @@ export const MREZA_ART = {
   banja: asset("/art/mreza/book.png"),
   trgovina: asset("/art/mreza/pouch.png"),
   banka: asset("/art/mreza/pouch.png"),
+  kovacnica: asset("/art/mreza/iron.png"),
+  barutana: asset("/art/mreza/fire.png"),
+  tvornica: asset("/art/mreza/sword.png"),
   oklop: asset("/art/mreza/shield.png"),
   klan: asset("/art/mreza/flag.png"),
   pozar: asset("/art/mreza/fire.png"),

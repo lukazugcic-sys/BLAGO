@@ -9,17 +9,19 @@ function Alat({ alat, t }: { alat: Stanovnik["alat"]; t: ReturnType<typeof likTe
   }
   if (alat === "cekic") {
     return (
-      <g>
-        <rect x="68" y="54" width="3.2" height="18" rx="1" fill="#5a3214" transform="rotate(18 70 63)" />
-        <rect x="64" y="52" width="12" height="5" rx="1" fill="#7a7a80" transform="rotate(18 70 54)" />
+      <g className="kauba-alat kauba-alat-cekic">
+        <path d="M62 74 L82 70 L84 76 L64 80 Z" fill="#6a6a70" stroke="#2a2418" strokeWidth="0.6" />
+        <rect x="70" y="68" width="8" height="4" rx="0.6" fill="#8a8a90" />
+        <rect x="58" y="48" width="3" height="22" rx="1" fill="#5a3214" />
+        <rect x="52" y="46" width="14" height="5" rx="1" fill="#7a7a80" />
       </g>
     );
   }
   if (alat === "sjekira") {
     return (
-      <g>
-        <rect x="69" y="50" width="3" height="22" rx="1" fill="#5a3214" transform="rotate(-16 70 61)" />
-        <path d="M66 50 L78 47 L78 56 L66 58 Z" fill="#b0b4b8" transform="rotate(-16 70 53)" />
+      <g className="kauba-alat kauba-alat-sjekira">
+        <rect x="69" y="50" width="3" height="22" rx="1" fill="#5a3214" />
+        <path d="M66 50 L78 47 L78 56 L66 58 Z" fill="#b0b4b8" />
       </g>
     );
   }

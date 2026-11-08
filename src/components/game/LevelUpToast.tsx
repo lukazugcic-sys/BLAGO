@@ -27,7 +27,7 @@ export function LevelUpToast() {
     const t = window.setTimeout(() => {
       setVisible(false);
       window.setTimeout(clearLevelUp, 280);
-    }, 2500);
+    }, 1600);
     return () => window.clearTimeout(t);
   }, [levelUpData, clearLevelUp]);
 

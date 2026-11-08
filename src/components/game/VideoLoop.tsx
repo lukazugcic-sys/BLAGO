@@ -8,6 +8,7 @@ export function VideoLoop({
   style,
   force,
   rate = 1,
+  fit = "cover",
 }: {
   src: string;
   className?: string;
@@ -15,6 +16,7 @@ export function VideoLoop({
   style?: CSSProperties;
   force?: boolean;
   rate?: number;
+  fit?: "cover" | "contain";
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const v0 = useRef<HTMLVideoElement>(null);
@@ -24,20 +26,42 @@ export function VideoLoop({
   const [sloj, setSloj] = useState<0 | 1>(0);
   const [ide, setIde] = useState(false);
   const [vidljiv, setVidljiv] = useState(!!force);
+  const kadar = fit === "contain" ? "object-contain object-center" : "object-cover object-center";
 
   useEffect(() => {
     const wrap = wrapRef.current;
     if (!wrap) return;
+    const primijeni = (intersecting: boolean, ratio: number) => {
+      const hidden = typeof document !== "undefined" && document.visibilityState === "hidden";
+      const pokazi = !hidden && intersecting && (force || ratio >= 0.28);
+      setVidljiv((bilo) => {
+        if (pokazi) return true;
+        if (hidden || !intersecting || ratio < 0.08) return false;
+        return bilo;
+      });
+    };
     const io = new IntersectionObserver(
       ([entry]) => {
         if (!entry) return;
-        const pokriven = entry.intersectionRatio < 0.28;
-        setVidljiv(force ? entry.isIntersecting && !pokriven : entry.isIntersecting && entry.intersectionRatio >= 0.28);
+        primijeni(entry.isIntersecting, entry.intersectionRatio);
       },
       { threshold: [0, 0.12, 0.28, 0.5, 0.8] },
     );
     io.observe(wrap);
-    return () => io.disconnect();
+    const onVis = () => {
+      const el = wrapRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const vis =
+        r.bottom > 0 && r.top < (window.innerHeight || 0) && r.right > 0 && r.left < (window.innerWidth || 0);
+      const h = Math.max(1, r.height);
+      primijeni(vis, vis ? Math.min(1, Math.max(0, Math.min(r.bottom, window.innerHeight) - Math.max(r.top, 0)) / h) : 0);
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      io.disconnect();
+      document.removeEventListener("visibilitychange", onVis);
+    };
   }, [src, force]);
 
   useEffect(() => {
@@ -46,6 +70,19 @@ export function VideoLoop({
     setSloj(0);
     setIde(false);
   }, [src]);
+
+  useEffect(() => {
+    const utisaj = () => {
+      for (const el of [v0.current, v1.current]) {
+        if (!el) continue;
+        el.muted = true;
+        el.volume = 0;
+      }
+    };
+    utisaj();
+    window.addEventListener("blago-mute", utisaj);
+    return () => window.removeEventListener("blago-mute", utisaj);
+  }, [src, vidljiv]);
 
   useEffect(() => {
     const primijeni = (el: HTMLVideoElement | null) => {
@@ -63,6 +100,8 @@ export function VideoLoop({
     }
     const start = a ?? b;
     if (!start) return;
+    start.load();
+    if (b && b !== start) b.load();
     primijeni(a);
     primijeni(b);
     const onPlay = () => primijeni(start);
@@ -126,15 +165,17 @@ export function VideoLoop({
           src={poster}
           alt=""
           draggable={false}
-          className="absolute inset-0 size-full object-cover object-center"
+          className={cn("absolute inset-0 size-full", kadar)}
         />
       ) : null}
       {vidljiv ? (
         <>
           <video
             ref={v0}
+            src={src}
             className={cn(
-              "absolute inset-0 size-full object-cover object-center",
+              "absolute inset-0 size-full",
+              kadar,
               "video-loop-sloj",
               sloj === 0 && ide ? "video-loop-vidljiv" : "video-loop-skrit",
             )}
@@ -143,13 +184,13 @@ export function VideoLoop({
             preload="auto"
             poster={poster}
             onTimeUpdate={() => preslozi(0)}
-          >
-            <source src={src} type="video/mp4" />
-          </video>
+          />
           <video
             ref={v1}
+            src={src}
             className={cn(
-              "absolute inset-0 size-full object-cover object-center",
+              "absolute inset-0 size-full",
+              kadar,
               "video-loop-sloj",
               sloj === 1 && ide ? "video-loop-vidljiv" : "video-loop-skrit",
             )}
@@ -158,9 +199,7 @@ export function VideoLoop({
             preload="auto"
             poster={poster}
             onTimeUpdate={() => preslozi(1)}
-          >
-            <source src={src} type="video/mp4" />
-          </video>
+          />
         </>
       ) : null}
     </div>

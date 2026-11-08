@@ -7,6 +7,7 @@ import { playSfx } from "@/lib/game/audio";
 import { delay } from "@/lib/game/helpers";
 import { hitstop, shake } from "@/lib/context/UIContext";
 import { cn } from "@/lib/utils";
+import { portalKorijen } from "@/lib/game/portal";
 
 const HRPA_ART = [SYMBOL_ART.wood, SYMBOL_ART.stone, SYMBOL_ART.iron] as const;
 const HRPA_IME = ["Drvo", "Kamen", "Željezo"] as const;
@@ -227,6 +228,6 @@ export function TrojacModal() {
         )}
       </div>
     </div>,
-    document.body,
+    portalKorijen(),
   );
 }

@@ -1,10 +1,33 @@
 import { useCallback, useEffect, useLayoutEffect, useState, type RefObject } from "react";
 
+type BlagoFsApi = {
+  toggle: () => void;
+  enter: () => void;
+  exit: () => void;
+  isImmersive: () => boolean;
+};
+
 function inIframe() {
   try {
     return window.self !== window.top;
   } catch {
     return true;
+  }
+}
+
+function blagoFs(): BlagoFsApi | null {
+  if (typeof window === "undefined") return null;
+  const api = (window as Window & { BlagoFs?: BlagoFsApi }).BlagoFs;
+  return api ?? null;
+}
+
+function isCapacitorNative() {
+  try {
+    const c = (window as Window & { Capacitor?: { isNativePlatform?: () => boolean; getPlatform?: () => string } })
+      .Capacitor;
+    return !!(c?.isNativePlatform?.() || c?.getPlatform?.() === "android");
+  } catch {
+    return false;
   }
 }
 
@@ -15,6 +38,7 @@ function fsElement() {
 
 function nativeFsAvailable() {
   if (typeof document === "undefined") return false;
+  if (blagoFs() || isCapacitorNative()) return true;
   if (inIframe()) return false;
   const doc = document as Document & { webkitFullscreenEnabled?: boolean };
   return !!(document.fullscreenEnabled || doc.webkitFullscreenEnabled);
@@ -54,18 +78,29 @@ async function exitFs() {
 }
 
 /** Call from a user gesture (splash tap). No-ops in iframes and Chrome without API. */
-export function requestNativeFullscreen(el?: HTMLElement | null) {
+export function requestNativeFullscreen(_el?: HTMLElement | null) {
   if (typeof document === "undefined") return;
   applyCssFs(true);
+  const api = blagoFs();
+  if (api) {
+    try {
+      api.enter();
+    } catch {
+      /* native immersive already on */
+    }
+    return;
+  }
   if (!nativeFsAvailable()) return;
-  const node = el ?? document.documentElement;
+  const aktivacija = (navigator as Navigator & { userActivation?: { isActive?: boolean } }).userActivation;
+  if (aktivacija && aktivacija.isActive === false) return;
+  const node = document.documentElement;
   void enterFs(node).catch(() => {});
 }
 
 /**
  * Chrome-friendly "fullscreen": CSS 100dvh app shell always.
- * Native Fullscreen API only on an explicit button, and only when the
- * document is top-level (not an iframe) and the API is enabled.
+ * APK uses native immersive sticky via BlagoFs (Android WebView has no Fullscreen API).
+ * Browser uses the Fullscreen API when the document is top-level.
  */
 export function useFullscreen(target: RefObject<HTMLElement | null>) {
   const [native, setNative] = useState(false);
@@ -73,11 +108,49 @@ export function useFullscreen(target: RefObject<HTMLElement | null>) {
 
   useLayoutEffect(() => {
     applyCssFs(true);
-    setCanNative(nativeFsAvailable());
+    const sync = () => {
+      const api = blagoFs();
+      if (api || isCapacitorNative()) {
+        setCanNative(true);
+        if (api) {
+          try {
+            setNative(!!api.isImmersive());
+          } catch {
+            setNative(true);
+          }
+        } else {
+          setNative(true);
+        }
+        return !!api;
+      }
+      setCanNative(nativeFsAvailable());
+      setNative(!!fsElement());
+      return false;
+    };
+    if (sync()) return;
+    const id = window.setInterval(() => {
+      if (sync()) window.clearInterval(id);
+    }, 200);
+    const stop = window.setTimeout(() => window.clearInterval(id), 5000);
+    return () => {
+      window.clearInterval(id);
+      window.clearTimeout(stop);
+    };
   }, []);
 
   useEffect(() => {
-    const sync = () => setNative(!!fsElement());
+    const sync = () => {
+      const api = blagoFs();
+      if (api) {
+        try {
+          setNative(!!api.isImmersive());
+        } catch {
+          /* keep */
+        }
+        return;
+      }
+      setNative(!!fsElement());
+    };
     sync();
     document.addEventListener("fullscreenchange", sync);
     document.addEventListener("webkitfullscreenchange", sync as EventListener);
@@ -88,11 +161,22 @@ export function useFullscreen(target: RefObject<HTMLElement | null>) {
   }, []);
 
   const toggle = useCallback(async () => {
+    const api = blagoFs();
+    if (api) {
+      try {
+        api.toggle();
+        setNative((v) => !v);
+      } catch {
+        /* still CSS shell */
+      }
+      applyCssFs(true);
+      return;
+    }
     if (!nativeFsAvailable()) {
       applyCssFs(true);
       return;
     }
-    const el = target.current ?? document.documentElement;
+    const el = document.documentElement;
     if (fsElement()) {
       await exitFs().catch(() => {});
       applyCssFs(true);

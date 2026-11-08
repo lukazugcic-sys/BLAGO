@@ -82,6 +82,16 @@ function inLivePreview(): boolean {
 /** Message the popup posts back to the opener once sign-in completes. */
 type PopupMessage = { source: "grok-auth-popup"; token: string | null; error?: string };
 
+/** Poruke prijave koje bolji-auth baca na engleskom, vidljive igraču. */
+export function hrPrijava(poruka?: string): string {
+  const p = (poruka ?? "").trim();
+  const l = p.toLowerCase();
+  if (/pop-?up/.test(l) || /blocked/.test(l)) return "Skočni prozor je blokiran. Dozvoli prozore za prijavu.";
+  if (/cancel/.test(l)) return "Prijava je otkazana ili nije uspjela.";
+  if (!p || /sign-?in failed|failed to sign|signin failed/.test(l)) return "Prijava nije uspjela.";
+  return p;
+}
+
 /**
  * Start sign-in with one upstream provider (`providerId` from `GROK_PROVIDERS`),
  * federating through the Grok auth broker.
@@ -121,9 +131,9 @@ export async function signIn(
   });
 
   if (inLivePreview()) {
-    if (!popup) throw new Error("Pop-up blocked — allow pop-ups for sign-in");
+    if (!popup) throw new Error("Skočni prozor je blokiran. Dozvoli prozore za prijavu.");
     const token = await waitForPopupToken(popup);
-    if (!token) throw new Error("Sign-in was cancelled or failed");
+    if (!token) throw new Error("Prijava je otkazana ili nije uspjela.");
     setBearerToken(token);
     // Refresh the client session store with the bearer attached (onRequest).
     // Avoid a full iframe reload when we're already on the destination — that
@@ -148,7 +158,7 @@ export async function signIn(
     callbackURL,
     errorCallbackURL,
   });
-  if (error) throw new Error(error.message ?? "Sign-in failed");
+  if (error) throw new Error(hrPrijava(error.message));
   if (data?.url) window.location.href = data.url;
 }
 
@@ -226,7 +236,7 @@ export async function signOut(redirectTo = "/"): Promise<void> {
     // failed response as a rejection for the sequence to act on.
     requestSignOut: async () => {
       const { error } = await authClient.signOut();
-      if (error) throw new Error(error.message ?? "Sign-out failed");
+      if (error) throw new Error(/fail/i.test(error.message ?? "") ? "Odjava nije uspjela." : (error.message ?? "Odjava nije uspjela."));
     },
     clearToken: () => setBearerToken(null),
     redirect: () => {

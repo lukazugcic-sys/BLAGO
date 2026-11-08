@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { LikAvatar } from "./LikAvatar";
 import { cn } from "@/lib/utils";
+import { vidljiviInterval } from "@/lib/game/helpers";
 import type { Stanovnik } from "@/lib/game/ljudi";
 
 const RECI_RADA = ["Drži dasku.", "Još jedan udar.", "Krov ide.", "Skoro gotovo."];
@@ -23,8 +24,7 @@ export function GradnjaScena({
   const [sad, setSad] = useState(() => Date.now());
   useEffect(() => {
     setSad(Date.now());
-    const t = window.setInterval(() => setSad(Date.now()), 160);
-    return () => window.clearInterval(t);
+    return vidljiviInterval(() => setSad(Date.now()), 250);
   }, [start, kraj]);
   const traje = Math.max(1, kraj - start);
   const pct = Math.max(0, Math.min(100, Math.round(((sad - start) / traje) * 100)));

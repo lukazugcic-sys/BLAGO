@@ -1,4 +1,5 @@
 import type { Gradevine } from "./types";
+import { natpisOtjeraj } from "./akuzativ";
 
 export type DogadajTip = "stranac" | "dvoboj" | "salun" | "krdo" | "konj" | "kisa" | "trgovac" | "svadba" | "posta" | "cirkus";
 
@@ -42,9 +43,9 @@ const DVOBOJ_REC = [
   "Dvoboj. Ulica se cijepa.",
 ];
 const SALUN_REC = [
-  "Netko vara na asovima. Mara viče.",
+  "Netko vara u casinu. Mara viče.",
   "Salun je tijesan. Čaša leti.",
-  "Karta pod stolom. Tišina reže.",
+  "Kocka pod stolom. Tišina reže.",
 ];
 const KRDO_REC = [
   "Govedo razbilo tor. Prašina i rika.",
@@ -182,7 +183,7 @@ const SERIF_CINOVI: Array<{
   {
     tip: "salun",
     naslov: "VI. Kraj",
-    rec: (ime) => `Prašina sjele. ${ime} skida zvijezdu. Čaša, mir ili još jedan krug. Sutra opet.`,
+    rec: (ime) => `Prašina se slegla. ${ime} skida zvijezdu. Čaša, mir ili još jedan krug. Sutra opet.`,
     opcije: (ime) => [
       { id: "serif", rec: `${ime} sjedi` },
       { id: "nali", rec: "Natoči · 6g" },
@@ -225,7 +226,7 @@ export function napraviDogadaj(tip: DogadajTip, serifIme: string, t = Date.now()
       t,
       opcije: [
         { id: "primi", rec: "Primi" },
-        { id: "otjeraj", rec: `Otjera ${serifIme}` },
+        { id: "otjeraj", rec: natpisOtjeraj(serifIme) },
         { id: "ostavi", rec: "Ostavi" },
       ],
     });
@@ -448,7 +449,7 @@ export function rijesiIshod(
   if (d.tip === "posta") {
     if (opcija === "citaj") {
       if (r < 40) return { rec: "Pismo nosi zlato. Netko je vratio dug.", zlato: 10 };
-      if (r < 70) return { rec: "Potjernica. Lice tuđe. Šerif trže uhom.", stitovi: 1, serifXp: true };
+      if (r < 70) return { rec: "Potjernica. Lice tuđe. Šerif trzne uhom.", stitovi: 1, serifXp: true };
       return { rec: "Prazan papir. Prašina umjesto riječi." };
     }
     if (opcija === "serif") return { rec: "Čita naglas. Ulica sluša. Zakon stoji.", zlato: 4, serifXp: true, kvaliteta: 2 };
@@ -467,8 +468,8 @@ export function rijesiIshod(
     return { rec: "Još jedna tura. Mara kihne, ali pjeva.", zlato: -6, kvaliteta: 1 };
   }
   if (opcija === "serif") {
-    if (!ctx.imaRed) return { rec: "Šerifa nema. Asovi idu dalje, ružno.", kvaliteta: -2 };
-    return { rec: "Ušao je. Karte na stol. Tišina.", serifXp: true, kvaliteta: 1 };
+    if (!ctx.imaRed) return { rec: "Šerifa nema. Casino ide dalje, ružno.", kvaliteta: -2 };
+    return { rec: "Ušao je. Kocke na stol. Tišina.", serifXp: true, kvaliteta: 1 };
   }
-  return { rec: "Izbacili varača. Asovi opet čisti.", zlato: 4, kvaliteta: 1 };
+  return { rec: "Izbacili varača. Casino opet čist.", zlato: 4, kvaliteta: 1 };
 }

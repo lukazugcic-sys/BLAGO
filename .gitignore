@@ -5,9 +5,9 @@ dist
 .android-sdk
 .jdk
 *.apk
+!public/apk/*.apk
 *.aab
 *.zip
-public/BLAGO.apk
 public/BLAGO-android.zip
 public/BLAGO-github.zip
 artifacts

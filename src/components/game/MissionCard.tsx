@@ -1,11 +1,13 @@
+import { memo } from "react";
 import { useGameStore } from "@/lib/stores/gameStore";
 import { NagradaPikseli } from "./NagradaPikseli";
 import { LikAvatar } from "./LikAvatar";
 import { nalogOd, tkoZaNalog } from "@/lib/game/ljudi";
+import { idiNaNalog } from "@/lib/game/idiNalog";
 import type { Misija } from "@/lib/game/types";
 import { cn } from "@/lib/utils";
 
-export function MissionCard({ misija }: { misija: Misija }) {
+export const MissionCard = memo(function MissionCard({ misija }: { misija: Misija }) {
   const preuzmiNagraduMisije = useGameStore((s) => s.preuzmiNagraduMisije);
   const ljudi = useGameStore((s) => s.ljudi);
   const napredakPostotak = Math.min(100, (misija.trenutno / misija.cilj) * 100);
@@ -46,14 +48,25 @@ export function MissionCard({ misija }: { misija: Misija }) {
           type="button"
           disabled={!gotovo}
           onClick={() => preuzmiNagraduMisije(misija.id, misija.nagrada)}
+          data-vodic="nalog"
           className={cn(
             "min-h-10 rounded-lg px-3 text-xs font-bold tracking-wide",
-            gotovo ? "bg-quest text-void" : "bg-panel-2 text-dim opacity-50",
+            gotovo ? "bg-quest text-void" : "hidden",
           )}
         >
-          {gotovo ? "HVALA" : "U TIJEKU"}
+          HVALA
         </button>
+        {!gotovo && (
+          <button
+            type="button"
+            onClick={() => idiNaNalog(misija.tip)}
+            data-vodic="nalog"
+            className="min-h-10 rounded-lg border border-gold/50 bg-gold/15 px-3 text-xs font-bold tracking-wide text-gold"
+          >
+            IDI
+          </button>
+        )}
       </div>
     </article>
   );
-}
+});

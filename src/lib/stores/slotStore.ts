@@ -22,6 +22,8 @@ type SlotState = {
   knjigaFaza: KnjigaFaza;
   expandPolja: number[];
   knjigaLonac: Dobitak;
+  znackaFlash: string | null;
+  znackaFlashKey: number;
   setSimboli: (simboli: SimbolId[]) => void;
   setVrti: (vrti: boolean) => void;
   setSpinningCols: (spinningCols: boolean[]) => void;
@@ -37,6 +39,7 @@ type SlotState = {
   setKnjigaFaza: (knjigaFaza: KnjigaFaza) => void;
   setExpandPolja: (expandPolja: number[]) => void;
   setKnjigaLonac: (knjigaLonac: Dobitak) => void;
+  setZnackaFlash: (rec: string | null) => void;
 };
 
 export const useSlotStore = create<SlotState>((set) => ({
@@ -56,6 +59,8 @@ export const useSlotStore = create<SlotState>((set) => ({
   knjigaFaza: null,
   expandPolja: [],
   knjigaLonac: prazanDobitak(),
+  znackaFlash: null,
+  znackaFlashKey: 0,
 
   setSimboli: (simboli) => set({ simboli }),
   setVrti: (vrti) => set({ vrti }),
@@ -81,4 +86,9 @@ export const useSlotStore = create<SlotState>((set) => ({
   setKnjigaFaza: (knjigaFaza) => set({ knjigaFaza }),
   setExpandPolja: (expandPolja) => set({ expandPolja }),
   setKnjigaLonac: (knjigaLonac) => set({ knjigaLonac }),
+  setZnackaFlash: (rec) =>
+    set((s) => ({
+      znackaFlash: rec,
+      znackaFlashKey: rec ? s.znackaFlashKey + 1 : s.znackaFlashKey,
+    })),
 }));

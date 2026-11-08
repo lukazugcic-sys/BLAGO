@@ -12,7 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PreuzmiRouteImport } from './routes/preuzmi'
+import { Route as StatsRouteImport } from './routes/stats'
+import { Route as ApiDanRouteImport } from './routes/api/dan'
+import { Route as ApiEvRouteImport } from './routes/api/ev'
 import { Route as ApiRtcRouteImport } from './routes/api/rtc'
+import { Route as ApiStatsRouteImport } from './routes/api/stats'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
@@ -30,9 +34,29 @@ const PreuzmiRoute = PreuzmiRouteImport.update({
   path: '/preuzmi',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StatsRoute = StatsRouteImport.update({
+  id: '/stats',
+  path: '/stats',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDanRoute = ApiDanRouteImport.update({
+  id: '/api/dan',
+  path: '/api/dan',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiEvRoute = ApiEvRouteImport.update({
+  id: '/api/ev',
+  path: '/api/ev',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiRtcRoute = ApiRtcRouteImport.update({
   id: '/api/rtc',
   path: '/api/rtc',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStatsRoute = ApiStatsRouteImport.update({
+  id: '/api/stats',
+  path: '/api/stats',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -45,14 +69,22 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/preuzmi': typeof PreuzmiRoute
+  '/stats': typeof StatsRoute
+  '/api/dan': typeof ApiDanRoute
+  '/api/ev': typeof ApiEvRoute
   '/api/rtc': typeof ApiRtcRoute
+  '/api/stats': typeof ApiStatsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/preuzmi': typeof PreuzmiRoute
+  '/stats': typeof StatsRoute
+  '/api/dan': typeof ApiDanRoute
+  '/api/ev': typeof ApiEvRoute
   '/api/rtc': typeof ApiRtcRoute
+  '/api/stats': typeof ApiStatsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
@@ -60,22 +92,58 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/preuzmi': typeof PreuzmiRoute
+  '/stats': typeof StatsRoute
+  '/api/dan': typeof ApiDanRoute
+  '/api/ev': typeof ApiEvRoute
   '/api/rtc': typeof ApiRtcRoute
+  '/api/stats': typeof ApiStatsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/preuzmi' | '/api/rtc' | '/api/auth/$'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/preuzmi'
+    | '/stats'
+    | '/api/dan'
+    | '/api/ev'
+    | '/api/rtc'
+    | '/api/stats'
+    | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/preuzmi' | '/api/rtc' | '/api/auth/$'
-  id: '__root__' | '/' | '/login' | '/preuzmi' | '/api/rtc' | '/api/auth/$'
+  to:
+    | '/'
+    | '/login'
+    | '/preuzmi'
+    | '/stats'
+    | '/api/dan'
+    | '/api/ev'
+    | '/api/rtc'
+    | '/api/stats'
+    | '/api/auth/$'
+  id:
+    | '__root__'
+    | '/'
+    | '/login'
+    | '/preuzmi'
+    | '/stats'
+    | '/api/dan'
+    | '/api/ev'
+    | '/api/rtc'
+    | '/api/stats'
+    | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
   PreuzmiRoute: typeof PreuzmiRoute
+  StatsRoute: typeof StatsRoute
+  ApiDanRoute: typeof ApiDanRoute
+  ApiEvRoute: typeof ApiEvRoute
   ApiRtcRoute: typeof ApiRtcRoute
+  ApiStatsRoute: typeof ApiStatsRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
@@ -102,11 +170,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PreuzmiRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/stats': {
+      id: '/stats'
+      path: '/stats'
+      fullPath: '/stats'
+      preLoaderRoute: typeof StatsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/dan': {
+      id: '/api/dan'
+      path: '/api/dan'
+      fullPath: '/api/dan'
+      preLoaderRoute: typeof ApiDanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ev': {
+      id: '/api/ev'
+      path: '/api/ev'
+      fullPath: '/api/ev'
+      preLoaderRoute: typeof ApiEvRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/rtc': {
       id: '/api/rtc'
       path: '/api/rtc'
       fullPath: '/api/rtc'
       preLoaderRoute: typeof ApiRtcRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/stats': {
+      id: '/api/stats'
+      path: '/api/stats'
+      fullPath: '/api/stats'
+      preLoaderRoute: typeof ApiStatsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/$': {
@@ -123,7 +219,11 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
   PreuzmiRoute: PreuzmiRoute,
+  StatsRoute: StatsRoute,
+  ApiDanRoute: ApiDanRoute,
+  ApiEvRoute: ApiEvRoute,
   ApiRtcRoute: ApiRtcRoute,
+  ApiStatsRoute: ApiStatsRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport

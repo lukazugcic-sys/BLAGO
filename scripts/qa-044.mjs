@@ -95,7 +95,7 @@ try {
 
   await page.getByLabel("Kauba").click();
   await page.getByRole("button", { name: /^Kauboji$/i }).click();
-  await page.getByText("Kauboji kaube").waitFor({ state: "visible" });
+  await page.getByTestId("kauboji-mreza").waitFor({ state: "visible" });
   await page.waitForTimeout(220);
   const kaubojiLayout = await page.evaluate(() => {
     const mreza = document.querySelector(".kauboji-mreza");

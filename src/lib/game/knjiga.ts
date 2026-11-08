@@ -4,6 +4,7 @@ export const KNJIGA_P = 0.006;
 export const KNJIGA_SKUP_CILJ = 5;
 export const BESPLATNE_NASUMICE_P = 0.011;
 export const BESPLATNE_NASUMICE_N = 4;
+/** Fallback ako spremljeni bonus ulog nedostaje. Bonus inače plaća besplatneUlog. */
 export const KNJIGA_ULOG = 3;
 export const KNJIGA_PLIJEN = 0.62;
 export const KNJIGA_ZNACKA_PLUS = 2;
@@ -13,6 +14,8 @@ export const BESPLATNE_KUPI = {
   dijamanti: BESPLATNE_KUPI_BAZA,
   n: 8,
 } as const;
+/** Odabir znaka koji se širi — +1 dijamant. */
+export const BESPLATNE_ZNAK_DIJAMANT = 1;
 
 export function cijenaBesplatnih(razina: number): number {
   const lv = Math.max(1, Math.floor(razina));

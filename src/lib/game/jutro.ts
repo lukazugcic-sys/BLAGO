@@ -1,4 +1,4 @@
-import { localDayKey } from "./daily";
+import { zoraDanKey } from "./daily";
 import type { Nagrada } from "./types";
 
 export type JutarnjiId = "kata" | "ivo" | "boro";
@@ -38,16 +38,20 @@ function danBroj(dan: string) {
   return n;
 }
 
-export function napraviJutarnji(dan = localDayKey()): JutarnjiPosao[] {
+export function napraviJutarnji(dan = zoraDanKey(), ljudi: Array<{ id: string; ime: string; posao?: string }> = []): JutarnjiPosao[] {
   const s = danBroj(dan);
   const kataCilj = 4 + (s % 3);
   const ivoCilj = 6 + (s % 3) * 2;
   const i = s % 3;
+  const ime = (id: string, posao: string, fallback: string) =>
+    ljudi.find((p) => p.id === id)?.ime ?? ljudi.find((p) => p.posao === posao)?.ime ?? fallback;
+  const likId = (id: string, posao: string) =>
+    ljudi.find((p) => p.id === id)?.id ?? ljudi.find((p) => p.posao === posao)?.id ?? id;
   return [
     {
       id: "kata",
-      likId: "kata",
-      likIme: "Kata",
+      likId: likId("kata", "Lovac"),
+      likIme: ime("kata", "Lovac", "Kata"),
       tip: "spin",
       cilj: kataCilj,
       trenutno: 0,
@@ -57,8 +61,8 @@ export function napraviJutarnji(dan = localDayKey()): JutarnjiPosao[] {
     },
     {
       id: "ivo",
-      likId: "ivo",
-      likIme: "Ivo",
+      likId: likId("ivo", "Građevinac"),
+      likIme: ime("ivo", "Građevinac", "Ivo"),
       tip: "drvo",
       cilj: ivoCilj,
       trenutno: 0,
@@ -68,8 +72,8 @@ export function napraviJutarnji(dan = localDayKey()): JutarnjiPosao[] {
     },
     {
       id: "boro",
-      likId: "boro",
-      likIme: "Boro",
+      likId: likId("boro", "Šerif"),
+      likIme: ime("boro", "Šerif", "Boro"),
       tip: "selo",
       cilj: 1,
       trenutno: 0,
@@ -82,6 +86,19 @@ export function napraviJutarnji(dan = localDayKey()): JutarnjiPosao[] {
 
 export function jutroGotovo(p: JutarnjiPosao) {
   return p.trenutno >= p.cilj;
+}
+
+export function jutroLik<T extends { id: string; ime: string; posao: string }>(
+  ljudi: T[],
+  p: Pick<JutarnjiPosao, "id" | "likId">,
+): T | null {
+  return (
+    ljudi.find((l) => l.id === p.likId) ??
+    (p.id === "boro" ? ljudi.find((l) => l.posao === "Šerif") : undefined) ??
+    (p.id === "kata" ? ljudi.find((l) => l.posao === "Lovac") : undefined) ??
+    (p.id === "ivo" ? ljudi.find((l) => l.posao === "Građevinac") : undefined) ??
+    null
+  );
 }
 
 export function jutroSveUzeto(list: JutarnjiPosao[]) {

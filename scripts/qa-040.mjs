@@ -71,7 +71,7 @@ try {
   await page.getByText("Smještaj").first().waitFor({ state: "visible" });
   await shot("kauba");
   await page.getByRole("button", { name: "Kauboji" }).click();
-  await page.getByText("Kauboji kaube").first().waitFor({ state: "visible" });
+  await page.getByTestId("kauboji-mreza").waitFor({ state: "visible" });
   await shot("kauboji");
 
   await page.getByLabel("Zadaci").click();

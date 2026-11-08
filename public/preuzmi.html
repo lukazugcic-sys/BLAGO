@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>BLAGO — preuzmi</title>
+    <title>BLAGO — igraj</title>
     <style>
       :root { color-scheme: dark; }
       body {
@@ -30,7 +30,8 @@
         text-transform: uppercase;
         color: #ffd24a;
       }
-      p { margin: 0.7rem 0 1.1rem; font-size: 0.95rem; line-height: 1.4; color: #f0d4a8; }
+      p { margin: 0.7rem 0 0.4rem; font-size: 0.95rem; line-height: 1.4; color: #f0d4a8; }
+      ol { margin: 0.4rem 0 1rem; padding-left: 1.2rem; color: #f0d4a8; font-size: 0.95rem; line-height: 1.45; }
       a {
         display: block;
         margin-top: 0.55rem;
@@ -42,19 +43,21 @@
         letter-spacing: 0.08em;
         text-transform: uppercase;
       }
-      .apk { background: #ffd24a; color: #24140c; }
-      .zip { background: #3a2418; color: #fff8e8; border: 1px solid rgb(255 210 100 / 0.35); }
-      small { display: block; margin-top: 0.9rem; font-size: 0.75rem; color: #f0d4a8; }
+      .igraj { background: #ffd24a; color: #24140c; }
+      .apk { margin-top: 0.8rem; background: transparent; color: #ffd24a; border: 1px solid rgb(255 210 100 / 0.55); }
     </style>
   </head>
   <body>
     <main>
       <h1>BLAGO</h1>
-      <p>Beta 0.9.38. Stisni i spremi na telefon. Ako APK ne krene, uzmi ZIP.</p>
-      <a class="apk" href="/BLAGO.apk" download="BLAGO.apk">Preuzmi APK</a>
-      <a class="zip" href="/BLAGO-android.zip" download="BLAGO-android.zip">APK u ZIP-u</a>
-      <a class="zip" href="/">Natrag u prašinu</a>
-      <small>Otvori ovu stranicu izvan pregleda pa stisni Preuzmi.</small>
+      <p>Igra se u pregledniku. Na telefonu je dodaj na početni zaslon.</p>
+      <ol>
+        <li>Otvori igru u Chromeu ili Safariju.</li>
+        <li>Izbornik preglednika, pa Dodaj na početni zaslon.</li>
+        <li>Otvori ikonu. Puni zaslon, bez trake adrese.</li>
+      </ol>
+      <a class="apk" href="/apk/BLAGO-0.9.161-beta.apk" download="BLAGO-0.9.161-beta.apk">Preuzmi APK 0.9.161</a>
+      <a class="igraj" href="/">Igraj</a>
     </main>
   </body>
 </html>

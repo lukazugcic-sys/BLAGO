@@ -1,31 +1,33 @@
+/* 0.9.69 — lokalni WOFF2, bez Google Fontsa */
 @font-face {
   font-family: "Barlow Condensed";
-  src: url("/fonts/BarlowCondensed-SemiBold.ttf") format("truetype");
+  src:
+    url("/fonts/BarlowCondensed-SemiBold.woff2") format("woff2"),
+    url("/fonts/BarlowCondensed-SemiBold.ttf") format("truetype");
   font-weight: 600;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
+  unicode-range: U+0020-007E, U+00A0-017F, U+039B, U+2000-206F, U+2190-21FF, U+2212, U+2248, U+2265, U+2500, U+2605, U+2660-2666;
 }
 
 @font-face {
   font-family: "Barlow Condensed";
-  src: url("/fonts/BarlowCondensed-Bold.ttf") format("truetype");
+  src:
+    url("/fonts/BarlowCondensed-Bold.woff2") format("woff2"),
+    url("/fonts/BarlowCondensed-Bold.ttf") format("truetype");
   font-weight: 700;
   font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Cinzel";
-  src: url("/fonts/Cinzel-Bold.ttf") format("truetype");
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
+  font-display: block;
+  unicode-range: U+0020-007E, U+00A0-017F, U+039B, U+2000-206F, U+2190-21FF, U+2212, U+2248, U+2265, U+2500, U+2605, U+2660-2666;
 }
 
 @font-face {
   font-family: "Cinzel Decorative";
-  src: url("/fonts/CinzelDecorative-Bold.ttf") format("truetype");
+  src:
+    url("/fonts/CinzelDecorative-Bold.woff2") format("woff2"),
+    url("/fonts/CinzelDecorative-Bold.ttf") format("truetype");
   font-weight: 700;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
+  unicode-range: U+0020-007E, U+00A0-017F, U+039B, U+2000-206F, U+2190-21FF, U+2212, U+2248, U+2265, U+2500, U+2605, U+2660-2666;
 }
