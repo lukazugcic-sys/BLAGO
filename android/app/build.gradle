@@ -7,8 +7,8 @@ android {
         applicationId "hr.blago.game"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 202
-        versionName "0.9.162-beta"
+        versionCode 203
+        versionName "0.9.163-beta"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

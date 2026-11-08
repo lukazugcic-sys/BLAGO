@@ -8,10 +8,8 @@ import {
   cetvrtNaziv,
   detaljOdZooma,
   detaljStabilan,
-  konjiSaluna,
   ogradeRanca,
   stazeKretanja,
-  stokaTocke,
   type Detalj,
   type Sloj,
 } from "@/lib/game/kartaPogled";
@@ -32,6 +30,7 @@ import { Obzor, NASELJE, OBZOR } from "@/components/game/KaubaObzor";
 import { KaubaCesta } from "@/components/game/KaubaCesta";
 import { KaubaBroj } from "@/components/game/KaubaBroj";
 import { KaubaHodaci } from "@/components/game/KaubaHodaci";
+import { stokaNaKarti } from "@/lib/game/stokaKarta";
 import { KaubaKuce, type KucaDodir } from "@/components/game/KaubaKuce";
 import { RokGradnje } from "@/components/game/KaubaSat";
 import { vodicJosIde, vodicSnapshot } from "@/lib/game/vodic";
@@ -50,7 +49,6 @@ const VUC_PX = Math.min(6, TAP_PX);
 const DVO_MS = 300;
 const DVO_PX = 36;
 
-const KONJI = konjiSaluna();
 const OGRADE = ogradeRanca();
 
 
@@ -681,7 +679,10 @@ export function KaubaZivaUlica({ ziva }: { ziva: boolean }) {
   }, [gradevine, gradnje]);
   const staze = useMemo(() => putelji(aktivni), [aktivni]);
   const rute = useMemo(() => stazeKretanja(aktivni), [aktivni]);
-  const stoka = useMemo(() => stokaTocke(aktivni), [aktivni]);
+  // Svako grlo iz spremljenog broja (bez kapaciteta); stare ukrasne konje i goveda zamjenjuje.
+  const konjiBroj = useGameStore((s) => s.konjiBroj);
+  const govedaBroj = useGameStore((s) => s.govedaBroj);
+  const stoka = useMemo(() => stokaNaKarti(gradevine, konjiBroj, govedaBroj).grla, [gradevine, konjiBroj, govedaBroj]);
   const mirno = smanjenPokret();
   const pauza = !ziva || skriven;
 
@@ -858,23 +859,6 @@ export function KaubaZivaUlica({ ziva }: { ziva: boolean }) {
               <i />
             </span>
           ) : null}
-          {(gradevine.staja || 0) > 0 && OBZOR.zivStaja ? (
-            <span
-              className="izo-konj-staja"
-              style={{ transform: `translate3d(${OBZOR.zivStaja.x}px, ${OBZOR.zivStaja.y}px, 0)`, zIndex: Math.round(OBZOR.zivStaja.y) }}
-              aria-hidden
-            >
-              <i />
-            </span>
-          ) : null}
-          {(gradevine.salun || 0) > 0
-            ? KONJI.map((p, i) => (
-                <span key={`konj${i}`} className="izo-konj" style={{ transform: `translate3d(${p.x}px, ${p.y}px, 0)` }} aria-hidden>
-                  <i />
-                  <i />
-                </span>
-              ))
-            : null}
           <span className="izo-atmosfera" aria-hidden>
             <i className="izo-korov" />
             <i className="izo-prasak" />

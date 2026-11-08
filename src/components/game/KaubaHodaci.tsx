@@ -1,9 +1,21 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { AGENT_CAP, AgentSim, spljostiRutu, type AgentUlaz } from "@/lib/game/agentiSim";
+import {
+  ciljIzGdje,
+  fazaUlice,
+  kljucCilja,
+  naOs,
+  planNaCilju,
+  planUlice,
+  preusmjeri,
+  tockaCilja,
+  type CiljHoda,
+  type PlanHoda,
+} from "@/lib/game/hodCilj";
 import { playSfx } from "@/lib/game/audio";
 import { brojAgenata, tockaNaPutu, type Detalj, type Staza } from "@/lib/game/kartaPogled";
 import { kartaPetljaPokreni } from "@/lib/game/kartaPetlja";
-import { poredajGlavne, type Stanovnik } from "@/lib/game/ljudi";
+import { danDoba, gdjeJe, poredajGlavne, type DanDoba, type Stanovnik } from "@/lib/game/ljudi";
 import { PARCELE } from "@/lib/game/ulicaRaspored";
 import { Termika } from "@/lib/game/termika";
 import { TokPolje } from "@/lib/game/tokPolje";
@@ -43,19 +55,40 @@ export function KaubaHodaci({
   const segrti = useGameStore((s) => s.segrti);
   const zamjenici = useGameStore((s) => s.zamjenici);
   const stanovnici = useGameStore((s) => s.stanovnici);
+  const gradevine = useGameStore((s) => s.gradevine);
+  const gradnje = useGameStore((s) => s.gradnje);
+  const ostecenja = useGameStore((s) => s.ostecenja);
+  const karavana = useGameStore((s) => s.karavana);
+  const [doba, setDoba] = useState<DanDoba>(() => danDoba());
+  useEffect(() => {
+    const id = window.setInterval(() => setDoba(danDoba()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
   const [balon, setBalon] = useState<string | null>(null);
   const balonTimer = useRef(0);
   const korijen = useRef<HTMLSpanElement>(null);
-  const hodaci = useMemo(
-    () => poredajGlavne(ljudi.concat(segrti).concat(zamjenici)).slice(0, brojAgenata(stanovnici, 0).hodaci),
-    [ljudi, segrti, zamjenici, stanovnici],
-  );
+  // Cilj svakog hodača dolazi iz gdjeJe(): gradilište, posao, doba dana. Tko je na putu (pohod, karavana) nije na karti.
+  const { hodaci, ciljevi } = useMemo(() => {
+    const svi = ljudi.concat(segrti).concat(zamjenici);
+    const c = new Map<string, CiljHoda>();
+    for (const p of svi) c.set(p.id, ciljIzGdje(gdjeJe(p, gradevine, gradnje, ostecenja, doba, karavana, svi)));
+    const tu = poredajGlavne(svi).filter((p) => c.get(p.id)?.tip !== "put");
+    return { hodaci: tu.slice(0, brojAgenata(stanovnici, 0).hodaci), ciljevi: c };
+  }, [ljudi, segrti, zamjenici, stanovnici, gradevine, gradnje, ostecenja, karavana, doba]);
+  const ciljRef = useRef(ciljevi);
+  ciljRef.current = ciljevi;
+  /** Plan i prijeđeni put po osobi; preživljava zum i promjenu zgrada (nema skoka). Samo prikaz, ne sprema se. */
+  const planovi = useRef(new Map<string, { plan: PlanHoda; d: number }>());
+  const simRef = useRef<{ sim: AgentSim; ids: string[]; slot0: number; preusmjeri: () => void } | null>(null);
+
   const kolaN = brojAgenata(stanovnici, aktivnih).kola;
 
   useEffect(() => () => window.clearTimeout(balonTimer.current), []);
 
   useEffect(() => {
-    if (pauza || mirno || detalj === "daleko" || rute.length === 0) return;
+    if (pauza || mirno || rute.length === 0) return;
+    const daleko = detalj === "daleko";
+    const mapa = planovi.current;
     const root = korijen.current;
     const world = root?.closest<HTMLElement>(".izo-svijet");
     if (!root || !world) return;
@@ -72,9 +105,25 @@ export function KaubaHodaci({
     tok.slozi(tokKljuc, flat);
     const ulaz: AgentUlaz[] = [];
     const els: HTMLElement[] = [];
+    const ids: string[] = [];
+    const slot0 = flat.length;
+    const pocetni: { i: number; plan: PlanHoda; d: number }[] = [];
     nodes.forEach((n, i) => {
       if (ulaz.length >= AGENT_CAP) return;
       const tip = n.dataset.agent;
+      if (tip === "hod" && n.dataset.id) {
+        // Hodač: vlastita ruta do cilja iz gdjeJe(), nastavlja odakle je stao.
+        const id = n.dataset.id;
+        const cilj = ciljRef.current.get(id) ?? { tip: "ulica" as const };
+        const st = mapa.get(id) ?? { plan: planNaCilju(cilj), d: 0 };
+        pocetni.push({ i: ulaz.length, plan: st.plan, d: st.d });
+        ulaz.push({ ruta: 0, brzina: 32, faza: 0, tip: 0 });
+        els.push(n);
+        ids.push(id);
+        return;
+      }
+      // Kola i pas: kao prije (ulica); u pogledu izdaleka miruju i skriveni su.
+      if (daleko) return;
       const ri = (tip === "kola" || tip === "pas" ? 0 : i) % rute.length;
       const ruta = rute[ri];
       if (!ruta || ruta.duzina < 1) return;
@@ -85,9 +134,38 @@ export function KaubaHodaci({
         tip: tip === "kola" ? 1 : tip === "pas" ? 2 : 0,
       });
       els.push(n);
+      ids.push("");
     });
     const sim = new AgentSim();
     sim.postavi(flat, ulaz);
+    const postavi = (i: number, plan: PlanHoda, d: number) => {
+      const r = spljostiRutu(plan.tocke);
+      sim.zamijeniRutu(i, slot0 + i, r, r.ukupno > 0 ? d / r.ukupno : 0, plan.jednom);
+      mapa.set(ids[i]!, { plan, d });
+    };
+    const uskladi = () => {
+      for (let i = 0; i < sim.count; i++) {
+        const id = ids[i];
+        if (!id) continue;
+        const st = mapa.get(id);
+        if (!st) continue;
+        const cilj = ciljRef.current.get(id) ?? { tip: "ulica" as const };
+        const k = kljucCilja(cilj);
+        const d = sim.napredak(i);
+        if (st.plan.cilj !== k && !(k === "ulica" && !st.plan.jednom)) {
+          postavi(i, preusmjeri(st.plan, d, cilj), 0);
+        } else if (st.plan.cilj === "ulica" && st.plan.jednom && sim.stigao(i)) {
+          // stigao na ulicu: šetnja tamo-natrag od te točke
+          const zadnja = st.plan.tocke[st.plan.tocke.length - 1]!;
+          const petlja = planUlice();
+          postavi(i, petlja, fazaUlice(naOs(zadnja).s) * petlja.duzina);
+        }
+      }
+    };
+    for (const p of pocetni) postavi(p.i, p.plan, p.d);
+    uskladi();
+    simRef.current = { sim, ids, slot0, preusmjeri: uskladi };
+    let provjera = 0;
     const kut0 = new Int16Array(AGENT_CAP);
     kut0.fill(-9999);
     const pred0 = new Int8Array(AGENT_CAP);
@@ -96,6 +174,10 @@ export function KaubaHodaci({
     let oznaka = 0;
     const stop = kartaPetljaPokreni(() => {
       sim.frame(performance.now());
+      if (++provjera >= 30) {
+        provjera = 0;
+        uskladi();
+      }
       const vruce = termika.frame(sim.teret);
       let t = sim.simT - 0.1 + sim.alpha * 0.1;
       if (t < 0) t = 0;
@@ -168,6 +250,12 @@ export function KaubaHodaci({
     });
     return () => {
       stop();
+      for (let i = 0; i < sim.count; i++) {
+        const id = ids[i];
+        const st = id ? mapa.get(id) : undefined;
+        if (id && st) mapa.set(id, { plan: st.plan, d: sim.napredak(i) });
+      }
+      if (simRef.current?.sim === sim) simRef.current = null;
       if (ulica) delete ulica.dataset.teret;
       for (let i = 0; i < els.length; i++) {
         els[i]!.style.visibility = "";
@@ -175,6 +263,11 @@ export function KaubaHodaci({
       }
     };
   }, [pauza, mirno, detalj, rute, hodaci, kolaN, kadarRef]);
+
+  // Promjena zadatka: preusmjeri od trenutne točke, bez novog sima.
+  useEffect(() => {
+    simRef.current?.preusmjeri();
+  }, [ciljevi]);
 
   const reci = (p: Stanovnik) => {
     playSfx("button");
@@ -208,9 +301,14 @@ export function KaubaHodaci({
 
   return (
     <span ref={korijen} style={{ display: "contents" }}>
-      {hodaci.map((p, i) => {
-        const ruta = rute[i % Math.max(1, rute.length)];
-        const start = ruta ? tockaNaPutu(ruta.tocke, (i * 0.17) % 1) : { x: 0, y: 0 };
+      {hodaci.map((p) => {
+        const cilj = ciljevi.get(p.id) ?? { tip: "ulica" as const };
+        const st = planovi.current.get(p.id);
+        // Smanjen pokret: stoji na stvarnom cilju. Inače kreće odakle je stao.
+        const start =
+          mirno || !st
+            ? tockaCilja(cilj)
+            : tockaNaPutu(st.plan.tocke, st.plan.jednom ? Math.min(0.9999, st.d / (st.plan.duzina || 1)) : st.d / (st.plan.duzina || 1));
         return (
           <button
             key={p.id}
@@ -218,6 +316,8 @@ export function KaubaHodaci({
             className="izo-setac"
             data-izo="lik"
             data-agent="hod"
+            data-id={p.id}
+            data-cilj={kljucCilja(cilj)}
             data-alat={p.alat}
             style={{ transform: `translate3d(${start.x}px, ${start.y}px, 0)`, ["--z" as string]: Math.round(start.y) }}
             aria-label={`${p.ime}. ${p.rec}`}

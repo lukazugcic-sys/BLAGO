@@ -1,7 +1,7 @@
 {
   "name": "app-builder-workspace",
   "private": true,
-  "version": "0.9.162-beta",
+  "version": "0.9.163-beta",
   "sideEffects": [
     "src/main.tsx",
     "src/lib/game/noviPrije.ts"

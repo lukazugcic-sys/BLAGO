@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { Raslina, TRAGOVI } from "@/components/game/KaubaObzor";
-import { bojaSloja, cetvrtZgrade, rombTocke, sirinaPuta, stokaTocke, type Sloj } from "@/lib/game/kartaPogled";
+import { bojaSloja, cetvrtZgrade, rombTocke, sirinaPuta, type Sloj } from "@/lib/game/kartaPogled";
+import type { Grlo } from "@/lib/game/stokaKarta";
 import {
   CVAT,
   DETALJ,
@@ -96,7 +97,8 @@ export const KaubaCesta = memo(function KaubaCesta({
   staze: Staza[];
   mirno: boolean;
   skok: keyof Gradevine | null;
-  stoka: ReturnType<typeof stokaTocke>;
+  /** Jedno grlo = jedna sličica (stokaNaKarti). */
+  stoka: readonly Grlo[];
 }) {
   const cestaTocke = CESTA.map((p) => `${p.x},${p.y}`).join(" ");
   return (
@@ -397,12 +399,27 @@ export const KaubaCesta = memo(function KaubaCesta({
                 <rect x={-6} y={1.2} width={13} height={2.2} rx={0.4} />
               </g>
             ) : null}
-            {stoka.map((d, i) => (
-              <g key={`st${i}`} className="izo-stoka" transform={`translate(${d.x} ${d.y})`}>
-                <ellipse cx={0} cy={0} rx={7} ry={3.2} fill="#6a4328" />
-                <circle cx={6} cy={-2} r={2.2} fill="#4a2c16" />
-              </g>
-            ))}
+            {stoka.map((d) =>
+              d.vrsta === "konj" ? (
+                <g key={d.id} className="izo-zivotinja is-konj" data-zivotinja={d.id} transform={`translate(${d.x} ${d.y})`}>
+                  <ellipse cx={0} cy={2.2} rx={7} ry={1.4} className="izo-zivotinja-sjena" />
+                  <path d="M-4 0v2.6M-2 0v2.6M3 0v2.6M5 0v2.6" stroke="#3a2414" strokeWidth={0.9} />
+                  <ellipse cx={0.5} cy={-1.6} rx={5.6} ry={2.3} fill="#7b4a26" />
+                  <path d="M4.6 -2.6 L7.4 -6.4 L8 -4.6 L5.8 -1.4 Z" fill="#6a3d1e" />
+                  <path d="M-5 -2.4 Q-7.6 -1 -7 1.6" stroke="#2e1a0c" strokeWidth={1} fill="none" />
+                </g>
+              ) : (
+                <g key={d.id} className="izo-zivotinja is-govedo" data-zivotinja={d.id} transform={`translate(${d.x} ${d.y})`}>
+                  <ellipse cx={0} cy={2.2} rx={7.4} ry={1.5} className="izo-zivotinja-sjena" />
+                  <path d="M-4.5 0v2.4M-2.4 0v2.4M2.6 0v2.4M4.6 0v2.4" stroke="#2a2420" strokeWidth={1.1} />
+                  <rect x={-6} y={-4.6} width={11.4} height={5.2} rx={2.2} fill="#ece4d4" />
+                  <ellipse cx={-2.4} cy={-2.6} rx={2} ry={1.3} fill="#2a2420" />
+                  <ellipse cx={2.2} cy={-1.6} rx={1.5} ry={1} fill="#2a2420" />
+                  <rect x={5} y={-5} width={2.8} height={3} rx={1} fill="#d8ccb8" />
+                  <path d="M5.2 -5.2 L4.4 -6.6 M7.6 -5.2 L8 -6.6" stroke="#f4ecd8" strokeWidth={0.8} />
+                </g>
+              ),
+            )}
           </svg>
   );
 });

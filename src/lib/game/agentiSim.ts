@@ -79,6 +79,10 @@ export class AgentSim {
   readonly vidljiv = new Uint8Array(AGENT_CAP);
   readonly zadnjiZ = new Int16Array(AGENT_CAP);
   readonly unutar = new Uint8Array(AGENT_CAP);
+  /** 1: ruta se prijeđe jednom pa agent čeka na kraju (hod do cilja). */
+  readonly jednom = new Uint8Array(AGENT_CAP);
+  /** simT kad je agent dobio trenutnu rutu. */
+  readonly t0 = new Float32Array(AGENT_CAP);
   count = 0;
   simT = 0;
   alpha = 0;
@@ -103,6 +107,8 @@ export class AgentSim {
       this.vidljiv[i] = 1;
       this.zadnjiZ[i] = -9999;
       this.unutar[i] = 0;
+      this.jednom[i] = 0;
+      this.t0[i] = 0;
     }
     for (let i = 0; i < n; i++) {
       const a = ulaz[i]!;
@@ -155,9 +161,56 @@ export class AgentSim {
         oy[i] = 0;
         continue;
       }
-      const u = (t * this.brzina[i]!) / (r.ukupno || 1) + this.faza0[i]!;
-      uzorakRute(r, u, ox, oy, i);
+      const u = ((t - this.t0[i]!) * this.brzina[i]!) / (r.ukupno || 1) + this.faza0[i]!;
+      if (this.jednom[i] && (u >= 1 || r.n <= 1)) {
+        const z = Math.max(0, r.n - 1) * 2;
+        ox[i] = r.xy[z] ?? 0;
+        oy[i] = r.xy[z + 1] ?? 0;
+        continue;
+      }
+      uzorakRute(r, this.jednom[i] && u < 0 ? 0 : u, ox, oy, i);
     }
+  }
+
+  /**
+   * Agent i dobiva novu rutu od trenutnog trenutka. `slot` je mjesto u nizu ruta
+   * (pozivatelj drži jedno po agentu). Pozicija se ne prekida: nova ruta mora
+   * počinjati u trenutnoj točki agenta.
+   */
+  zamijeniRutu(i: number, slot: number, r: RutaFlat, faza: number, jednom: boolean) {
+    if (i < 0 || i >= this.count) return;
+    this.rute[slot] = r;
+    this.ruta[i] = slot;
+    this.t0[i] = this.simT;
+    this.faza0[i] = faza;
+    this.jednom[i] = jednom ? 1 : 0;
+    // Nova ruta počinje u trenutnoj točki; poravnaj i prethodni položaj da lerp ne klizi sa stare rute.
+    if (jednom && faza >= 1) {
+      const z = Math.max(0, r.n - 1) * 2;
+      this.x[i] = r.xy[z] ?? 0;
+      this.y[i] = r.xy[z + 1] ?? 0;
+    } else {
+      uzorakRute(r, faza, this.x, this.y, i);
+    }
+    this.prevX[i] = this.x[i]!;
+    this.prevY[i] = this.y[i]!;
+    this.ix[i] = this.x[i]!;
+    this.iy[i] = this.y[i]!;
+  }
+
+  /** Prijeđena udaljenost na trenutnoj ruti (za jednom: stisnuto na [0, duljina]). */
+  napredak(i: number): number {
+    const r = this.rute[this.ruta[i]!] ?? this.rute[0];
+    if (!r) return 0;
+    const d = (this.simT - this.t0[i]!) * this.brzina[i]! + this.faza0[i]! * r.ukupno;
+    return this.jednom[i] ? Math.max(0, Math.min(r.ukupno, d)) : d;
+  }
+
+  /** true kad je jednosmjerni agent stigao na kraj rute. */
+  stigao(i: number): boolean {
+    if (!this.jednom[i]) return false;
+    const r = this.rute[this.ruta[i]!];
+    return !r || this.napredak(i) >= r.ukupno - 1e-3;
   }
 
   private ispis() {

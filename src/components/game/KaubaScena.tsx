@@ -155,13 +155,16 @@ export function KaubaScena({
         data-testid="mreza-video"
         data-dio={id}
       >
-        <div key={id} className="mreza-dio-kadar kauba-kadar" aria-hidden>
-          {video ? (
-            <VideoLoop src={video} poster={poster} rate={0.5} force fit="cover" />
-          ) : (
-            <img src={poster} alt="" draggable={false} decoding="async" width={720} height={960} />
-          )}
-        </div>
+        {/* The overview map owns its terrain; do not mount the legacy poster underneath it. */}
+        {!trg && (
+          <div key={id} className="mreza-dio-kadar kauba-kadar" aria-hidden>
+            {video ? (
+              <VideoLoop src={video} poster={poster} rate={0.5} force fit="cover" />
+            ) : (
+              <img src={poster} alt="" draggable={false} decoding="async" width={720} height={960} />
+            )}
+          </div>
+        )}
         <span className={`kauba-doba-veil kauba-doba-${doba}`} aria-hidden />
         {trg ? <KaubaZivaUlica ziva={ziva} /> : null}
       </div>

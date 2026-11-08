@@ -784,7 +784,6 @@
   stroke-width: 7px;
 }
 .ziva-izo .izo-potok {
-  stroke: #2f6f78;
   stroke-width: 16px;
 }
 .ziva-izo .izo-potok.is-obala {
@@ -794,9 +793,6 @@
 .ziva-izo .izo-potok.is-rub {
   stroke: #d7efe255;
   stroke-width: 16px;
-}
-.ziva-izo .izo-lokva {
-  fill: #2f6f78;
 }
 
 /* Cesta je bila ispod obzora, potok je bio skriven */
@@ -1285,3 +1281,12 @@ html[data-skin] .slot-fx-host .zavrti-usko {
 }
 
 
+
+/* Hodači idu za zadatkom i u pogledu cijele karte (kola, pas i konji ostaju skriveni). */
+.ziva-izo[data-detalj="daleko"] .izo-setac {
+  display: block;
+}
+
+/* Svaki konj i govedo na karti: statično, vidljivo na svakom zumu. */
+.ziva-izo .izo-zivotinja { pointer-events: none; }
+.ziva-izo .izo-zivotinja-sjena { fill: #2a1a0e44; }
