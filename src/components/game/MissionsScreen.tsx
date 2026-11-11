@@ -24,6 +24,41 @@ const TABOVI = [
   { id: "uzivo", label: "Uživo" },
 ] as const;
 
+
+export function NaloziPanel() {
+  const misije = useGameStore((s) => s.misije);
+  const dogadaj = useGameStore((s) => s.dogadaj);
+  const rijesiDogadaj = useGameStore((s) => s.rijesiDogadaj);
+  const spremni = misije.filter((m) => m.trenutno >= m.cilj).length;
+  const red = [...misije].sort((a, b) => Number(a.trenutno >= a.cilj) - Number(b.trenutno >= b.cilj));
+  return (
+    <>
+      <div className="mb-2 flex items-end justify-between gap-2">
+        <h2 className="ml-1 text-sm font-bold tracking-widest text-ink uppercase">Nalozi</h2>
+        <p className="text-[11px] font-bold tabular-nums text-quest">
+          {spremni > 0 ? `${spremni} spremno` : `${misije.length} u tijeku`}
+        </p>
+      </div>
+      {dogadaj?.tip === "stranac" && (
+        <EventKartica
+          d={dogadaj}
+          oznaka="stranac"
+          onOpcija={(id) => {
+            vodicNalog(true);
+            rijesiDogadaj(id);
+          }}
+        />
+      )}
+      {red.map((m, i) => (
+        <div key={`${m.id}-${m.tip}-${m.cilj}`} className="hub-kartica" style={{ animationDelay: `${i * 50}ms` }}>
+          <MissionCard misija={m} />
+        </div>
+      ))}
+      <DailyStreakCard />
+    </>
+  );
+}
+
 export function MissionsScreen() {
   const [tab, setTab] = useState<(typeof TABOVI)[number]["id"]>("nalozi");
   useEffect(() => {
@@ -34,46 +69,15 @@ export function MissionsScreen() {
     window.addEventListener(IDI_EVENT, on);
     return () => window.removeEventListener(IDI_EVENT, on);
   }, []);
-  const misije = useGameStore((s) => s.misije);
-  const dogadaj = useGameStore((s) => s.dogadaj);
-  const rijesiDogadaj = useGameStore((s) => s.rijesiDogadaj);
   const otkljucan = useGameStore((s) => jeSideOtkljucan(s.gradevine));
   const setPoruka = useGameStore((s) => s.setPoruka);
-
-  const spremni = misije.filter((m) => m.trenutno >= m.cilj).length;
-  const red = [...misije].sort((a, b) => Number(a.trenutno >= a.cilj) - Number(b.trenutno >= b.cilj));
 
   return (
     <div className="mx-auto flex h-full min-h-0 w-full max-w-lg flex-col px-3 pt-2">
       <div className="min-h-0 flex-1 overflow-y-auto pb-2">
         {tab === "karavana" && (otkljucan ? <KaravanaIgra /> : <SideGateKartica naslov="Karavana" />)}
         {tab === "uzivo" && (otkljucan ? <LivePohod /> : <SideGateKartica naslov="Uživo" />)}
-        {tab === "nalozi" && (
-          <>
-            <div className="mb-2 flex items-end justify-between gap-2">
-              <h2 className="ml-1 text-sm font-bold tracking-widest text-ink uppercase">Nalozi</h2>
-              <p className="text-[11px] font-bold tabular-nums text-quest">
-                {spremni > 0 ? `${spremni} spremno` : `${misije.length} u tijeku`}
-              </p>
-            </div>
-            {dogadaj?.tip === "stranac" && (
-              <EventKartica
-                d={dogadaj}
-                oznaka="stranac"
-                onOpcija={(id) => {
-                  vodicNalog(true);
-                  rijesiDogadaj(id);
-                }}
-              />
-            )}
-            {red.map((m, i) => (
-              <div key={`${m.id}-${m.tip}-${m.cilj}`} className="hub-kartica" style={{ animationDelay: `${i * 50}ms` }}>
-                <MissionCard misija={m} />
-              </div>
-            ))}
-            <DailyStreakCard />
-          </>
-        )}
+        {tab === "nalozi" && <NaloziPanel />}
         {tab === "zvijezde" && <ZvijezdeLista />}
       </div>
       <ScreenTabs
@@ -88,7 +92,7 @@ export function MissionsScreen() {
   );
 }
 
-function ZvijezdeLista() {
+export function ZvijezdeLista() {
   const done = useGameStore((s) => s.dostignucaDone);
   const ulaz = useGameStore(useShallow(snapshotDostignuca));
   const broj = DOSTIGNUCA.reduce((a, d) => a + (done[d.id] ? 1 : 0), 0);

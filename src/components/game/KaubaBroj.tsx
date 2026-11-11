@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { Smile, Users } from "lucide-react";
 import { kaubaOd } from "@/lib/game/ljudi";
 import { playSfx } from "@/lib/game/audio";
 import { idi } from "@/lib/game/tokMeni";
@@ -46,7 +47,7 @@ export function KaubaBroj() {
       type="button"
       className="karta-info"
       data-testid="karta-info"
-      aria-label={`${n} kauboja, zadovoljstvo ${kauba.sreca} posto. Otvori kauboje.`}
+      aria-label={`${n} kauboja, sreća ${kauba.sreca} posto, ${smjer}. Otvori kauboje.`}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => {
         e.stopPropagation();
@@ -54,13 +55,26 @@ export function KaubaBroj() {
         idi({ ruke: true });
       }}
     >
-      <b>{n}</b>
-      <span>{n === 1 ? "kauboj" : "kauboja"}</span>
-      <span className="karta-info-raz" aria-hidden>·</span>
-      <span>sreća</span>
-      <b>{kauba.sreca}%</b>
-      <span className="karta-info-raz" aria-hidden>·</span>
-      <span>{smjer}</span>
+      {/* 0.9.178 (t459u): ikona + broj, bez riječi i pilule (riječi su u aria-label) */}
+      <span className="karta-info-dio is-kauboji">
+        <span className="kk-ik" aria-hidden>
+          <Users className="kk-sjena" strokeWidth={3.6} />
+          <Users className="kk-glif" strokeWidth={2} />
+        </span>
+        <b>{n}</b>
+      </span>
+      <span className="karta-info-dio is-sreca" data-smjer={smjer}>
+        <span className="kk-ik" aria-hidden>
+          <Smile className="kk-sjena" strokeWidth={3.6} />
+          <Smile className="kk-glif" strokeWidth={2} />
+        </span>
+        <b>{kauba.sreca}%</b>
+        {smjer === "miruje" ? null : (
+          <i className="karta-info-trend" aria-hidden>
+            {smjer === "raste" ? "▲" : "▼"}
+          </i>
+        )}
+      </span>
     </button>
   );
 }

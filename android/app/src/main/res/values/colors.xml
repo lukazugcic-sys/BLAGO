@@ -4,4 +4,7 @@
     <color name="colorPrimaryDark">#0E0B07</color>
     <color name="colorAccent">#D4A017</color>
     <color name="blagoVoid">#2B1814</color>
+    <!-- 0.9.178 (t459u): rub igre — dno (ispod donjeg izbornika) i vrh (zaglavlje), default tema -->
+    <color name="blagoNav">#110905</color>
+    <color name="blagoStatus">#26150D</color>
 </resources>

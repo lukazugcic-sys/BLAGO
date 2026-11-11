@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { TekstResursa } from "@/components/game/Iznos";
 import { useGameStore } from "@/lib/stores/gameStore";
 import {
   SUSJEDI,
@@ -11,7 +12,7 @@ import { tjedanSad } from "@/lib/game/tjedan";
 import { playSfx } from "@/lib/game/audio";
 import { cn } from "@/lib/utils";
 import { useSekunda } from "@/lib/game/sat";
-import { ART } from "@/lib/game/art";
+import { KaravanaKola } from "./KaravanaKola";
 import type { KaravanaPutId } from "@/lib/game/types";
 import { SideGateKartica } from "./SideGateKartica";
 import { jeSideOtkljucan } from "@/lib/game/sideGate";
@@ -42,16 +43,7 @@ export function KaravanaIgra() {
     return (
       <article className="karavana-okvir mb-2 overflow-hidden">
         <div className="karavana-staza">
-          <img
-            src={ART.kola}
-            alt=""
-            draggable={false}
-            decoding="async"
-            width={640}
-            height={280}
-            className="karavana-kola-slika"
-            style={{ left: `${pct}%` }}
-          />
+          <KaravanaKola className="karavana-kola-slika karavana-kola-svg" style={{ left: `${100 - pct}%` }} />
           <PutTraka pct={pct} cin={!!karavana.cin} od="Tabor" do={karavana.ciljIme} />
         </div>
         <div className="p-3">
@@ -71,7 +63,7 @@ export function KaravanaIgra() {
                     onClick={() => rijesi(o.id)}
                     className="min-h-10 rounded-full bg-gold px-3 text-[11px] font-bold text-void"
                   >
-                    {o.rec}
+                    <TekstResursa tekst={o.rec} />
                   </button>
                 ))}
               </div>
@@ -101,13 +93,7 @@ export function KaravanaIgra() {
   return (
     <article className="karavana-okvir mb-2 overflow-hidden">
       <div className="karavana-staza">
-        <img
-          src={ART.kola}
-          alt=""
-          draggable={false}
-          className="karavana-kola-slika"
-          style={{ left: "12%" }}
-        />
+        <KaravanaKola className="karavana-kola-slika karavana-kola-svg" style={{ left: "88%" }} />
         <PutTraka pct={12} cin={false} od="Tabor" do={susjed?.kauba ?? "Kaubu"} />
       </div>
       <div className="p-3">
@@ -220,16 +206,17 @@ export function KaravanaIgra() {
   );
 }
 
+/** 0.9.174: kola gledaju ulijevo, pa put ide zdesna (Tabor) nalijevo (cilj). */
 function PutTraka({ pct, cin, od, do: dest }: { pct: number; cin: boolean; od: string; do: string }) {
   return (
     <div className="karavana-put px-3 pb-2">
       <span className="karavana-put-tijelo">
-        <span className="karavana-put-punjenje" style={{ width: `${pct}%` }} />
-        <span className={cn("karavana-kola-točka", cin && "karavana-kola-cin")} style={{ left: `${pct}%` }} />
+        <span className="karavana-put-punjenje" style={{ width: `${pct}%`, marginLeft: `${100 - pct}%` }} />
+        <span className={cn("karavana-kola-točka", cin && "karavana-kola-cin")} style={{ left: `${100 - pct}%` }} />
       </span>
       <div className="mt-1 flex justify-between text-[9px] font-bold tracking-widest text-gold uppercase">
-        <span>{od}</span>
         <span>{dest}</span>
+        <span>{od}</span>
       </div>
     </div>
   );

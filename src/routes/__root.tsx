@@ -76,12 +76,7 @@ function ManifestBlago() {
       const linkovi = [...document.querySelectorAll('link[rel="manifest"]')];
       const tudji = linkovi.filter((l) => l.getAttribute("href") !== "/manifest.webmanifest");
       const nasi = linkovi.filter((l) => l.getAttribute("href") === "/manifest.webmanifest");
-      if (tudji.length === 0 && nasi.length === 1) {
-        const tema = document.querySelector('meta[name="theme-color"]');
-        if (!tema || tema.getAttribute("content") === "#2B1814") return;
-        tema.setAttribute("content", "#2B1814");
-        return;
-      }
+      if (tudji.length === 0 && nasi.length === 1) return;
       tudji.forEach((l) => l.remove());
       if (nasi.length === 0) {
         const l = document.createElement("link");
@@ -91,8 +86,7 @@ function ManifestBlago() {
       } else {
         nasi.slice(1).forEach((l) => l.remove());
       }
-      const tema = document.querySelector('meta[name="theme-color"]');
-      if (tema && tema.getAttribute("content") !== "#2B1814") tema.setAttribute("content", "#2B1814");
+      // theme-color is owned by primijeniSkinTemu / postaviBojuPrikaza — do not force #2B1814
     };
     popravi();
     const o = new MutationObserver(popravi);

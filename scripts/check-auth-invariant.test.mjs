@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -115,8 +115,18 @@ test("only a divergence warns the smoke verdict", () => {
 });
 
 test("the build side resolves the template's shipped app-env", () => {
-  assert.equal(buildAuthEnabled(projectRoot(), {}), false);
-  assert.equal(buildAuthEnabled(projectRoot(), { VITE_AUTH_ENABLED: "true" }), true);
+  // Explicit template fixture (auth off), independent of this project's choice.
+  const template = mkdtempSync(join(tmpdir(), "auth-template-"));
+  mkdirSync(join(template, ".grok"));
+  writeFileSync(join(template, ".grok/app-env.json"), '{"VITE_AUTH_ENABLED":"false"}');
+  assert.equal(buildAuthEnabled(template, {}), false);
+  assert.equal(buildAuthEnabled(template, { VITE_AUTH_ENABLED: "true" }), true);
+});
+
+test("this project's build auth agrees with its shipped auth schema", () => {
+  // Sign-in on <=> migrations/0001_auth.sql has been copied up.
+  const copied = existsSync(join(projectRoot(), "migrations/0001_auth.sql"));
+  assert.equal(buildAuthEnabled(projectRoot(), {}), copied);
 });
 
 test("the CLI reports rather than silently passing when run via a symlink", async () => {

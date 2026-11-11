@@ -91,7 +91,7 @@ export function OnboardModal({
   const zadnja = korak >= KARTICE.length - 1;
 
   return createPortal(
-    <div className="fixed inset-0 z-[90] flex items-end justify-center bg-void/80 p-4 sm:items-center" style={{ animation: "none" }}>
+    <div className="g179-preklop fixed inset-0 z-[90] flex items-end justify-center bg-void/80 p-4 sm:items-center" style={{ animation: "none" }}>
       <div className="w-full max-w-sm overflow-hidden rounded-3xl border border-gold/40 bg-panel shadow-[0_20px_50px_rgb(0_0_0_/_0.55)]" style={{ animation: "none" }}>
         <div className="relative h-28 overflow-hidden">
           <img src={ART.kauba} alt="" className="size-full object-cover object-[center_35%]" draggable={false} />

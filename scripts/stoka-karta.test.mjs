@@ -106,6 +106,8 @@ async function renderCesta(stoka) {
   req["react"] = { memo: (f) => f };
   req["react/jsx-runtime"] = { jsx, jsxs: jsx, Fragment: "F" };
   req["@/components/game/KaubaObzor"] = { Raslina: "R", TRAGOVI: [] };
+  // 0.9.176: sloj dvorišta/trga (zaseban memo sloj, ne crta grla)
+  req["@/components/game/KaubaDvorista"] = { KaubaDvorista: "DV", KaubaGazeno: "GZ", KaubaTrg: "TRG", DvSimboli: "DS" };
   req["@/lib/utils"] = { cn: (...a) => a.filter((x) => typeof x === "string").join(" ") };
   const module = { exports: {} };
   runInNewContext(js, { module, exports: module.exports, require: (n) => { if (!(n in req)) throw new Error("stub " + n); return req[n]; } });

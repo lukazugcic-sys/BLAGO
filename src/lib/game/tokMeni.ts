@@ -18,9 +18,10 @@ export type IdiDetail = {
   ruke?: boolean;
   almanah?: boolean;
   slot?: "auto" | "bonus";
-  zid?: "kronika" | "cilj";
+  zid?: "kronika" | "cilj" | "nalozi" | "zvijezde" | "obavijesti" | "kauba";
+  /** @deprecated 0.9.168 — prefer zid / trznica; kept for old listeners */
   zadaci?: "nalozi" | "zvijezde" | "karavana" | "uzivo";
-  trznica?: "burza" | "alati" | "izgled";
+  trznica?: "burza" | "alati" | "izgled" | "karavana" | "uzivo";
 };
 
 let zadnjiIdi: IdiDetail | null = null;
@@ -81,9 +82,9 @@ export type TokMeniAkcija =
   | { vrsta: "ruke" }
   | { vrsta: "info" }
   | { vrsta: "slot"; slot: "auto" | "bonus" }
-  | { vrsta: "zid-skok"; kamo: "kronika" | "cilj" }
+  | { vrsta: "zid-skok"; kamo: "kronika" | "cilj" | "nalozi" | "zvijezde" }
   | { vrsta: "zadaci"; tab: "nalozi" | "zvijezde" | "karavana" | "uzivo" }
-  | { vrsta: "trznica"; sekcija: "burza" | "alati" | "izgled" }
+  | { vrsta: "trznica"; sekcija: "burza" | "alati" | "izgled" | "karavana" | "uzivo" }
   | { vrsta: "metci" };
 
 export type TokMeniStavka = {
@@ -367,8 +368,10 @@ export function tokMeniZaTab(
   }
   if (tab === "zid") {
     return [
-      { id: "kronika", naziv: "Kronika", rec: "Što se dogodilo.", ikona: "kronika", akcija: { vrsta: "zid-skok", kamo: "kronika" } },
       { id: "cilj", naziv: "Cilj", rec: "Sljedeća zgrada.", ikona: "cilj", akcija: { vrsta: "zid-skok", kamo: "cilj" } },
+      { id: "nalozi", naziv: "Nalozi", rec: "Dnevni poslovi.", ikona: "nalog", akcija: { vrsta: "zid-skok", kamo: "nalozi" } },
+      { id: "zvijezde", naziv: "Zvijezde", rec: "Što je Boro zabio.", ikona: "zvijezda", akcija: { vrsta: "zid-skok", kamo: "zvijezde" } },
+      { id: "kronika", naziv: "Kronika", rec: "Što se dogodilo.", ikona: "kronika", akcija: { vrsta: "zid-skok", kamo: "kronika" } },
     ];
   }
   if (tab === "selo") {
@@ -381,18 +384,12 @@ export function tokMeniZaTab(
     }));
     return potrebe;
   }
-  if (tab === "misije") {
-    return [
-      { id: "nalozi", naziv: "Nalozi", rec: "Dnevni poslovi.", ikona: "nalog", akcija: { vrsta: "zadaci", tab: "nalozi" } },
-      { id: "zvijezde", naziv: "Zvijezde", rec: "Što je Boro zabio.", ikona: "zvijezda", akcija: { vrsta: "zadaci", tab: "zvijezde" } },
-      { id: "karavana", naziv: "Karavana", rec: "Put i cin.", ikona: "karavana", akcija: { vrsta: "zadaci", tab: "karavana" } },
-      { id: "uzivo", naziv: "Uživo", rec: "Igra s drugima.", ikona: "uzivo", akcija: { vrsta: "zadaci", tab: "uzivo" } },
-    ];
-  }
   return [
     { id: "burza", naziv: "Burza", rec: "Kupi i prodaj.", ikona: "burza", akcija: { vrsta: "trznica", sekcija: "burza" } },
     { id: "alati", naziv: "Alati", rec: "Trajna pojačanja.", ikona: "alati", akcija: { vrsta: "trznica", sekcija: "alati" } },
     { id: "izgled", naziv: "Izlog", rec: "Koža automata.", ikona: "izgled", akcija: { vrsta: "trznica", sekcija: "izgled" } },
+    { id: "karavana", naziv: "Karavana", rec: "Put i cin.", ikona: "karavana", akcija: { vrsta: "trznica", sekcija: "karavana" } },
+    { id: "uzivo", naziv: "Uživo", rec: "Igra s drugima.", ikona: "uzivo", akcija: { vrsta: "trznica", sekcija: "uzivo" } },
   ];
 }
 

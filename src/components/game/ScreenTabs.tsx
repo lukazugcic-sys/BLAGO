@@ -21,7 +21,7 @@ export function ScreenTabs<T extends string>({
   return (
     <div
       className={cn(
-        "flex rounded-xl border border-line bg-panel p-1",
+        "zaslon-tabovi flex rounded-xl border border-line bg-panel p-1",
         dolje ? "mt-3 mb-0" : "mb-3",
       )}
     >
@@ -52,6 +52,7 @@ export function ScreenTabs<T extends string>({
                   : "text-dim",
             )}
             aria-disabled={zakljucan || undefined}
+            aria-pressed={aktivan}
           >
             <span className="inline-flex items-center justify-center gap-1">
               {zakljucan && (

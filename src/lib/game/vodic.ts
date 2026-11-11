@@ -26,7 +26,6 @@ export type VodicKorak = (typeof RED)[number];
 const TAB_OD: Record<TabId, VodicKorak> = {
   automat: "prica",
   selo: "kuca",
-  misije: "nalog",
   trznica: "burza",
   zid: "zgrada",
 };
@@ -34,16 +33,14 @@ const TAB_OD: Record<TabId, VodicKorak> = {
 const LOKOT: Record<TabId, string> = {
   automat: "",
   selo: "Kauba se otvara nakon dvije vrtnje",
-  misije: "Nalozi se otvaraju kad pokupiš drvo",
   trznica: "Burza se otvara kad zaposliš kauboja",
   zid: "Zid se otvara pred sljedeću zgradu",
 };
 
 const BUBBLE: Partial<Record<TabId, string>> = {
   selo: "Ovo je Kauba. Tu se diže prva kuća.",
-  misije: "Nalozi su poslovi. Hvala kad su gotovi.",
   trznica: "Burza kupuje drvo, kamen i željezo.",
-  zid: "Zid pamti što kauba još treba.",
+  zid: "Zid pamti što kauba još treba. Nalozi i zvijezde su ovdje.",
 };
 
 const REC: Partial<Record<VodicKorak, string>> = {
@@ -131,7 +128,7 @@ function jeKorak(x: unknown): x is VodicKorak {
 function normaliziraj(raw: Partial<Stanje> | null): Stanje {
   const korak = jeKorak(raw?.korak) ? raw.korak : "gotovo";
   const tab = (xs: unknown) =>
-    Array.isArray(xs) ? xs.filter((x): x is TabId => x === "automat" || x === "zid" || x === "selo" || x === "misije" || x === "trznica") : [];
+    Array.isArray(xs) ? xs.filter((x): x is TabId => x === "automat" || x === "zid" || x === "selo" || x === "trznica") : [];
   return {
     korak,
     staro: !!raw?.staro || (korak === "gotovo" && !raw?.preskokDan),

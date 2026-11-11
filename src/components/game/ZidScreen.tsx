@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Iznos, TekstResursa } from "@/components/game/Iznos";
 import { useShallow } from "zustand/react/shallow";
 import { useGameStore } from "@/lib/stores/gameStore";
 import { useSlotStore } from "@/lib/stores/slotStore";
@@ -28,9 +29,71 @@ import { idi, tokMeniEkran, tokMeniZaPlakat, TOK_HOLD_PX, IDI_EVENT, type IdiDet
 import { HOLD_KADAR_MS, holdDosta, osjeti } from "@/lib/game/feel";
 import { TjedanTraka } from "./TjedanTraka";
 import { EventBanner } from "./EventBanner";
+import { NaloziPanel, ZvijezdeLista } from "./MissionsScreen";
+import { ChevronDown } from "lucide-react";
 import { useSeasonalEvent } from "@/lib/hooks/useSeasonalEvent";
 import type { Gradevine, SimbolId } from "@/lib/game/types";
 import type { PotjernicaSet, Rijetkost } from "@/lib/game/potjernice";
+
+
+const ZID_ACC_KEY = "blago-v1:zid-acc";
+type ZidOdjelId = "cilj" | "kauba" | "obavijesti" | "nalozi" | "zvijezde" | "plakati" | "kronika";
+const ZID_ACC_DEFAULT: Record<ZidOdjelId, boolean> = {
+  cilj: true,
+  kauba: true,
+  obavijesti: true,
+  nalozi: true,
+  zvijezde: false,
+  plakati: false,
+  kronika: false,
+};
+
+function citajZidAcc(): Record<ZidOdjelId, boolean> {
+  if (typeof window === "undefined") return { ...ZID_ACC_DEFAULT };
+  try {
+    const raw = window.localStorage.getItem(ZID_ACC_KEY);
+    if (!raw) return { ...ZID_ACC_DEFAULT };
+    const p = JSON.parse(raw) as Partial<Record<ZidOdjelId, boolean>>;
+    return { ...ZID_ACC_DEFAULT, ...p };
+  } catch {
+    return { ...ZID_ACC_DEFAULT };
+  }
+}
+
+function ZidOdjeljak({
+  id,
+  naslov,
+  open,
+  onToggle,
+  children,
+  badge,
+}: {
+  id: string;
+  naslov: string;
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+  badge?: string;
+}) {
+  return (
+    <section id={id} className="zid-odjeljak" data-open={open ? "1" : "0"}>
+      <button
+        type="button"
+        className="zid-odjeljak-glava"
+        aria-expanded={open}
+        onClick={() => {
+          playSfx("button");
+          onToggle();
+        }}
+      >
+        <span className="zid-odjeljak-naslov">{naslov}</span>
+        {badge ? <span className="zid-odjeljak-badge">{badge}</span> : null}
+        <ChevronDown className={cn("zid-odjeljak-strelica size-4", open && "is-open")} aria-hidden />
+      </button>
+      {open ? <div className="zid-odjeljak-tijelo">{children}</div> : null}
+    </section>
+  );
+}
 
 function Vidljivo({ children, min = 240 }: { children: ReactNode; min?: number }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -130,7 +193,7 @@ const SetKartica = memo(function SetKartica({
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <h3 className="text-xs font-bold tracking-widest text-ink uppercase">{naziv}</h3>
         <span className={cn("text-[10px] font-bold uppercase", gotov ? "text-quest" : "text-dim")}>
-          {gotov ? "Skupljeno" : `${ima}/${clanovi.length} · +${nagradaZlato}g`}
+          {gotov ? "Skupljeno" : <>{`${ima}/${clanovi.length} · `}<Iznos resurs="zlato" kolicina={nagradaZlato} predznak /></>}
         </span>
       </div>
       <span className="zid-traka mb-2 block h-1 overflow-hidden rounded-full bg-void">
@@ -288,6 +351,18 @@ export function ZidScreen({ naTab }: { naTab?: (id: TabId) => void }) {
   const setRaidAktivan = useSlotStore((s) => s.setRaidAktivan);
   const zidRef = useRef<HTMLDivElement>(null);
   const [meni, setMeni] = useState<{ stem: string; x: number; y: number; w: number; h: number } | null>(null);
+  const [zidAcc, setZidAcc] = useState(citajZidAcc);
+  const toggleAcc = useCallback((id: ZidOdjelId) => {
+    setZidAcc((prev) => {
+      const next = { ...prev, [id]: !prev[id] };
+      try {
+        window.localStorage.setItem(ZID_ACC_KEY, JSON.stringify(next));
+      } catch {
+        /* kvota */
+      }
+      return next;
+    });
+  }, []);
   useEffect(() => {
     if (nova) setOdabran(nova);
   }, [nova]);
@@ -295,8 +370,28 @@ export function ZidScreen({ naTab }: { naTab?: (id: TabId) => void }) {
     const on = (e: Event) => {
       const kamo = (e as CustomEvent<IdiDetail>).detail?.zid;
       if (!kamo) return;
-      const el = document.getElementById(kamo === "kronika" ? "zid-kronika" : "zid-cilj");
-      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+      const map: Record<string, string> = {
+        kronika: "zid-kronika",
+        cilj: "zid-cilj",
+        nalozi: "zid-nalozi",
+        zvijezde: "zid-zvijezde",
+        obavijesti: "zid-obavijesti",
+        kauba: "zid-kauba",
+      };
+      const el = document.getElementById(map[kamo] ?? "zid-cilj");
+      if (kamo === "nalozi" || kamo === "zvijezde" || kamo === "kronika" || kamo === "obavijesti" || kamo === "kauba" || kamo === "cilj") {
+        setZidAcc((prev) => {
+          const key = (kamo === "cilj" ? "cilj" : kamo === "kauba" ? "kauba" : kamo === "obavijesti" ? "obavijesti" : kamo === "nalozi" ? "nalozi" : kamo === "zvijezde" ? "zvijezde" : "kronika") as ZidOdjelId;
+          const next = { ...prev, [key]: true };
+          try {
+            window.localStorage.setItem(ZID_ACC_KEY, JSON.stringify(next));
+          } catch {
+            /* */
+          }
+          return next;
+        });
+      }
+      window.setTimeout(() => el?.scrollIntoView({ behavior: "smooth", block: "start" }), 40);
     };
     window.addEventListener(IDI_EVENT, on);
     return () => window.removeEventListener(IDI_EVENT, on);
@@ -311,6 +406,7 @@ export function ZidScreen({ naTab }: { naTab?: (id: TabId) => void }) {
   const [moodId, moodUsko, moodRec] = moodKljuc.split("\u0000");
   const aktivniDogadaj = useSeasonalEvent();
   const gorece = ZGRADE.filter((z) => ostecenja[z.id]);
+  const misijeSpremni = useGameStore((s) => s.misije.filter((m) => m.trenutno >= m.cilj).length);
   const obavijesti = serifPlakati({
     poruka,
     serifova: !!poruka && jeSerifovaPoruka(poruka),
@@ -378,32 +474,6 @@ export function ZidScreen({ naTab }: { naTab?: (id: TabId) => void }) {
 
   return (
     <div ref={zidRef} className="relative flex flex-col gap-3 px-3 pb-8 pt-1">
-      <div id="zid-cilj">
-        <SljedeciCiljCard />
-      </div>
-      <button
-        type="button"
-        className="zid-mood w-full rounded-2xl border border-gold/40 bg-gold/10 px-3 py-2.5 text-left"
-        onClick={() => idiNaHub(moodUsko ? (moodUsko as KaubaUsko) : null)}
-      >
-        <p className="text-[10px] font-bold tracking-[0.22em] text-gold uppercase">Kauba</p>
-        <p className="mt-0.5 text-sm font-bold leading-snug text-ink">{moodRec}</p>
-        {moodUsko ? (
-          <p className="mt-1 text-[11px] font-bold text-dim">Dodirni — idi tamo.</p>
-        ) : (
-          <p className="mt-1 text-[11px] font-bold text-dim">Sve stoji kako treba.</p>
-        )}
-      </button>
-
-      <TjedanTraka
-        ceker
-        onOtvori={() => {
-          playSfx("button");
-          naTab?.("trznica");
-        }}
-      />
-      <EventBanner dogadaj={aktivniDogadaj} />
-
       {gorece.length > 0 && (
         <div className="flex flex-col gap-1.5" data-testid="zid-gori">
           {gorece.map((z) => (
@@ -421,24 +491,60 @@ export function ZidScreen({ naTab }: { naTab?: (id: TabId) => void }) {
         </div>
       )}
 
-      <section className="serif-zid" data-testid="serif-zid">
-        <p className="serif-zid-naslov">Obavijesti šerifa</p>
-        <div className="serif-zid-zivo">
-          <LiveTicker />
-          <PotjernicaToast />
+      <ZidOdjeljak id="zid-cilj" naslov="Cilj" open={zidAcc.cilj} onToggle={() => toggleAcc("cilj")}>
+        <SljedeciCiljCard />
+      </ZidOdjeljak>
+
+      <ZidOdjeljak id="zid-kauba" naslov="Kauba · Sajam" open={zidAcc.kauba} onToggle={() => toggleAcc("kauba")}>
+        <button
+          type="button"
+          className="zid-mood w-full rounded-2xl border border-gold/40 bg-gold/10 px-3 py-2.5 text-left"
+          onClick={() => idiNaHub(moodUsko ? (moodUsko as KaubaUsko) : null)}
+        >
+          <p className="text-[10px] font-bold tracking-[0.22em] text-gold uppercase">Kauba</p>
+          <p className="mt-0.5 text-sm font-bold leading-snug text-ink">{moodRec}</p>
+          {moodUsko ? (
+            <p className="mt-1 text-[11px] font-bold text-dim">Dodirni — idi tamo.</p>
+          ) : (
+            <p className="mt-1 text-[11px] font-bold text-dim">Sve stoji kako treba.</p>
+          )}
+        </button>
+        <div className="mt-2">
+          <TjedanTraka
+            ceker
+            onOtvori={() => {
+              playSfx("button");
+              naTab?.("trznica");
+            }}
+          />
         </div>
-        {dogadaj && (
-          <div className="serif-zid-cin" data-testid="serif-zid-cin">
-            <EventKartica d={dogadaj} onOpcija={rijesiDogadaj} />
+        <div className="mt-2">
+          <EventBanner dogadaj={aktivniDogadaj} />
+        </div>
+        <div className="mt-2">
+          <JutroPopis naTab={naTab} />
+        </div>
+      </ZidOdjeljak>
+
+      <ZidOdjeljak id="zid-obavijesti" naslov="Obavijesti šerifa" open={zidAcc.obavijesti} onToggle={() => toggleAcc("obavijesti")}>
+        <section className="serif-zid" data-testid="serif-zid">
+          <div className="serif-zid-zivo">
+            <LiveTicker />
+            <PotjernicaToast />
           </div>
-        )}
-        <SerifLista stavke={obavijesti.slice(0, 4)} onOtvori={otvoriPlakat} />
-        {obavijesti.length > 4 ? (
-          <Vidljivo min={160}>
-            <SerifLista stavke={obavijesti.slice(4)} onOtvori={otvoriPlakat} />
-          </Vidljivo>
-        ) : null}
-      </section>
+          {dogadaj && (
+            <div className="serif-zid-cin" data-testid="serif-zid-cin">
+              <EventKartica d={dogadaj} onOpcija={rijesiDogadaj} />
+            </div>
+          )}
+          <SerifLista stavke={obavijesti.slice(0, 4)} onOtvori={otvoriPlakat} />
+          {obavijesti.length > 4 ? (
+            <Vidljivo min={160}>
+              <SerifLista stavke={obavijesti.slice(4)} onOtvori={otvoriPlakat} />
+            </Vidljivo>
+          ) : null}
+        </section>
+      </ZidOdjeljak>
       {meni && (
         <TokRadial
           x={meni.x}
@@ -452,141 +558,97 @@ export function ZidScreen({ naTab }: { naTab?: (id: TabId) => void }) {
         />
       )}
 
-      <Vidljivo min={220}>
-        <JutroPopis naTab={naTab} />
-      </Vidljivo>
+      <ZidOdjeljak
+        id="zid-nalozi"
+        naslov="Nalozi"
+        open={zidAcc.nalozi}
+        onToggle={() => toggleAcc("nalozi")}
+        badge={misijeSpremni > 0 ? `${misijeSpremni}` : undefined}
+      >
+        <NaloziPanel />
+      </ZidOdjeljak>
+
+      <ZidOdjeljak
+        id="zid-zvijezde"
+        naslov="Zvijezde"
+        open={zidAcc.zvijezde}
+        onToggle={() => toggleAcc("zvijezde")}
+        badge={`${zvijezde}/${DOSTIGNUCA.length}`}
+      >
+        <ZvijezdeLista />
+      </ZidOdjeljak>
 
       {!sideOtkljucan ? (
         <SideGateKartica naslov="Zid · potjernice" />
       ) : (
-        <>
-      <div className="flex items-end justify-between gap-2">
-        <p className="text-[11px] font-bold tracking-widest text-gold uppercase">Zid šerifa</p>
-        <p className="text-[11px] font-bold tabular-nums text-dim">
-          {n}/{ukupno} plakata · {zvijezde}/{DOSTIGNUCA.length} zvijezda
-        </p>
-      </div>
-
-      {p && (
-        <article
-          className={cn("zid-plakat rounded-2xl border p-3", imaOdabran ? "border-gold/50 bg-gold/10" : "border-line bg-panel")}
+        <ZidOdjeljak
+          id="zid-plakati"
+          naslov="Plakati"
+          open={zidAcc.plakati}
+          onToggle={() => toggleAcc("plakati")}
+          badge={`${n}/${ukupno}`}
         >
-          <div className="flex gap-3">
-            <span
-              className={cn("potjernica-list shrink-0", !imaOdabran && "potjernica-min-prazna")}
-              style={imaOdabran ? { background: `linear-gradient(#e8d2a0, ${p.boja})` } : undefined}
+          <div className="mb-2 flex items-end justify-between gap-2">
+            <p className="text-[11px] font-bold tracking-widest text-gold uppercase">Zid šerifa</p>
+            <p className="text-[11px] font-bold tabular-nums text-dim">
+              {n}/{ukupno} plakata · {zvijezde}/{DOSTIGNUCA.length} zvijezda
+            </p>
+          </div>
+          {p && (
+            <article
+              className={cn("zid-plakat mb-2 rounded-2xl border p-3", imaOdabran ? "border-gold/50 bg-gold/10" : "border-line bg-panel")}
             >
-              <span className="potjernica-stem">TRAŽI SE</span>
-              <span className="potjernica-ime">{imaOdabran ? p.ime : "???"}</span>
-              <span className="potjernica-cijena">{imaOdabran ? `$${p.cijena}` : RIJETKOST_REC[p.rijetkost]}</span>
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-bold tracking-widest text-dim uppercase">
-                {SETOVI.find((s) => s.id === p.set)?.naziv} · {RIJETKOST_REC[p.rijetkost]}
-              </p>
-              <h3 className="text-sm font-bold text-ink">{imaOdabran ? p.ime : "Lice se ne vidi."}</h3>
-              <p className="mt-1 text-xs leading-snug text-dim">{imaOdabran ? p.rec : "Vrti. Boro lijepi kad padne."}</p>
-              {imaOdabran && (album[p.id] ?? 0) > 1 && (
-                <p className="mt-1 text-[11px] font-bold text-gold">Duplikat ×{album[p.id]}. Boro slaže kopije.</p>
-              )}
-            </div>
-          </div>
-        </article>
-      )}
-
-      {SETOVI.map((set, i) => {
-        const kartica = (
-          <SetKartica
-            key={set.id}
-            setId={set.id}
-            naziv={set.naziv}
-            nagradaZlato={set.nagrada.zlato}
-            gotov={setovi.includes(set.id)}
-            album={album}
-            odabran={odabran}
-            nova={nova}
-            onOdabir={odaberiPlakat}
-          />
-        );
-        return i === 0 ? kartica : (
-          <Vidljivo key={set.id} min={210}>
-            {kartica}
-          </Vidljivo>
-        );
-      })}
-
-      <Vidljivo min={280}>
-      <article className="rounded-2xl border border-gold/35 bg-panel p-3">
-        <div className="mb-2 flex items-end justify-between">
-          <h3 className="text-xs font-bold tracking-widest text-gold uppercase">Zvijezde kaube</h3>
-          <span className="text-[10px] font-bold tabular-nums text-dim">
-            {zvijezde}/{DOSTIGNUCA.length}
-          </span>
-        </div>
-        {odabrana && (
-          <div className="mb-2 rounded-xl border border-gold/35 bg-gold/10 p-2.5">
-            <div className="flex items-center gap-2">
-              <IconBadge src={SYMBOL_ART[odabrana.art]} size="md" />
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-bold text-gold">{odabrana.naziv}</span>
-                <span className="block text-[11px] leading-snug text-dim">
-                  {done[odabrana.id] ? odabrana.opis : "Još nije. Boro čeka."}
-                </span>
-              </span>
-              {done[odabrana.id] ? (
-                <NagradaPikseli nagrada={odabrana.nagrada} compact />
-              ) : (
-                <span className="shrink-0 text-[10px] font-bold tabular-nums text-dim">
-                  {Math.min(napredakDostignuca(ulaz, odabrana).trenutno, odabrana.cilj)}/{odabrana.cilj}
-                </span>
-              )}
-            </div>
-            {!done[odabrana.id] && (
-              <span className="zid-traka mt-2 block h-1 overflow-hidden rounded-full bg-void">
+              <div className="flex gap-3">
                 <span
-                  className="block h-full rounded-full bg-gold"
-                  style={{
-                    width: `${Math.min(100, Math.round((napredakDostignuca(ulaz, odabrana).trenutno / Math.max(1, odabrana.cilj)) * 100))}%`,
-                  }}
-                />
-              </span>
-            )}
-          </div>
-        )}
-        {!odabrana && sljedeca && (
-          <p className="mb-2 text-[11px] font-bold leading-snug text-dim">
-            Sljedeća: {sljedeca.naziv} · {Math.min(napredakDostignuca(ulaz, sljedeca).trenutno, sljedeca.cilj)}/
-            {sljedeca.cilj}
-          </p>
-        )}
-        <ul className="grid grid-cols-5 gap-1.5">
-          {DOSTIGNUCA.map((d) => (
-            <li key={d.id}>
-              <ZvijezdaGumb
-                id={d.id}
-                naziv={d.naziv}
-                art={d.art}
-                otk={!!done[d.id]}
-                aktivan={zvijezdaId === d.id}
-                onOdabir={odaberiZvijezdu}
+                  className={cn("potjernica-list shrink-0", !imaOdabran && "potjernica-min-prazna")}
+                  style={imaOdabran ? { background: `linear-gradient(#e8d2a0, ${p.boja})` } : undefined}
+                >
+                  <span className="potjernica-stem">TRAŽI SE</span>
+                  <span className="potjernica-ime">{imaOdabran ? p.ime : "???"}</span>
+                  <span className="potjernica-cijena">{imaOdabran ? `$${p.cijena}` : RIJETKOST_REC[p.rijetkost]}</span>
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-bold tracking-widest text-dim uppercase">
+                    {SETOVI.find((s) => s.id === p.set)?.naziv} · {RIJETKOST_REC[p.rijetkost]}
+                  </p>
+                  <h3 className="text-sm font-bold text-ink">{imaOdabran ? p.ime : "Lice se ne vidi."}</h3>
+                  <p className="mt-1 text-xs leading-snug text-dim">{imaOdabran ? p.rec : "Vrti. Boro lijepi kad padne."}</p>
+                  {imaOdabran && (album[p.id] ?? 0) > 1 && (
+                    <p className="mt-1 text-[11px] font-bold text-gold">Duplikat ×{album[p.id]}. Boro slaže kopije.</p>
+                  )}
+                </div>
+              </div>
+            </article>
+          )}
+          {SETOVI.map((set, i) => {
+            const kartica = (
+              <SetKartica
+                key={set.id}
+                setId={set.id}
+                naziv={set.naziv}
+                nagradaZlato={set.nagrada.zlato}
+                gotov={setovi.includes(set.id)}
+                album={album}
+                odabran={odabran}
+                nova={nova}
+                onOdabir={odaberiPlakat}
               />
-            </li>
-          ))}
-        </ul>
-        <p className="mt-2 text-[11px] font-bold leading-relaxed text-dim">
-          Vrti. Na dobitku ponekad padne plakat. Zvijezdu Boro zabije kad stigne.
-        </p>
-      </article>
-      </Vidljivo>
-        </>
+            );
+            return i === 0 ? kartica : (
+              <Vidljivo key={set.id} min={210}>
+                {kartica}
+              </Vidljivo>
+            );
+          })}
+        </ZidOdjeljak>
       )}
+
       {sideOtkljucan ? (
-        <Vidljivo min={320}>
-          <div id="zid-kronika" className="mt-1">
-            <KronikaLista />
-          </div>
-        </Vidljivo>
+        <ZidOdjeljak id="zid-kronika" naslov="Kronika" open={zidAcc.kronika} onToggle={() => toggleAcc("kronika")}>
+          <KronikaLista />
+        </ZidOdjeljak>
       ) : null}
     </div>
   );
 }
+

@@ -72,8 +72,16 @@ test("an explicit process-env override wins over the file", () => {
   assert.equal(merged.PATH, "/usr/bin");
 });
 
+// Template default is checked on an explicit template fixture; the real
+// project (BLAGO) legitimately turned sign-in on (.grok/app-env.json = {}).
 test("the template ships auth off", () => {
-  assert.deepEqual(readAppEnv(projectRoot()), { VITE_AUTH_ENABLED: "false" });
+  const template = makeWorkspace('{"VITE_AUTH_ENABLED":"false"}');
+  assert.deepEqual(readAppEnv(template), { VITE_AUTH_ENABLED: "false" });
+});
+
+test("this project's app-env parses and only holds VITE_ keys", () => {
+  const env = readAppEnv(projectRoot());
+  for (const k of Object.keys(env)) assert.ok(k.startsWith("VITE_"), k);
 });
 
 test("vite loadEnv resolves the wrapped value", () => {

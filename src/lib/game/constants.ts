@@ -1,4 +1,5 @@
 import { WILD_BOOST_CHANCE_PER_LEVEL, ENERGY_PER_BATTERY, PROIZVODNJA } from "./tuning";
+import { postaviSustavneBoje } from "./sustavneBoje";
 import { nalogOd, pocetniLjudi, tkoZaNalog, type Stanovnik } from "./ljudi";
 import { rast } from "./economy";
 import type { LucideIcon } from "lucide-react";
@@ -642,15 +643,28 @@ export const DNEVNE_NAGRADE: Array<{ dan: number; nagrada: Nagrada }> = [
 
 export const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+/** Bottom nav order (0.9.168): Zid, Kauba, Igraj, Tržnica. Legacy "misije" maps to zid. */
 export const TABOVI = [
-  { id: "automat", label: "Igraj", boja: "volt" },
   { id: "zid", label: "Zid", boja: "zid" },
   { id: "selo", label: "Kauba", boja: "wood" },
-  { id: "misije", label: "Zadaci", boja: "quest" },
+  { id: "automat", label: "Igraj", boja: "volt" },
   { id: "trznica", label: "Tržnica", boja: "gold" },
 ] as const;
 
 export type TabId = (typeof TABOVI)[number]["id"];
+
+/** Saved / history tab ids that may predate 0.9.168. */
+export type SpremljeniTab = TabId | "misije";
+
+export function normalizirajTab(id: string | null | undefined): TabId {
+  if (id === "misije") return "zid";
+  if (id === "zid" || id === "selo" || id === "automat" || id === "trznica") return id;
+  return "selo";
+}
+
+export function jeTabId(id: string | undefined): id is TabId {
+  return id === "zid" || id === "selo" || id === "automat" || id === "trznica";
+}
 
 export const ZGRADE_SKINOVI: Skin[] = [
   {
@@ -780,6 +794,7 @@ export function primijeniSkinTemu(skin: Skin) {
   r.dataset.skin = skin.id;
   document.body.style.backgroundColor = t.void;
   postaviBojuPrikaza(t.void);
+  postaviSustavneBoje(skin.id);
 }
 
 export function postaviBojuPrikaza(boja: string) {

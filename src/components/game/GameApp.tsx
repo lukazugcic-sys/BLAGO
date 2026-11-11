@@ -13,7 +13,7 @@ import { DailyRewardModal } from "./DailyRewardModal";
 import { RaidModal } from "./RaidModal";
 import { ScreenPager } from "./ScreenPager";
 import { LijeniEkran } from "./LijeniEkran";
-import { type TabId, TABOVI, ZGRADE_SKINOVI, primijeniSkinTemu, postaviBojuPrikaza } from "@/lib/game/constants";
+import { type TabId, TABOVI, ZGRADE_SKINOVI, primijeniSkinTemu, postaviBojuPrikaza, normalizirajTab, jeTabId } from "@/lib/game/constants";
 import { setMuted, unlockAudio, startBgm } from "@/lib/game/audio";
 import { SAVE_KEYS } from "@/lib/game/persist";
 import { ART, CREDITS, preloadArt } from "@/lib/game/art";
@@ -42,7 +42,6 @@ const UCITAJ = {
   SlotScreen: () => import("./SlotScreen"),
   ZidScreen: () => import("./ZidScreen"),
   VillageScreen: () => import("./VillageScreen"),
-  MissionsScreen: () => import("./MissionsScreen"),
   ShopScreen: () => import("./ShopScreen"),
 } as const;
 const DIREKTNO = () => import("./tabDirekt");
@@ -51,17 +50,12 @@ const TAB_UCITAJ: Record<TabId, () => Promise<unknown>> = {
   automat: UCITAJ.SlotScreen,
   zid: UCITAJ.ZidScreen,
   selo: UCITAJ.VillageScreen,
-  misije: UCITAJ.MissionsScreen,
   trznica: UCITAJ.ShopScreen,
 };
 
-function jeTab(id: string | undefined): id is TabId {
-  return id === "automat" || id === "zid" || id === "selo" || id === "misije" || id === "trznica";
-}
-
 function prefetchSusjede(id: TabId) {
   const i = TABOVI.findIndex((t) => t.id === id);
-  const ids = [TABOVI[i - 1]?.id, TABOVI[i + 1]?.id].filter(jeTab);
+  const ids = [TABOVI[i - 1]?.id, TABOVI[i + 1]?.id].filter(jeTabId);
   const run = () => {
     for (const k of ids) void TAB_UCITAJ[k]();
   };
@@ -73,8 +67,15 @@ function prefetchSusjede(id: TabId) {
 function citajTab(): TabId {
   if (typeof window === "undefined") return "selo";
   const raw = window.localStorage.getItem(SAVE_KEYS.tab);
-  if (raw === "automat" || raw === "zid" || raw === "selo" || raw === "misije" || raw === "trznica") return raw;
-  return "selo";
+  const id = normalizirajTab(raw);
+  if (raw === "misije") {
+    try {
+      window.localStorage.setItem(SAVE_KEYS.tab, id);
+    } catch {
+      /* kvota */
+    }
+  }
+  return id;
 }
 
 function GameInner({
@@ -142,7 +143,7 @@ function GameInner({
     primijeniSkinTemu(skin);
     const t = skin.tema;
     const boja =
-      tab === "automat" ? t.energy : tab === "misije" ? t.quest : tab === "trznica" ? t.gold : t.void;
+      tab === "automat" ? t.energy : tab === "trznica" ? t.gold : tab === "zid" ? t.quest : t.void;
     postaviBojuPrikaza(boja);
   }, [aktivniSkin, tab]);
 
@@ -158,8 +159,9 @@ function GameInner({
     const st = window.history.state as { blagoTab?: TabId } | null;
     if (!st?.blagoTab) window.history.replaceState({ ...(st ?? {}), blagoTab: citajTab() }, "");
     const onPop = (e: PopStateEvent) => {
-      const id = (e.state as { blagoTab?: string } | null)?.blagoTab;
-      if (!jeTab(id)) return;
+      const raw = (e.state as { blagoTab?: string } | null)?.blagoTab;
+      const id = raw ? normalizirajTab(raw) : null;
+      if (!id || !jeTabId(id)) return;
       setTabRef.current(id);
       try {
         window.localStorage.setItem(SAVE_KEYS.tab, id);
@@ -255,12 +257,6 @@ function GameInner({
   const panes = useMemo(
     () => [
       {
-        id: "automat" as const,
-        node: (
-          <LijeniEkran ime="SlotScreen" ucitaj={UCITAJ.SlotScreen} direktno={DIREKTNO} djeca={(C) => <C />} />
-        ),
-      },
-      {
         id: "zid" as const,
         node: (
           <LijeniEkran ime="ZidScreen" ucitaj={UCITAJ.ZidScreen} direktno={DIREKTNO} djeca={(C) => <C naTab={setTab} />} />
@@ -278,9 +274,9 @@ function GameInner({
         ),
       },
       {
-        id: "misije" as const,
+        id: "automat" as const,
         node: (
-          <LijeniEkran ime="MissionsScreen" ucitaj={UCITAJ.MissionsScreen} direktno={DIREKTNO} djeca={(C) => <C />} />
+          <LijeniEkran ime="SlotScreen" ucitaj={UCITAJ.SlotScreen} direktno={DIREKTNO} djeca={(C) => <C />} />
         ),
       },
       {
@@ -309,6 +305,7 @@ function GameInner({
       <div
         ref={shellRef}
         className="game-shell relative z-0 mx-auto flex h-full min-h-0 w-full min-w-0 max-w-lg flex-1 flex-col overflow-x-clip"
+        data-tab={tab}
       >
         <Header
           muted={muted}
@@ -393,6 +390,8 @@ export function GameApp() {
 
   useEffect(() => {
     document.documentElement.classList.add("is-fs");
+    // 0.9.179: jedan minimalni GUI (stil donjeg izbornika karte) — vidi styles.css „0.9.179 (t465u)“
+    document.documentElement.classList.add("gui-179");
     document.body.classList.add("is-fs");
     clearChunkReloadFlag();
   }, []);
@@ -458,7 +457,7 @@ export function GameApp() {
   };
 
   const upit = noviUpit ? (
-    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-void/80 p-4 sm:items-center">
+    <div className="g179-preklop fixed inset-0 z-[120] flex items-end justify-center bg-void/80 p-4 sm:items-center">
       <div className="w-full max-w-sm rounded-3xl border border-gold/40 bg-panel p-5">
         <h2 className="font-display text-2xl text-gold">Novi početak?</h2>
         <p className="mt-2 text-sm font-bold leading-snug text-ink/85">

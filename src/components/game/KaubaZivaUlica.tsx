@@ -1,7 +1,10 @@
+import { Droplet, Hammer, Layers, Smile, Workflow } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { IZO_DEKOR, artSrc } from "@/lib/game/art";
+import { pjesine } from "@/lib/game/pjesine";
 import { smanjenPokret } from "@/lib/game/feel";
 import { vidljiviInterval } from "@/lib/game/helpers";
+import { kameraSeMakla } from "@/lib/game/kartaPetlja";
 import { zgradaUvjet } from "@/lib/game/economy";
 import {
   brojSloja,
@@ -28,6 +31,7 @@ import { playSfx } from "@/lib/game/audio";
 import { idi } from "@/lib/game/tokMeni";
 import { Obzor, NASELJE, OBZOR } from "@/components/game/KaubaObzor";
 import { KaubaCesta } from "@/components/game/KaubaCesta";
+import { KaubaTrgVoda } from "@/components/game/KaubaDvorista";
 import { KaubaBroj } from "@/components/game/KaubaBroj";
 import { KaubaHodaci } from "@/components/game/KaubaHodaci";
 import { stokaNaKarti } from "@/lib/game/stokaKarta";
@@ -47,6 +51,8 @@ const ZOOM_ODMAK = Math.min(ZOOM_MIN, 0.22);
 const TAP_PX = 8;
 const VUC_PX = Math.min(6, TAP_PX);
 const DVO_MS = 300;
+/** 0.9.176 (t442u): ime dodirnute zgrade nestaje nakon ~3 s. */
+const NATPIS_MS = 3000;
 const DVO_PX = 36;
 
 const OGRADE = ogradeRanca();
@@ -76,6 +82,26 @@ export function KaubaZivaUlica({ ziva }: { ziva: boolean }) {
   const gradnje = useGameStore((s) => s.gradnje);
   const [natpisId, setNatpisId] = useState<string | null>(null);
   const [birana, setBirana] = useState<string | null>(null);
+  /** 0.9.176 (t442u): svaki dodir zgrade ponovno pokreće prikaz imena (fade-in + 3 s). */
+  const [natpisTik, setNatpisTik] = useState(0);
+  const natpisRef = useRef<string | null>(null);
+  natpisRef.current = natpisId;
+  useEffect(() => {
+    if (!natpisId) return;
+    const t = window.setTimeout(() => setNatpisId(null), NATPIS_MS);
+    // dodir bilo gdje izvan zgrade sakrije ime (dodir druge zgrade prebaci ime na nju)
+    const van = (e: PointerEvent) => {
+      const el = e.target as Element | null;
+      if (el && el.closest && el.closest(".izo-kuca")) return;
+      setNatpisId(null);
+      setBirana(null);
+    };
+    window.addEventListener("pointerdown", van, true);
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener("pointerdown", van, true);
+    };
+  }, [natpisId, natpisTik]);
   const [izbornik, setIzbornik] = useState<{ id: keyof Gradevine; x: number; y: number } | null>(null);
   const izbornikRef = useRef(false);
   useEffect(() => {
@@ -205,6 +231,21 @@ export function KaubaZivaUlica({ ziva }: { ziva: boolean }) {
     const world = svijetRef.current;
     if (!el || !world) return;
     const cam: Cam = { x: 0, y: 0, z: 1, vx: 0, vy: 0 };
+    // 0.9.177 (t448u): mjere okvira iz ResizeObservera — čitanje clientWidth odmah nakon pisanja
+    // transforma tjeralo je sinkroni layout u svakom kadru vučenja.
+    const dim = { w: el.clientWidth, h: el.clientHeight };
+    // t452u/t448u: dok traje vučenje, blur ispod ikona izbornika se gasi (samo tamni prijelaz)
+    let navBlur: Element | null = null;
+    const vuce = (on: boolean) => {
+      el.classList.toggle("is-vuce", on);
+      if (!navBlur || !navBlur.isConnected) navBlur = document.querySelector(".nav-blur");
+      navBlur?.classList.toggle("is-vuce", on);
+    };
+    const roDim = new ResizeObserver(() => {
+      dim.w = el.clientWidth;
+      dim.h = el.clientHeight;
+    });
+    roDim.observe(el);
     const pts = new Map<number, { x: number; y: number }>();
     let pinch: { dist: number; z: number; mx: number; my: number } | null = null;
     let pan: { x: number; y: number; lx: number; ly: number; t: number; moved: boolean } | null = null;
@@ -244,8 +285,8 @@ export function KaubaZivaUlica({ ziva }: { ziva: boolean }) {
     pokupi(".izo-konj-staja");
     pokupi(".izo-konj");
     const izrez = () => {
-      const vw = el.clientWidth;
-      const vh = el.clientHeight;
+      const vw = dim.w;
+      const vh = dim.h;
       const otvoreno = vw >= 2 && vh >= 2;
       const k = kadarRef.current;
       const pad = 140;
@@ -264,14 +305,14 @@ export function KaubaZivaUlica({ ziva }: { ziva: boolean }) {
     };
 
     const zNajdalje = () => {
-      const vw = el.clientWidth;
+      const vw = dim.w;
       const o = okvirNaselja();
       return Math.max(ZOOM_ODMAK, (vw * 0.85) / o.w);
     };
 
     const clamp = () => {
-      const vw = el.clientWidth;
-      const vh = el.clientHeight;
+      const vw = dim.w;
+      const vh = dim.h;
       if (vw < 2 || vh < 2) return;
       const b = NASELJE;
       const z = cam.z;
@@ -313,8 +354,8 @@ export function KaubaZivaUlica({ ziva }: { ziva: boolean }) {
           });
         });
       }
-      const vw = el.clientWidth;
-      const vh = el.clientHeight;
+      const vw = dim.w;
+      const vh = dim.h;
       const z = cam.z;
       const pola = 46;
       const pad = 6;
@@ -344,8 +385,9 @@ export function KaubaZivaUlica({ ziva }: { ziva: boolean }) {
     let zakazano = 0;
     const apply = (natpis = true) => {
       world.style.transform = `scale(${cam.z}) translate3d(${cam.x}px, ${cam.y}px, 0)`;
-      const vw = el.clientWidth;
-      const vh = el.clientHeight;
+      kameraSeMakla();
+      const vw = dim.w;
+      const vh = dim.h;
       const kadr = kadarRef.current;
       const z = cam.z || 1;
       kadr.z = z;
@@ -382,9 +424,30 @@ export function KaubaZivaUlica({ ziva }: { ziva: boolean }) {
       clamp();
     };
 
+    // 0.9.180: tijekom zumiranja samo transform. Filter i izrez na kraju geste.
+    const karta = () => el.parentElement;
+    let zumTajmer = 0;
+    const samoTransform = () => {
+      world.style.transform = `scale(${cam.z}) translate3d(${cam.x}px, ${cam.y}px, 0)`;
+    };
+    const pocniZum = () => {
+      karta()?.classList.add("is-zum");
+      vuce(true);
+    };
+    const krajZuma = () => {
+      if (zumTajmer) window.clearTimeout(zumTajmer);
+      zumTajmer = 0;
+      const bio = !!karta()?.classList.contains("is-zum");
+      karta()?.classList.remove("is-zum");
+      if (!pan) vuce(false);
+      if (bio) apply(true);
+    };
+
     const centriraj = () => {
-      const vw = el.clientWidth;
-      const vh = el.clientHeight;
+      dim.w = el.clientWidth;
+      dim.h = el.clientHeight;
+      const vw = dim.w;
+      const vh = dim.h;
       if (vw < 2 || vh < 2) return;
       rucno = false;
       cam.vx = 0;
@@ -430,7 +493,7 @@ export function KaubaZivaUlica({ ziva }: { ziva: boolean }) {
       if (izbornikRef.current) return;
       if (e.button !== 0 && e.pointerType === "mouse") return;
       const meta = (e.target as Element | null)?.closest?.(
-        "button, a, .karta-izbornik, .karta-izbornik-pozadina, .karta-info, .karta-pogled",
+        "button, a, .karta-izbornik, .karta-izbornik-pozadina, .karta-info, .karta-pogled, .karta-kontrole",
       );
       if (!meta) e.preventDefault();
       pts.set(e.pointerId, lokal(e));
@@ -451,7 +514,7 @@ export function KaubaZivaUlica({ ziva }: { ziva: boolean }) {
           mx: (a!.x + b!.x) / 2,
           my: (a!.y + b!.y) / 2,
         };
-        el.classList.add("is-vuce");
+        pocniZum();
         return;
       }
       const p = lokal(e);
@@ -477,8 +540,8 @@ export function KaubaZivaUlica({ ziva }: { ziva: boolean }) {
         pinch.mx = mx;
         pinch.my = my;
         clamp();
-        zatrazi();
-        el.classList.add("is-vuce");
+        samoTransform();
+        pocniZum();
         return;
       }
       if (!pan) return;
@@ -493,7 +556,7 @@ export function KaubaZivaUlica({ ziva }: { ziva: boolean }) {
         }
         pan.moved = true;
         rucno = true;
-        el.classList.add("is-vuce");
+        vuce(true);
         if (!el.hasPointerCapture(e.pointerId)) {
           try {
             el.setPointerCapture(e.pointerId);
@@ -531,7 +594,10 @@ export function KaubaZivaUlica({ ziva }: { ziva: boolean }) {
 
     const onUp = (e: PointerEvent) => {
       pts.delete(e.pointerId);
-      if (pts.size < 2) pinch = null;
+      if (pts.size < 2) {
+        pinch = null;
+        if (karta()?.classList.contains("is-zum") && pts.size < 2) krajZuma();
+      }
       if (pts.size === 1) {
         const p = [...pts.values()][0]!;
         pan = { x: p.x, y: p.y, lx: p.x, ly: p.y, t: performance.now(), moved: true };
@@ -541,7 +607,7 @@ export function KaubaZivaUlica({ ziva }: { ziva: boolean }) {
       const p = lokal(e);
       const moved = !!pan?.moved;
       pan = null;
-      el.classList.remove("is-vuce");
+      vuce(false);
       odvezi();
       if (!moved) {
         const sad = performance.now();
@@ -588,9 +654,12 @@ export function KaubaZivaUlica({ ziva }: { ziva: boolean }) {
       rucno = true;
       stop();
       const r = el.getBoundingClientRect();
-      const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * el.clientHeight : e.deltaY;
+      const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * dim.h : e.deltaY;
       zoomAt(e.clientX - r.left, e.clientY - r.top, cam.z * Math.exp(-dy * 0.0015));
-      zatrazi();
+      pocniZum();
+      samoTransform();
+      if (zumTajmer) window.clearTimeout(zumTajmer);
+      zumTajmer = window.setTimeout(krajZuma, 140);
     };
 
     const onClick = (e: MouseEvent) => {
@@ -642,8 +711,8 @@ export function KaubaZivaUlica({ ziva }: { ziva: boolean }) {
       const p = PARCELE.find((z) => z.id === id);
       if (!p) return;
       rucno = true;
-      const vw = el.clientWidth;
-      const vh = el.clientHeight;
+      const vw = dim.w;
+      const vh = dim.h;
       const z = Math.min(ZOOM_MAX, Math.max(1.15, cam.z));
       cam.z = z;
       cam.x = vw / (2 * z) - p.x;
@@ -658,6 +727,8 @@ export function KaubaZivaUlica({ ziva }: { ziva: boolean }) {
     return () => {
       if (raf) cancelAnimationFrame(raf);
       if (zakazano) cancelAnimationFrame(zakazano);
+      if (zumTajmer) window.clearTimeout(zumTajmer);
+      karta()?.classList.remove("is-zum");
       ro.disconnect();
       odvezi();
       el.removeEventListener("pointerdown", onDown);
@@ -665,6 +736,7 @@ export function KaubaZivaUlica({ ziva }: { ziva: boolean }) {
       el.removeEventListener("click", onClick, true);
       el.removeEventListener("dblclick", onDbl);
       window.removeEventListener("blago-centriraj", naCentar);
+      roDim.disconnect();
       window.removeEventListener("blago-skoci-zgrada", naSkok);
     };
   }, []);
@@ -677,7 +749,8 @@ export function KaubaZivaUlica({ ziva }: { ziva: boolean }) {
     }
     return ids;
   }, [gradevine, gradnje]);
-  const staze = useMemo(() => putelji(aktivni), [aktivni]);
+  // 0.9.176 (t443u): uz puteljke i uske pješačke staze unutar naselja (između izgrađenih zgrada)
+  const staze = useMemo(() => [...putelji(aktivni), ...pjesine(aktivni)], [aktivni]);
   const rute = useMemo(() => stazeKretanja(aktivni), [aktivni]);
   // Svako grlo iz spremljenog broja (bez kapaciteta); stare ukrasne konje i goveda zamjenjuje.
   const konjiBroj = useGameStore((s) => s.konjiBroj);
@@ -690,12 +763,13 @@ export function KaubaZivaUlica({ ziva }: { ziva: boolean }) {
   const natpisY = useMemo(() => {
     const kutije: { l: number; t: number; r: number; b: number }[] = [];
     const yZa = new Map<string, number | null>();
-    for (const z of PARCELE) {
+    // 0.9.176 (t442u): ime zgrade samo nakon dodira; prvo se smješta dodirnuta zgrada.
+    const redom = [...PARCELE].sort((a, b) => Number(b.id === natpisId) - Number(a.id === natpisId));
+    for (const z of redom) {
       const id = z.id as keyof Gradevine;
-      const lv = gradevine[id] || 0;
       const posao = gradnje.some((g) => g.zgrada === id);
-      const vazan = natpisId === z.id || birana === z.id;
-      const pokazi = lv > 0 || posao || vazan || !!pogled;
+      const vazan = natpisId === z.id;
+      const pokazi = posao || vazan || !!pogled;
       if (!pokazi) continue;
       const c = centarSpritea(z, "zgrada");
       const w = Math.min(150, 52 + z.naziv.length * 6);
@@ -716,12 +790,13 @@ export function KaubaZivaUlica({ ziva }: { ziva: boolean }) {
       if (!stao) yZa.set(z.id, vazan ? y : null);
     }
     return yZa;
-  }, [gradevine, gradnje, natpisId, birana, pogled]);
+  }, [gradnje, natpisId, pogled]);
   natpisIzvorRef.current = natpisY;
-  const radnje = useRef({ vodicDodir, setBirana, setNatpisId, setDrzimId, setIzbornik });
+  const radnje = useRef({ vodicDodir, setBirana, setNatpisId, setNatpisTik, setDrzimId, setIzbornik });
   radnje.current.vodicDodir = vodicDodir;
   radnje.current.setBirana = setBirana;
   radnje.current.setNatpisId = setNatpisId;
+  radnje.current.setNatpisTik = setNatpisTik;
   radnje.current.setDrzimId = setDrzimId;
   radnje.current.setIzbornik = setIzbornik;
   const kucaDodir = useRef<KucaDodir | null>(null);
@@ -734,9 +809,15 @@ export function KaubaZivaUlica({ ziva }: { ziva: boolean }) {
       hold: holdRef,
       izbornikU,
       vodic: (id) => radnje.current.vodicDodir(id),
-      odaberi: (id) => {
+      odaberi: (id, prekidac) => {
         radnje.current.setBirana(id);
+        // drugi običan dodir iste zgrade dok se ime vidi: sakrij ime (odabir zgrade ostaje)
+        if (prekidac && natpisRef.current === id) {
+          radnje.current.setNatpisId(null);
+          return;
+        }
         radnje.current.setNatpisId(id);
+        radnje.current.setNatpisTik((n) => n + 1);
       },
       drzi: (id) => radnje.current.setDrzimId(id),
       izbornik: (m) => radnje.current.setIzbornik(m),
@@ -765,6 +846,7 @@ export function KaubaZivaUlica({ ziva }: { ziva: boolean }) {
         <div className="izo-svijet" ref={svijetRef} style={{ width: SVIJET.w, height: SVIJET.h }}>
           <div className="izo-tlo" aria-hidden />
           <Obzor />
+          <KaubaTrgVoda />
           <KaubaCesta gradevine={gradevine} gradnje={gradnje} pogled={pogled} staze={staze} mirno={mirno} skok={skok} stoka={stoka} />
           {DEKOR.map((d, i) => (
             <span
@@ -791,14 +873,16 @@ export function KaubaZivaUlica({ ziva }: { ziva: boolean }) {
               )}
             </span>
           ))}
-          {OGRADE.map((d, i) => (
+          {/* 0.9.177 (t453u): ograda samo uz izgrađenu zgradu */}
+          {OGRADE.map((d, i) => (gradevine[d.zgrada as keyof Gradevine] || 0) > 0 ? (
             <span
               key={`og${i}`}
+              data-zgrada={d.zgrada}
               className="izo-ograda-html"
               style={{ left: d.x, top: d.y, zIndex: Math.round(d.y), ["--okret" as string]: `${(i % 2 === 0 ? -4 : 3)}deg` }}
               aria-hidden
             />
-          ))}
+          ) : null)}
           <KaubaKuce
             gradevine={gradevine}
             gradnje={gradnje}
@@ -813,23 +897,28 @@ export function KaubaZivaUlica({ ziva }: { ziva: boolean }) {
             const lv = gradevine[id] || 0;
             const posao = gradnje.find((g) => g.zgrada === id);
             const ima = lv > 0 && !posao;
-            const pokazi = ima || !!posao || natpisId === z.id || birana === z.id;
+            // 0.9.176 (t442u): ime (i razina) samo za dodirnutu zgradu; gradilište i dalje pokazuje rok,
+            // sloj Pogled i dalje pokazuje broj sloja (bez imena).
+            const dodirnuta = natpisId === z.id;
+            const pokazi = !!posao || dodirnuta;
             if ((!pokazi && !pogled) || natpisY.get(z.id) === null) return null;
             const c = centarSpritea(z, posao ? "skela" : ima ? "zgrada" : "kolci");
             const y = natpisY.get(z.id) ?? c.y + 18;
-            const blizu = detalj === "blizu" || detalj === "srednje" || natpisId === z.id || birana === z.id;
             return (
               <span
-                key={`n-${z.id}`}
-                className={cn("izo-natpis", ima && "is-gore", !ima && !posao && "is-dodir")}
+                key={dodirnuta ? `n-${z.id}-${natpisTik}` : `n-${z.id}`}
+                className={cn("izo-natpis", ima && "is-gore", !ima && !posao && "is-dodir", dodirnuta && "is-tap")}
                 data-zgrada={z.id}
+                data-natpis-tap={dodirnuta ? "1" : undefined}
                 style={{ left: c.x, top: y, zIndex: 3000 + Math.round(c.y) }}
               >
                 {pogled ? <span className="izo-broj">{brojSloja(pogled, z.id, lv, gradevine)}</span> : null}
-                <span className="izo-red">
-                  {ima || birana === z.id ? <span className="izo-lv">{lv}</span> : null}
-                  {blizu && pokazi ? <span className="izo-ime">{z.naziv}</span> : null}
-                </span>
+                {dodirnuta ? (
+                  <span className="izo-red">
+                    {ima ? <span className="izo-lv">{lv}</span> : null}
+                    <span className="izo-ime">{z.naziv}</span>
+                  </span>
+                ) : null}
                 {ima || !pokazi ? null : (
                   <span className="izo-stanje">{posao ? <RokGradnje kraj={posao.kraj} /> : cetvrtNaziv(z.id)}</span>
                 )}
@@ -882,49 +971,70 @@ export function KaubaZivaUlica({ ziva }: { ziva: boolean }) {
         </div>
         <div className="izo-zrno" aria-hidden />
       </div>
-      <KaubaBroj />
-      <div className="karta-pogled" data-testid="karta-pogled">
-        {izbor ? (
-          <div className="karta-pogled-izbor" role="menu" aria-label="Slojevi karte">
-            {(
-              [
-                ["voda", "Voda"],
-                ["sreca", "Sreća"],
-                ["rad", "Rad"],
-              ] as const
-            ).map(([id, ime]) => (
-              <button
-                key={id}
-                type="button"
-                role="menuitemradio"
-                aria-checked={pogled === id}
-                className={cn(pogled === id && "is-on")}
-                onClick={() => {
-                  setPogled((cur) => (cur === id ? null : id));
-                  setIzbor(false);
-                }}
-              >
-                {ime}
-              </button>
-            ))}
-          </div>
-        ) : null}
-        <button type="button" aria-expanded={izbor} className={cn(pogled && "is-on")} onClick={() => setIzbor((v) => !v)}>
-          {pogled === "voda" ? "Voda" : pogled === "sreca" ? "Sreća" : pogled === "rad" ? "Rad" : "Pogled"}
-        </button>
-        <button
-          type="button"
-          className="mreza-ulaz"
-          aria-pressed={tok}
-          aria-label="Tok kaube"
-          onClick={() => {
-            playSfx("button");
-            setIzbor(false);
-            setTok(true);
-          }}
-        >
-          Tok kaube
-        </button>
+      {/* 0.9.173: Pogled · Tok kaube · kauboji/sreća u jednom retku */}
+      {/* 0.9.178 (t459u): isti stil kao donji izbornik — lebdeće ikone (24 px, potez 2), bez pilula; sjena = tamna kopija ikone */}
+      <div className="karta-kontrole" data-testid="karta-kontrole" data-stil="178">
+        <div className="karta-pogled" data-testid="karta-pogled">
+          {izbor ? (
+            <div className="karta-pogled-izbor" role="menu" aria-label="Slojevi karte">
+              {(
+                [
+                  ["voda", "Voda", Droplet],
+                  ["sreca", "Sreća", Smile],
+                  ["rad", "Rad", Hammer],
+                ] as const
+              ).map(([id, ime, Ik]) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={pogled === id}
+                  aria-label={ime}
+                  className={cn(pogled === id && "is-on")}
+                  onClick={() => {
+                    setPogled((cur) => (cur === id ? null : id));
+                    setIzbor(false);
+                  }}
+                >
+                  <span className="kk-ik" aria-hidden>
+                    <Ik className="kk-sjena" strokeWidth={3.6} />
+                    <Ik className="kk-glif" strokeWidth={2} />
+                  </span>
+                  <span className="kk-rijec">{ime}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+          <button
+            type="button"
+            aria-expanded={izbor}
+            aria-label={pogled === "voda" ? "Pogled: Voda" : pogled === "sreca" ? "Pogled: Sreća" : pogled === "rad" ? "Pogled: Rad" : "Pogled"}
+            className={cn("kk-tipka", pogled && "is-on")}
+            onClick={() => setIzbor((v) => !v)}
+          >
+            <span className="kk-ik" aria-hidden>
+              <Layers className="kk-sjena" strokeWidth={3.6} />
+              <Layers className="kk-glif" strokeWidth={2} />
+            </span>
+          </button>
+          <button
+            type="button"
+            className="mreza-ulaz kk-tipka"
+            aria-pressed={tok}
+            aria-label="Tok kaube"
+            onClick={() => {
+              playSfx("button");
+              setIzbor(false);
+              setTok(true);
+            }}
+          >
+            <span className="kk-ik" aria-hidden>
+              <Workflow className="kk-sjena" strokeWidth={3.6} />
+              <Workflow className="kk-glif" strokeWidth={2} />
+            </span>
+          </button>
+        </div>
+        <KaubaBroj />
       </div>
       <span className="izo-oblak" aria-hidden />
       {pogled ? (
@@ -966,6 +1076,7 @@ export function KaubaZivaUlica({ ziva }: { ziva: boolean }) {
             setTok(false);
             setBirana(id);
             setNatpisId(id);
+            setNatpisTik((n) => n + 1);
             window.dispatchEvent(new CustomEvent("blago-skoci-zgrada", { detail: id }));
             document.getElementById(`zgrada-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
           }}

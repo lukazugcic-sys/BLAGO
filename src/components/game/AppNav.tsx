@@ -1,5 +1,5 @@
-import { BrickWall, Dices, Home, Lock, ScrollText, Store } from "lucide-react";
-import { useRef, useState } from "react";
+import { BrickWall, Dices, Home, Lock, Store } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { TABOVI, type TabId } from "@/lib/game/constants";
 import { cn } from "@/lib/utils";
@@ -15,28 +15,24 @@ import {
   type TokMeniStavka,
 } from "@/lib/game/tokMeni";
 import { HOLD_UI_MS, holdDosta } from "@/lib/game/feel";
-import { cijenaBesplatnih } from "@/lib/game/knjiga";
+import { cijenaBonusKupnje } from "@/lib/game/knjiga";
 import { kaubaOd } from "@/lib/game/ljudi";
 import { odaberiKorak } from "@/lib/game/korak";
 import { odaberiSljedeciCilj, otvoriCiljZgradu } from "@/lib/game/sljedeciCilj";
 import { portalKorijen } from "@/lib/game/portal";
+import {
+  navStupacPreferredWidth,
+  stezniNavStupacPoziciju,
+  type NavStupacPozicija,
+} from "@/lib/game/navStupac";
 import { TokIkonica } from "./TokRadial";
 
 const ICONS = {
   automat: Dices,
   zid: BrickWall,
   selo: Home,
-  misije: ScrollText,
   trznica: Store,
 } as const;
-
-const COLOR: Record<string, string> = {
-  volt: "bg-volt text-void shadow-[0_0_14px_color-mix(in_oklab,var(--color-volt)_42%,transparent)]",
-  zid: "bg-quest text-void shadow-[0_0_12px_color-mix(in_oklab,var(--color-quest)_36%,transparent)]",
-  wood: "bg-wood text-void",
-  quest: "bg-quest text-void",
-  gold: "bg-gold text-void",
-};
 
 /** Tabs that compete with the early core loop until first house. */
 const SIDE_TAB: Partial<Record<TabId, boolean>> = {
@@ -56,11 +52,12 @@ export function AppNav({
   const razina = useGameStore((s) => s.igracRazina);
   const setPoruka = useGameStore((s) => s.setPoruka);
   const setRaidAktivan = useSlotStore((s) => s.setRaidAktivan);
+  const slotUlog = useSlotStore((s) => s.ulog);
   const vodic = useVodic();
   const otkljucan = jeSideOtkljucan({ kuca });
   const navRef = useRef<HTMLElement>(null);
   const hold = useRef<{ id: TabId; x: number; y: number; timer: number; opened: boolean; start: number } | null>(null);
-  const [meni, setMeni] = useState<{ tab: TabId; x: number } | null>(null);
+  const [meni, setMeni] = useState<{ tab: TabId; box: NavStupacPozicija } | null>(null);
   const [drziTab, setDrziTab] = useState<TabId | null>(null);
 
   const naAkciju = (s: TokMeniStavka) => {
@@ -88,24 +85,24 @@ export function AppNav({
       idi({ tab: "automat", slot: a.slot });
     } else if (a.vrsta === "zid-skok") {
       if (a.kamo === "cilj") {
-        const s = useGameStore.getState();
+        const st = useGameStore.getState();
         const cilj = odaberiSljedeciCilj({
-          gradevine: s.gradevine,
-          zlato: s.zlato,
-          resursi: s.resursi,
-          gradnje: s.gradnje,
+          gradevine: st.gradevine,
+          zlato: st.zlato,
+          resursi: st.resursi,
+          gradnje: st.gradnje,
           usko: kaubaOd({
-            gradevine: s.gradevine,
-            stanovnici: s.stanovnici,
-            zamjenici: s.zamjenici,
-            konjiBroj: s.konjiBroj,
-            konjiDuznost: s.konjiDuznost,
-            sijenoDo: s.sijenoDo,
-            kisaDo: s.kisaDo,
-            govedaBroj: s.govedaBroj,
-            govedaDuznost: s.govedaDuznost,
+            gradevine: st.gradevine,
+            stanovnici: st.stanovnici,
+            zamjenici: st.zamjenici,
+            konjiBroj: st.konjiBroj,
+            konjiDuznost: st.konjiDuznost,
+            sijenoDo: st.sijenoDo,
+            kisaDo: st.kisaDo,
+            govedaBroj: st.govedaBroj,
+            govedaDuznost: st.govedaDuznost,
           }).usko,
-          prestigeRazina: s.prestigeRazina,
+          prestigeRazina: st.prestigeRazina,
         });
         if (cilj) otvoriCiljZgradu(cilj.zgrada.id);
         else onTab("zid");
@@ -114,29 +111,72 @@ export function AppNav({
         idi({ tab: "zid", zid: a.kamo });
       }
     } else if (a.vrsta === "zadaci") {
-      onTab("misije");
-      idi({ tab: "misije", zadaci: a.tab });
+      // 0.9.168: legacy long-press / deep links
+      if (a.tab === "karavana" || a.tab === "uzivo") {
+        onTab("trznica");
+        idi({ tab: "trznica", trznica: a.tab });
+      } else {
+        onTab("zid");
+        idi({ tab: "zid", zid: a.tab });
+      }
     } else if (a.vrsta === "trznica") {
       onTab("trznica");
       idi({ tab: "trznica", trznica: a.sekcija });
     }
   };
 
-  const otvoriMeni = (tabId: TabId, x: number) => {
-    const cijena = cijenaBesplatnih(razina);
+  const izracunajStupac = (tabId: TabId, anchorX: number): NavStupacPozicija => {
+    const vw = window.visualViewport?.width ?? window.innerWidth;
+    const vh = window.visualViewport?.height ?? window.innerHeight;
+    const navTop = navRef.current?.getBoundingClientRect().top;
+    const navStackHeight =
+      typeof navTop === "number" ? Math.max(0, window.innerHeight - navTop) : 72;
+    return stezniNavStupacPoziciju({
+      anchorX,
+      viewport: { width: vw, height: vh, safeTop: 0, safeBottom: 0 },
+      preferredWidth: navStupacPreferredWidth(tabId, vw),
+      navStackHeight,
+      gap: 8,
+      margin: 8,
+      maxHeightFraction: 0.5,
+    });
+  };
+
+  // 0.9.177: visina ikona (+ safe-area) kao CSS varijabla — Kauba karta crta se ispod njih,
+  // a kontrole karte sjede iznad.
+  useEffect(() => {
+    const el = navRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const r = document.documentElement;
+    const stavi = () => r.style.setProperty("--nav-donji-h", `${Math.round(el.getBoundingClientRect().height)}px`);
+    stavi();
+    const ro = new ResizeObserver(stavi);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const otvoriMeni = (tabId: TabId, anchorX: number) => {
+    const cijena = cijenaBonusKupnje(razina, slotUlog);
     if (tokMeniZaTab(tabId, { dijamanti, bonusCijena: cijena }).length === 0) {
       setPoruka(`Bonus traži ${cijena} dijamanta.`);
       return;
     }
-    setMeni({ tab: tabId, x });
+    setMeni({ tab: tabId, box: izracunajStupac(tabId, anchorX) });
   };
 
   return (
     <nav
       ref={navRef}
-      className="relative z-20 shrink-0 bg-void px-2.5 pb-[max(0.6rem,env(safe-area-inset-bottom))] pt-1"
+      className="nav-donji nav-177 relative z-20 shrink-0 px-2 pb-[max(0.6rem,env(safe-area-inset-bottom))] pt-1"
+      aria-label="Glavni izbornik"
+      data-tab={tab}
     >
-      <div className="flex items-stretch justify-between gap-1 rounded-2xl border border-line bg-void/95 p-1 shadow-[0_8px_28px_rgb(0_0_0_/_0.55)]">
+      {/* 0.9.177 (t449u–t452u): bez trake — samo ikone; ispod njih postupni blur + blagi tamni prijelaz */}
+      <span className="nav-blur" aria-hidden>
+        <i />
+        <i />
+      </span>
+      <div className="nav-donji-traka flex items-stretch justify-between gap-1 rounded-2xl border border-line/70 bg-void/95 p-1">
         {TABOVI.map((t) => {
           const Icon = ICONS[t.id];
           const aktivan = tab === t.id;
@@ -144,7 +184,7 @@ export function AppNav({
           const zakljucan = vodicLok || (!otkljucan && !!SIDE_TAB[t.id]);
           const lokot = vodicLok ? vodicLokot(t.id) : SIDE_GATE_REC;
           const novo = tabJeNov(t.id);
-          const korakZnacka = t.id === "misije" && imaKorak && !vodicJosIde();
+          const korakZnacka = t.id === "zid" && imaKorak && !vodicJosIde();
           return (
             <button
               key={t.id}
@@ -167,7 +207,7 @@ export function AppNav({
                     setDrziTab(null);
                     playSfx("button");
                     const r = tipka.getBoundingClientRect();
-                    const x = Math.max(86, Math.min(window.innerWidth - 86, r.left + r.width / 2));
+                    const x = r.left + r.width / 2;
                     otvoriMeni(t.id, x);
                   }, HOLD_UI_MS),
                 };
@@ -191,7 +231,7 @@ export function AppNav({
                   hold.current = null;
                   playSfx("button");
                   const r = e.currentTarget.getBoundingClientRect();
-                  const x = Math.max(86, Math.min(window.innerWidth - 86, r.left + r.width / 2));
+                  const x = r.left + r.width / 2;
                   otvoriMeni(t.id, x);
                   return;
                 }
@@ -215,10 +255,10 @@ export function AppNav({
               }}
               onContextMenu={(e) => e.preventDefault()}
               className={cn(
-                "relative flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 py-1.5 transition-[background,color,opacity] duration-100 ease-out",
+                "nav-donji-tipka relative flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center rounded-xl px-0.5 py-1.5 transition-[background,color,opacity] duration-100 ease-out",
                 drziTab === t.id && "chip-drzi",
                 aktivan
-                  ? cn(COLOR[t.boja], "nav-aktivan nav-bounce")
+                  ? "nav-aktivan text-gold"
                   : zakljucan
                     ? "text-dim"
                     : "text-ink",
@@ -229,17 +269,15 @@ export function AppNav({
             >
               <span
                 className={cn(
-                  "nav-iko relative",
-                  aktivan ? "bg-void/18" : zakljucan ? "bg-ink/5" : "bg-ink/8",
+                  "nav-iko relative flex size-9 items-center justify-center",
                 )}
               >
-                <Icon
-                  className={cn("size-[18px] shrink-0", zakljucan && !aktivan && "opacity-80")}
-                  strokeWidth={aktivan ? 2.6 : 2}
-                />
+                {/* sjena glifa = ista ikona, deblja i tamna, 1px niže (bez CSS filtera: pravilo performansi karte) */}
+                <Icon className="nav-glif-sjena shrink-0" strokeWidth={3.6} aria-hidden />
+                <Icon className="nav-glif shrink-0" strokeWidth={2} aria-hidden />
                 {zakljucan && (
                   <span
-                    className="absolute -right-2 -top-2 flex size-5 items-center justify-center rounded-full border border-gold/70 bg-void text-gold"
+                    className="nav-lokot absolute -right-1.5 -top-1.5 flex size-5 items-center justify-center"
                     aria-hidden
                   >
                     <Lock className="size-3" strokeWidth={3} />
@@ -254,9 +292,8 @@ export function AppNav({
                   <span className="nav-korak-znacka" aria-label="Sljedeći zadatak" />
                 )}
               </span>
-              <span className="nav-ime max-w-full truncate whitespace-nowrap text-[10px] font-bold leading-none tracking-wide uppercase">
-                {t.label}
-              </span>
+              {/* Labels hidden (icons-only); name kept for a11y via aria-label */}
+              <span className="nav-ime sr-only">{t.label}</span>
             </button>
           );
         })}
@@ -267,9 +304,15 @@ export function AppNav({
             <button type="button" className="nav-stupac-poz" aria-label="Zatvori prečace" onClick={() => setMeni(null)} />
             <div
               className={cn("nav-stupac", meni.tab === "selo" && "nav-mreza")}
-              style={meni.tab === "selo" ? { left: "50%" } : { left: meni.x }}
+              data-nav-stupac-box
+              style={{
+                left: meni.box.left,
+                width: meni.box.width,
+                bottom: meni.box.bottom,
+                maxHeight: meni.box.maxHeight,
+              }}
             >
-              {tokMeniZaTab(meni.tab, { dijamanti, bonusCijena: cijenaBesplatnih(razina) }).map((s) => (
+              {tokMeniZaTab(meni.tab, { dijamanti, bonusCijena: cijenaBonusKupnje(razina, slotUlog) }).map((s) => (
                 <button
                   key={s.id}
                   type="button"
@@ -280,7 +323,10 @@ export function AppNav({
                   onClick={() => naAkciju(s)}
                 >
                   <TokIkonica id={s.ikona} />
-                  <span>{s.naziv}</span>
+                  <span className="nav-stupac-tekst">
+                    <span className="nav-stupac-naziv">{s.naziv}</span>
+                    <span className="nav-stupac-rec">{s.rec}</span>
+                  </span>
                 </button>
               ))}
             </div>

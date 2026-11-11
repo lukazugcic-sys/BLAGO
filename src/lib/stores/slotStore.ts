@@ -1,9 +1,12 @@
 import { create } from "zustand";
 import type { Dobitak, SimbolId } from "@/lib/game/types";
 import { prazanDobitak } from "@/lib/game/knjiga";
+import type { DobitakRazina } from "@/lib/game/slotPrikaz";
 
 export type SlotFx = null | "win" | "jackpot" | "skull";
 export type KnjigaFaza = null | "uvod" | "igra" | "kraj";
+/** Ephemeral win banner for the UI — never saved. */
+export type PrikazDobitka = { razina: DobitakRazina; zlato: number; key: number } | null;
 
 type SlotState = {
   simboli: SimbolId[];
@@ -24,6 +27,7 @@ type SlotState = {
   knjigaLonac: Dobitak;
   znackaFlash: string | null;
   znackaFlashKey: number;
+  prikazDobitka: PrikazDobitka;
   setSimboli: (simboli: SimbolId[]) => void;
   setVrti: (vrti: boolean) => void;
   setSpinningCols: (spinningCols: boolean[]) => void;
@@ -40,6 +44,7 @@ type SlotState = {
   setExpandPolja: (expandPolja: number[]) => void;
   setKnjigaLonac: (knjigaLonac: Dobitak) => void;
   setZnackaFlash: (rec: string | null) => void;
+  setPrikazDobitka: (p: PrikazDobitka) => void;
 };
 
 export const useSlotStore = create<SlotState>((set) => ({
@@ -61,6 +66,7 @@ export const useSlotStore = create<SlotState>((set) => ({
   knjigaLonac: prazanDobitak(),
   znackaFlash: null,
   znackaFlashKey: 0,
+  prikazDobitka: null,
 
   setSimboli: (simboli) => set({ simboli }),
   setVrti: (vrti) => set({ vrti }),
@@ -91,4 +97,5 @@ export const useSlotStore = create<SlotState>((set) => ({
       znackaFlash: rec,
       znackaFlashKey: rec ? s.znackaFlashKey + 1 : s.znackaFlashKey,
     })),
+  setPrikazDobitka: (prikazDobitka) => set({ prikazDobitka }),
 }));

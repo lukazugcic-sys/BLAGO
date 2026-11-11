@@ -3,7 +3,8 @@
  * Nizovi su fiksni. tick() i ispis() ne alociraju.
  * Izvan kadra se faza i dalje vrti, ali DOM se ne dira.
  */
-export const AGENT_CAP = 8;
+/** 0.9.175: 8 heroja + 2 kola + pas (+ rezerva); prije 8. */
+export const AGENT_CAP = 16;
 export const TICK_MS = 100;
 const TICK_S = TICK_MS / 1000;
 
@@ -120,6 +121,11 @@ export class AgentSim {
     this.uzmi(0, this.x, this.y);
     this.prevX.set(this.x);
     this.prevY.set(this.y);
+  }
+
+  /** 0.9.177: preskoči kadar bez nadoknade (hodači stoje dok se karta vuče, pa nastave bez skoka). */
+  preskoci(now: number) {
+    if (this.primed) this.last = now;
   }
 
   /** Vraća 0–1 za lerp. Najviše 3 tika po kadru. */

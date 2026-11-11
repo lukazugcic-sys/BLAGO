@@ -1,8 +1,10 @@
 // @ts-nocheck
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";
-import { CloudRain, Crosshair, Store, Wheat } from "lucide-react";
+import { CloudRain, Crosshair, Store, Wheat, Map as MapIkona } from "lucide-react";
+import { IkonaG } from "./IkonaG";
 import { useGameStore } from "@/lib/stores/gameStore";
+import { Iznos, TekstResursa } from "@/components/game/Iznos";
 import { useSlotStore } from "@/lib/stores/slotStore";
 import { BuildingCard } from "./BuildingCard";
 import { IgraKarata } from "./IgraKarata";
@@ -351,7 +353,9 @@ export function VillageScreen({ naTab, aktivan = true }) {
 				}),
 				dio && /* @__PURE__ */ jsx("button", {
 					type: "button",
-					className: "kauba-natrag",
+					className: "kauba-natrag g179-tipka",
+					"aria-label": "Natrag na kartu",
+					title: "Karta",
 					"data-lock-pan": true,
 					onPointerUp: (e) => {
 						if (e.button !== 0 && e.pointerType === "mouse") return;
@@ -364,7 +368,7 @@ export function VillageScreen({ naTab, aktivan = true }) {
 						setScena("selo");
 						window.dispatchEvent(new CustomEvent("blago-karta-rucno"));
 					},
-					children: "Karta"
+					children: /* @__PURE__ */ jsx(IkonaG, { ikona: MapIkona, rijec: "KARTA" })
 				}),
 				dogadaj && !dio && !almanah && !sakrijKarticu && (postaMala ? /* @__PURE__ */ jsx("button", {
 					type: "button",
@@ -377,7 +381,7 @@ export function VillageScreen({ naTab, aktivan = true }) {
 					},
 					children: "Pošta"
 				}) : /* @__PURE__ */ jsxs("div", {
-					className: "pointer-events-none absolute inset-x-2 bottom-2 z-20 flex max-h-[42%] flex-col items-end gap-1",
+					className: "posta-sredina pointer-events-none",
 					children: [
 						/* @__PURE__ */ jsx("button", {
 							type: "button",
@@ -872,61 +876,49 @@ function KonjiKartica() {
 	const konjZl = cijenaUzKrunu(16, prestige);
 	const konjDr = cijenaUzKrunu(4, prestige);
 	const sijenoZl = cijenaUzKrunu(6, prestige);
+	// 0.9.177 (t454u): Sajam konja — samo izgled (iste akcije, cijene i uvjeti).
 	return /* @__PURE__ */ jsxs("article", {
-		className: "potreba-stalak",
+		className: "potreba-stalak sajam-konja",
+		"data-testid": "sajam-konja",
 		children: [
-			/* @__PURE__ */ jsx("span", {
-				className: "potreba-stalak-znak",
-				"aria-hidden": true,
-				children: /* @__PURE__ */ jsx(Potkovica, {})
-			}),
-			/* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsx("p", {
-				className: "potreba-stalak-ime",
-				children: "Sajam konja"
-			}), /* @__PURE__ */ jsxs("p", {
-				className: "potreba-stalak-rec",
+			/* @__PURE__ */ jsxs("header", {
+				className: "sajam-glava",
 				children: [
-					konjiBroj,
-					"/",
-					kap,
-					" pod uzdom. Potkove ",
-					potkove,
-					".",
-					potkovaOstalo > 0 ? ` Kopita još ${potkovaOstalo}s.` : ""
+					/* @__PURE__ */ jsx("span", { className: "sajam-znak", "aria-hidden": true, children: /* @__PURE__ */ jsx(Potkovica, {}) }),
+					/* @__PURE__ */ jsxs("div", { className: "sajam-naslov", children: [
+						/* @__PURE__ */ jsx("p", { className: "potreba-stalak-ime", children: "Sajam konja" }),
+						/* @__PURE__ */ jsxs("p", { className: "sajam-pod", children: ["Potkove ", potkove, potkovaOstalo > 0 ? ` · kopita još ${potkovaOstalo}s` : ""] })
+					] }),
+					/* @__PURE__ */ jsxs("p", { className: "sajam-broj", "aria-label": `${konjiBroj} od ${kap} konja pod uzdom`, children: [/* @__PURE__ */ jsx("b", { children: konjiBroj }), /* @__PURE__ */ jsxs("small", { children: ["/", kap] })] })
 				]
-			})] }),
-			/* @__PURE__ */ jsx("div", {
-				className: "mt-2 grid grid-cols-2 gap-1.5",
-				children: KONJ_DUZNOSTI.map((d) => /* @__PURE__ */ jsxs("div", {
-					className: "rounded-xl border border-line bg-void/40 px-2 py-1.5",
+			}),
+			/* @__PURE__ */ jsx("ul", {
+				className: "sajam-duznosti",
+				children: KONJ_DUZNOSTI.map((d) => /* @__PURE__ */ jsxs("li", {
+					className: "sajam-duznost",
 					children: [
-						/* @__PURE__ */ jsx("p", {
-							className: "text-[10px] font-bold tracking-wide text-gold uppercase",
-							children: d.naziv
-						}),
-						/* @__PURE__ */ jsx("p", {
-							className: "text-[11px] font-bold text-ink/70",
-							children: d.rec
-						}),
+						/* @__PURE__ */ jsxs("div", { className: "sajam-duznost-tekst", children: [
+							/* @__PURE__ */ jsx("p", { className: "sajam-duznost-ime", children: d.naziv }),
+							/* @__PURE__ */ jsx("p", { className: "sajam-duznost-rec", children: d.rec })
+						] }),
 						/* @__PURE__ */ jsxs("div", {
-							className: "mt-1 flex items-center gap-1",
+							className: "sajam-koraci",
 							children: [
 								/* @__PURE__ */ jsx("button", {
 									type: "button",
+									"aria-label": `Manje: ${d.naziv}`,
 									disabled: duznost[d.id] < 1,
 									onClick: () => pomakniKonja(d.id, d.id === "jahanje" ? izvor : "jahanje"),
-									className: "min-h-8 min-w-8 rounded-full border border-line bg-panel-2 text-sm font-bold text-ink disabled:text-dim",
+									className: "sajam-korak",
 									children: "−"
 								}),
-								/* @__PURE__ */ jsx("span", {
-									className: "min-w-6 text-center text-sm font-bold tabular-nums text-ink",
-									children: duznost[d.id]
-								}),
+								/* @__PURE__ */ jsx("span", { className: "sajam-korak-broj", children: duznost[d.id] }),
 								/* @__PURE__ */ jsx("button", {
 									type: "button",
+									"aria-label": `Više: ${d.naziv}`,
 									disabled: (d.id === "jahanje" ? izvor === "jahanje" : duznost.jahanje < 1) || konjiBroj < 1,
 									onClick: () => pomakniKonja(d.id === "jahanje" ? izvor : "jahanje", d.id),
-									className: "min-h-8 min-w-8 rounded-full bg-gold text-sm font-bold text-void disabled:bg-panel-2 disabled:text-dim",
+									className: "sajam-korak is-plus",
 									children: "+"
 								})
 							]
@@ -935,55 +927,53 @@ function KonjiKartica() {
 				}, d.id))
 			}),
 			/* @__PURE__ */ jsxs("div", {
-				className: "mt-2 flex flex-wrap gap-1.5",
+				className: "sajam-kupi",
 				children: [
 					/* @__PURE__ */ jsxs("button", {
 						type: "button",
 						disabled: zlato < konjZl || drvo < konjDr || konjiBroj >= kap,
 						onClick: () => kupiKonja(),
-						className: "min-h-10 rounded-full bg-gold px-3 text-[11px] font-bold tracking-wide text-void uppercase disabled:bg-panel-2 disabled:text-dim",
+						className: "sajam-gumb is-glavni",
 						children: [
-							"Uzmi konja · ",
-							konjZl,
-							"g ",
-							konjDr,
-							"d"
+							/* @__PURE__ */ jsx("span", { children: "Uzmi konja" }),
+							/* @__PURE__ */ jsxs("span", { className: "sajam-cijena", children: [/* @__PURE__ */ jsx(Iznos, { resurs: "zlato", kolicina: konjZl }), /* @__PURE__ */ jsx(Iznos, { resurs: "drvo", kolicina: konjDr })] })
 						]
 					}),
 					kap - konjiBroj >= 5 && /* @__PURE__ */ jsxs("button", {
 						type: "button",
 						disabled: zlato < konjZl * 5 || drvo < konjDr * 5,
 						onClick: () => kupiKonja(5),
-						className: "min-h-10 rounded-full border border-gold/50 bg-gold/15 px-3 text-[11px] font-bold tracking-wide text-gold uppercase disabled:border-line disabled:bg-panel-2 disabled:text-dim",
+						className: "sajam-gumb is-obrub",
 						children: [
-							"Uzmi pet · ",
-							konjZl * 5,
-							"g"
+							/* @__PURE__ */ jsx("span", { children: "Uzmi pet" }),
+							/* @__PURE__ */ jsxs("span", { className: "sajam-cijena", children: [/* @__PURE__ */ jsx(Iznos, { resurs: "zlato", kolicina: konjZl * 5 }), /* @__PURE__ */ jsx(Iznos, { resurs: "drvo", kolicina: konjDr * 5 })] })
 						]
-					}),
-					/* @__PURE__ */ jsx("button", {
-						type: "button",
-						disabled: konjiBroj < 1,
-						onClick: prodajKonja,
-						className: "min-h-10 rounded-full border border-line bg-panel-2 px-3 text-[11px] font-bold text-ink disabled:text-dim",
-						children: "Prodaj"
-					}),
+					})
+				]
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "sajam-sporedno",
+				children: [
 					/* @__PURE__ */ jsxs("button", {
 						type: "button",
 						disabled: zlato < sijenoZl || konjiBroj < 1,
 						onClick: kupiSijeno,
-						className: "min-h-10 rounded-full border border-line bg-panel-2 px-3 text-[11px] font-bold text-ink disabled:text-dim",
-						children: [/* @__PURE__ */ jsx(Wheat, {
-							className: "mr-1 inline size-3.5",
-							"aria-hidden": true
-						}), sijenoOstalo > 0 ? `Sijeno ${sijenoOstalo}s` : `Sijeno · ${sijenoZl}g`]
+						className: "sajam-gumb is-tih",
+						children: [/* @__PURE__ */ jsx(Wheat, { className: "sajam-ikona", "aria-hidden": true }), sijenoOstalo > 0 ? `Sijeno ${sijenoOstalo}s` : /* @__PURE__ */ jsxs(Fragment, { children: ["Sijeno ", /* @__PURE__ */ jsx(Iznos, { resurs: "zlato", kolicina: sijenoZl })] })]
 					}),
 					/* @__PURE__ */ jsx("button", {
 						type: "button",
 						disabled: potkove < 1 || konjiBroj < 1,
 						onClick: potkovaj,
-						className: "min-h-10 rounded-full border border-line bg-panel-2 px-3 text-[11px] font-bold text-ink disabled:text-dim",
-						children: potkovaOstalo > 0 ? `Potkovaj · ${potkovaOstalo}s` : "Potkovaj · 1"
+						className: "sajam-gumb is-tih",
+						children: potkovaOstalo > 0 ? `Potkovaj · ${potkovaOstalo}s` : "Potkovaj · 1 potkova"
+					}),
+					/* @__PURE__ */ jsx("button", {
+						type: "button",
+						disabled: konjiBroj < 1,
+						onClick: prodajKonja,
+						className: "sajam-gumb is-tih",
+						children: "Prodaj konja"
 					})
 				]
 			})
@@ -1075,7 +1065,7 @@ function VodaKartica() {
 				disabled: zlato < kisaZl,
 				onClick: skupi,
 				className: "mt-2 min-h-10 rounded-full bg-gold px-3 text-[11px] font-bold tracking-wide text-void uppercase disabled:bg-panel-2 disabled:text-dim",
-				children: ostalo > 0 ? `Kiša ${ostalo}s` : `Skupi kišu · ${kisaZl}g`
+				children: ostalo > 0 ? `Kiša ${ostalo}s` : /* @__PURE__ */ jsx(TekstResursa, { tekst: `Skupi kišu · ${kisaZl} zlata` })
 			})
 		]
 	});
@@ -1106,161 +1096,141 @@ function GovedaKartica() {
 	const govedoDr = cijenaUzKrunu(3, prestige);
 	const rec = govedaBroj < 1 ? "Tor prazan. Firma stoji." : tijesno >= 1 ? "Tor pun. Gazda hoće još. Referent šuti." : tijesno > 0 ? "Koža je tijesna. Gazda viče. Referent broji." : "Gazda kaže. Goniči tjeraju.";
 	const puno = kap > 0 ? Math.min(100, Math.round(govedaBroj / kap * 100)) : 0;
-	const tockice = Math.min(govedaBroj, 12);
+	// 0.9.178 (t459u): Firma — samo izgled, po uzoru na Sajam konja (iste akcije, cijene i uvjeti).
 	return /* @__PURE__ */ jsxs("article", {
-		className: cn("mb-2 overflow-hidden rounded-2xl border bg-panel", tijesno > 0 ? "border-ruby/70" : "border-line"),
-		children: [/* @__PURE__ */ jsxs("div", {
-			className: "relative h-24 overflow-hidden",
-			"aria-hidden": true,
-			children: [
-				/* @__PURE__ */ jsx("img", {
-					src: ZGRADA_ART.tor,
-					alt: "",
-					className: "size-full object-cover object-[center_42%]",
-					draggable: false
-				}),
-				/* @__PURE__ */ jsx("div", { className: "absolute inset-0 bg-gradient-to-t from-panel via-panel/50 to-transparent" }),
-				/* @__PURE__ */ jsxs("div", {
-					className: "absolute inset-x-0 bottom-0 flex items-end justify-between px-3 pb-2",
-					children: [/* @__PURE__ */ jsx("p", {
-						className: "text-[10px] font-bold tracking-[0.22em] text-gold uppercase",
-						children: "Firma"
-					}), /* @__PURE__ */ jsxs("p", {
-						className: "font-display text-2xl leading-none text-ink",
-						children: [govedaBroj, /* @__PURE__ */ jsxs("span", {
-							className: "text-sm text-dim",
-							children: ["/", kap]
-						})]
-					})]
-				})
-			]
-		}), /* @__PURE__ */ jsxs("div", {
-			className: "px-3 pb-3",
-			children: [
-				/* @__PURE__ */ jsx("div", {
-					className: "h-1.5 overflow-hidden rounded-full bg-void",
-					"aria-hidden": true,
-					children: /* @__PURE__ */ jsx("div", {
-						className: cn("h-full rounded-full", tijesno > 0 ? "bg-ruby" : "bg-gold"),
-						style: { width: `${puno}%` }
-					})
-				}),
-				/* @__PURE__ */ jsx("div", {
-					className: "mt-2 flex min-h-4 flex-wrap items-center gap-1",
-					children: govedaBroj < 1 ? /* @__PURE__ */ jsx("span", {
-						className: "text-[10px] font-bold tracking-wide text-dim uppercase",
-						children: "Tor prazan"
-					}) : /* @__PURE__ */ jsxs(Fragment, { children: [Array.from({ length: tockice }, (_, i) => /* @__PURE__ */ jsx("span", { className: "size-2 rounded-full bg-gold" }, i)), govedaBroj > tockice && /* @__PURE__ */ jsxs("span", {
-						className: "text-[10px] font-bold text-dim",
-						children: ["+", govedaBroj - tockice]
-					})] })
-				}),
-				/* @__PURE__ */ jsx("p", {
-					className: "mt-1.5 text-[12px] font-bold leading-snug text-ink/80",
-					children: rec
-				}),
-				(gazda || referent) && /* @__PURE__ */ jsx("div", {
-					className: "mt-2 flex flex-wrap gap-1.5",
-					children: [gazda, referent].filter(Boolean).map((p) => /* @__PURE__ */ jsxs("span", {
-						className: "flex items-center gap-1 rounded-full border border-line bg-void/40 py-0.5 pr-2 pl-0.5 text-[11px] font-bold text-ink",
-						children: [
-							/* @__PURE__ */ jsx("span", {
-								className: "size-7 overflow-hidden rounded-full",
-								children: /* @__PURE__ */ jsx(LikAvatar, {
-									p,
-									mood: "mir"
-								})
-							}),
-							p.ime,
-							/* @__PURE__ */ jsx("span", {
-								className: "text-dim",
-								children: p.posao
-							})
-						]
-					}, p.id))
-				}),
-				/* @__PURE__ */ jsx("div", {
-					className: "mt-2 grid grid-cols-3 gap-1.5",
-					children: GOVEDO_DUZNOSTI.map((d) => /* @__PURE__ */ jsxs("div", {
-						className: "rounded-xl border border-line bg-void/40 px-2 py-1.5 text-center",
-						children: [/* @__PURE__ */ jsx("p", {
-							className: "text-[10px] font-bold tracking-wide text-gold uppercase",
-							children: d.naziv
-						}), /* @__PURE__ */ jsxs("div", {
-							className: "mt-1 flex items-center justify-center gap-1",
+		className: cn("potreba-stalak sajam-konja firma-178", tijesno > 0 && "is-tijesno"),
+		"data-testid": "firma",
+		children: [
+			/* @__PURE__ */ jsxs("header", {
+				className: "sajam-glava",
+				children: [
+					/* @__PURE__ */ jsx("span", { className: "sajam-znak", "aria-hidden": true, children: /* @__PURE__ */ jsx(Rogovi, {}) }),
+					/* @__PURE__ */ jsxs("div", { className: "sajam-naslov", children: [
+						/* @__PURE__ */ jsx("p", { className: "potreba-stalak-ime", children: "Firma" }),
+						/* @__PURE__ */ jsx("p", { className: "sajam-pod", children: rec })
+					] }),
+					/* @__PURE__ */ jsxs("p", { className: "sajam-broj", "aria-label": `${govedaBroj} od ${kap} grla u toru`, children: [/* @__PURE__ */ jsx("b", { children: govedaBroj }), /* @__PURE__ */ jsxs("small", { children: ["/", kap] })] })
+				]
+			}),
+			/* @__PURE__ */ jsx("div", {
+				className: "firma-metar-178",
+				"aria-hidden": true,
+				children: /* @__PURE__ */ jsx("span", { style: { width: `${puno}%` } })
+			}),
+			(gazda || referent) && /* @__PURE__ */ jsx("div", {
+				className: "firma-ljudi-178",
+				children: [gazda, referent].filter(Boolean).map((p) => /* @__PURE__ */ jsxs("span", {
+					className: "firma-covjek-178",
+					children: [
+						/* @__PURE__ */ jsx("span", { className: "firma-lice-178", children: /* @__PURE__ */ jsx(LikAvatar, { p, mood: "mir" }) }),
+						/* @__PURE__ */ jsx("b", { children: p.ime }),
+						/* @__PURE__ */ jsx("small", { children: p.posao })
+					]
+				}, p.id))
+			}),
+			/* @__PURE__ */ jsx("ul", {
+				className: "sajam-duznosti",
+				children: GOVEDO_DUZNOSTI.map((d) => /* @__PURE__ */ jsxs("li", {
+					className: "sajam-duznost",
+					children: [
+						/* @__PURE__ */ jsxs("div", { className: "sajam-duznost-tekst", children: [
+							/* @__PURE__ */ jsx("p", { className: "sajam-duznost-ime", children: d.naziv }),
+							/* @__PURE__ */ jsx("p", { className: "sajam-duznost-rec", children: d.rec })
+						] }),
+						/* @__PURE__ */ jsxs("div", {
+							className: "sajam-koraci",
 							children: [
 								/* @__PURE__ */ jsx("button", {
 									type: "button",
+									"aria-label": `Manje: ${d.naziv}`,
 									disabled: duznost[d.id] < 1,
 									onClick: () => pomakniGovedo(d.id, d.id === "pasa" ? izvor : "pasa"),
-									className: "size-7 rounded-full border border-line bg-panel-2 text-sm font-bold text-ink disabled:text-dim",
+									className: "sajam-korak",
 									children: "−"
 								}),
-								/* @__PURE__ */ jsx("span", {
-									className: "min-w-5 text-sm font-bold tabular-nums text-ink",
-									children: duznost[d.id]
-								}),
+								/* @__PURE__ */ jsx("span", { className: "sajam-korak-broj", children: duznost[d.id] }),
 								/* @__PURE__ */ jsx("button", {
 									type: "button",
+									"aria-label": `Više: ${d.naziv}`,
 									disabled: (d.id === "pasa" ? izvor === "pasa" : duznost.pasa < 1) || govedaBroj < 1,
 									onClick: () => pomakniGovedo(d.id === "pasa" ? izvor : "pasa", d.id),
-									className: "size-7 rounded-full bg-gold text-sm font-bold text-void disabled:bg-panel-2 disabled:text-dim",
+									className: "sajam-korak is-plus",
 									children: "+"
 								})
 							]
-						})]
-					}, d.id))
-				}),
-				/* @__PURE__ */ jsxs("div", {
-					className: "mt-2 flex flex-wrap gap-1.5",
-					children: [
-						/* @__PURE__ */ jsxs("button", {
-							type: "button",
-							disabled: zlato < govedoZl || drvo < govedoDr || govedaBroj >= kap,
-							onClick: () => kupiGovedo(1),
-							className: "min-h-10 rounded-full bg-gold px-3 text-[11px] font-bold tracking-wide text-void uppercase disabled:bg-panel-2 disabled:text-dim",
-							children: ["Uzmi · ", govedoZl]
-						}),
-						kap - govedaBroj >= 5 && /* @__PURE__ */ jsx("button", {
-							type: "button",
-							disabled: zlato < govedoZl * 5 || drvo < govedoDr * 5,
-							onClick: () => kupiGovedo(5),
-							className: "min-h-10 rounded-full bg-gold px-3 text-[11px] font-bold tracking-wide text-void uppercase disabled:bg-panel-2 disabled:text-dim",
-							children: "Pet"
-						}),
-						/* @__PURE__ */ jsx("button", {
-							type: "button",
-							disabled: govedaBroj < 1,
-							onClick: prodajGovedo,
-							className: "min-h-10 rounded-full border border-line bg-panel-2 px-3 text-[11px] font-bold text-ink disabled:text-dim",
-							children: "Prodaj"
-						}),
-						/* @__PURE__ */ jsxs("button", {
-							type: "button",
-							disabled: govedaBroj < 1 || jahanje < 1,
-							onClick: tjerajGovedo,
-							className: "min-h-10 rounded-full border border-line bg-panel-2 px-3 text-[11px] font-bold text-ink disabled:text-dim",
-							children: [
-								"Tjeraj · ",
-								10 * tjerajN,
-								"g"
-							]
-						}),
-						/* @__PURE__ */ jsxs("button", {
-							type: "button",
-							disabled: govedaBroj < 1,
-							onClick: koljiGovedo,
-							className: "min-h-10 rounded-full border border-line bg-panel-2 px-3 text-[11px] font-bold text-ink disabled:text-dim",
-							children: [
-								"Kolji · ",
-								7,
-								"g"
-							]
 						})
 					]
-				})
-			]
-		})]
+				}, d.id))
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "sajam-kupi",
+				children: [
+					/* @__PURE__ */ jsxs("button", {
+						type: "button",
+						disabled: zlato < govedoZl || drvo < govedoDr || govedaBroj >= kap,
+						onClick: () => kupiGovedo(1),
+						className: "sajam-gumb is-glavni",
+						children: [
+							/* @__PURE__ */ jsx("span", { children: "Uzmi grlo" }),
+							/* @__PURE__ */ jsxs("span", { className: "sajam-cijena", children: [/* @__PURE__ */ jsx(Iznos, { resurs: "zlato", kolicina: govedoZl }), /* @__PURE__ */ jsx(Iznos, { resurs: "drvo", kolicina: govedoDr })] })
+						]
+					}),
+					kap - govedaBroj >= 5 && /* @__PURE__ */ jsxs("button", {
+						type: "button",
+						disabled: zlato < govedoZl * 5 || drvo < govedoDr * 5,
+						onClick: () => kupiGovedo(5),
+						className: "sajam-gumb is-obrub",
+						children: [
+							/* @__PURE__ */ jsx("span", { children: "Uzmi pet" }),
+							/* @__PURE__ */ jsxs("span", { className: "sajam-cijena", children: [/* @__PURE__ */ jsx(Iznos, { resurs: "zlato", kolicina: govedoZl * 5 }), /* @__PURE__ */ jsx(Iznos, { resurs: "drvo", kolicina: govedoDr * 5 })] })
+						]
+					})
+				]
+			}),
+			/* @__PURE__ */ jsxs("div", {
+				className: "sajam-sporedno",
+				children: [
+					/* @__PURE__ */ jsxs("button", {
+						type: "button",
+						disabled: govedaBroj < 1 || jahanje < 1,
+						onClick: tjerajGovedo,
+						className: "sajam-gumb is-tih",
+						children: ["Tjeraj ", /* @__PURE__ */ jsx(Iznos, { resurs: "zlato", kolicina: 10 * tjerajN, predznak: true })]
+					}),
+					/* @__PURE__ */ jsxs("button", {
+						type: "button",
+						disabled: govedaBroj < 1,
+						onClick: koljiGovedo,
+						className: "sajam-gumb is-tih",
+						children: ["Kolji ", /* @__PURE__ */ jsx(Iznos, { resurs: "zlato", kolicina: 7, predznak: true })]
+					}),
+					/* @__PURE__ */ jsx("button", {
+						type: "button",
+						disabled: govedaBroj < 1,
+						onClick: prodajGovedo,
+						className: "sajam-gumb is-tih",
+						children: "Prodaj grlo"
+					})
+				]
+			})
+		]
+	});
+}
+function Rogovi() {
+	return /* @__PURE__ */ jsxs("svg", {
+		viewBox: "0 0 24 24",
+		className: "size-4",
+		fill: "none",
+		stroke: "currentColor",
+		strokeWidth: "2",
+		strokeLinecap: "round",
+		strokeLinejoin: "round",
+		"aria-hidden": true,
+		children: [
+			/* @__PURE__ */ jsx("path", { d: "M3 5c0 3 2.2 4.6 5 4.6M21 5c0 3-2.2 4.6-5 4.6" }),
+			/* @__PURE__ */ jsx("path", { d: "M8 9.6h8l-1 7.2c-.3 2-1.6 3.2-3 3.2s-2.7-1.2-3-3.2Z" }),
+			/* @__PURE__ */ jsx("path", { d: "M10.4 17.2h.01M13.6 17.2h.01", strokeWidth: "2.6" })
+		]
 	});
 }
 function ZatvorKartica() {
@@ -1298,11 +1268,7 @@ function ZatvorKartica() {
 					disabled: n < 1,
 					onClick: pusti,
 					className: "min-h-10 rounded-full border border-line bg-panel-2 px-3 text-[11px] font-bold text-ink disabled:text-dim",
-					children: [
-						"Pusti · ",
-						n * 8,
-						"g"
-					]
+					children: ["Pusti · ", /* @__PURE__ */ jsx(Iznos, { resurs: "zlato", kolicina: n * 8, predznak: true })]
 				})]
 			})
 		]

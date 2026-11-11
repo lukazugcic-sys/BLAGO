@@ -22,6 +22,39 @@ export function cijenaBesplatnih(razina: number): number {
   return BESPLATNE_KUPI_BAZA + BESPLATNE_KUPI_SKOK * Math.floor(lv / 3);
 }
 
+/** 0.9.172: ulog (×1..×15) s kojim se kupuje bonus; nevaljano → ×1. */
+export function bonusMnozitelj(ulog: number): number {
+  const m = Number(ulog);
+  return Number.isFinite(m) && m >= 1 ? m : 1;
+}
+
+/**
+ * 0.9.172 — jedina cijena bonus kupnje (prikaz, provjera i naplata).
+ * cijena = ceil(cijenaBesplatnih(razina) × ulog) (+1 dijamant za odabrani znak, ne množi se).
+ */
+export function cijenaBonusKupnje(razina: number, ulog: number, saZnakom = false): number {
+  return (
+    Math.ceil(cijenaBesplatnih(razina) * bonusMnozitelj(ulog)) +
+    (saZnakom ? BESPLATNE_ZNAK_DIJAMANT : 0)
+  );
+}
+
+export function mozeKupitiBonus(dijamanti: number, razina: number, ulog: number, saZnakom = false): boolean {
+  return dijamanti >= cijenaBonusKupnje(razina, ulog, saZnakom);
+}
+
+/** Čista naplata bonus kupnje: isti iznos kao prikaz; ništa ne skida ako nema dovoljno. */
+export function naplatiBonusKupnju(
+  dijamanti: number,
+  razina: number,
+  ulog: number,
+  saZnakom = false,
+): { ok: boolean; cijena: number; dijamanti: number } {
+  const cijena = cijenaBonusKupnje(razina, ulog, saZnakom);
+  if (dijamanti < cijena) return { ok: false, cijena, dijamanti };
+  return { ok: true, cijena, dijamanti: dijamanti - cijena };
+}
+
 export const EXPAND_ZNAKOVI: readonly SimbolId[] = [
   "wood",
   "stone",

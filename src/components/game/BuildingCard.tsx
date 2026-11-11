@@ -207,7 +207,7 @@ export const BuildingCard = memo(function BuildingCard({ zgrada, compact }: { zg
     <article
       id={`zgrada-${zgrada.id}`}
       className={cn(
-        "relative overflow-hidden rounded-2xl border bg-panel shadow-panel",
+        "zgrada-kartica relative overflow-hidden rounded-2xl border bg-panel shadow-panel",
         !compact && "mb-2.5 scroll-mt-4",
         compact && "mb-2 pl-16 scroll-mt-4",
         jeOstecena && "border-ruby/50",
@@ -223,7 +223,7 @@ export const BuildingCard = memo(function BuildingCard({ zgrada, compact }: { zg
       }
     >
       {compact ? (
-        <div className="absolute left-0 top-0 h-full w-16 overflow-hidden" aria-hidden>
+        <div className="zgrada-slika absolute left-0 top-0 h-full w-16 overflow-hidden" aria-hidden>
           <img
             src={artSrc(ZGRADA_ART[zgrada.id] ?? ZGRADA_ART.pilana)}
             alt=""
@@ -247,7 +247,7 @@ export const BuildingCard = memo(function BuildingCard({ zgrada, compact }: { zg
           <div className="absolute inset-0 bg-gradient-to-r from-transparent to-panel" />
         </div>
       ) : (
-      <div className="relative h-24 overflow-hidden" aria-hidden>
+      <div className="zgrada-slika relative h-24 overflow-hidden" aria-hidden>
         <img
           src={artSrc(ZGRADA_ART[zgrada.id] ?? ZGRADA_ART.pilana)}
           alt=""
@@ -288,7 +288,7 @@ export const BuildingCard = memo(function BuildingCard({ zgrada, compact }: { zg
         )}
       </div>
       )}
-      <div className="relative p-4 pt-3">
+      <div className="zgrada-tijelo relative p-4 pt-3">
         <div className="mb-3 flex items-center justify-between gap-2">
           <h3 className={cn("text-base font-bold", jeOstecena ? "text-ruby" : "text-ink")}>
             {zgrada.naziv}
@@ -365,7 +365,7 @@ export const BuildingCard = memo(function BuildingCard({ zgrada, compact }: { zg
                 disabled={zauzet || radiOvdje}
                 onClick={() => nadogradiZgradu(zgrada)}
                 data-vodic={zgrada.id === "kuca" || zgrada.id === "bunar" ? zgrada.id : undefined}
-                className="min-h-11 rounded-lg px-5 py-3 text-xs font-bold tracking-wide text-void transition-transform duration-150 ease-out active:scale-[0.96] disabled:opacity-60"
+                className={cn("zgrada-gumb min-h-11 rounded-lg px-5 py-3 text-xs font-bold tracking-wide text-void transition-transform duration-150 ease-out active:scale-[0.96] disabled:opacity-60", mozeKupiti && !radiOvdje && !zauzet && "is-moze")}
                 style={{
                   backgroundColor: radiOvdje || zauzet ? "var(--color-panel-2)" : mozeKupiti ? skinBoja : "var(--color-panel-2)",
                   color: radiOvdje || zauzet || !mozeKupiti ? "var(--color-dim)" : "#000",

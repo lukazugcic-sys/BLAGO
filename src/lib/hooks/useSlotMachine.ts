@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { razinaDobitka } from "@/lib/game/slotPrikaz";
 import { useGameStore } from "@/lib/stores/gameStore";
 import { useSlotStore } from "@/lib/stores/slotStore";
 import { flash, shake, hitstop } from "@/lib/context/UIContext";
@@ -37,8 +38,7 @@ import { dogadaj } from "@/lib/game/analitika";
 import { vodicKolo, vodicPlijen } from "@/lib/game/vodic";
 import {
   BESPLATNE_KUPI,
-  BESPLATNE_ZNAK_DIJAMANT,
-  cijenaBesplatnih,
+  naplatiBonusKupnju,
   BESPLATNE_NASUMICE_N,
   BESPLATNE_NASUMICE_P,
   EXPAND_ZNAKOVI,
@@ -109,18 +109,38 @@ function primijeniPlijen(d: Dobitak) {
   }
 }
 
+/**
+ * Idempotent credit of the pending base-spin win. The pending slot is cleared
+ * BEFORE the reward is applied (synchronously), so any repeated call — StrictMode
+ * double effects, AUTO timers, remounts — finds nothing and credits nothing.
+ * Returns true only for the single call that actually credited.
+ */
+export function naplatiDobitak(opts: { automatski?: boolean } = {}): boolean {
+  const ss = useSlotStore.getState();
+  const d = ss.dobitakNaCekanju;
+  if (!d) return false;
+  // Clear pending BEFORE credit (idempotent). Display amount is presentational only.
+  const razina = razinaDobitka(d, ss.ulog);
+  useSlotStore.setState({
+    dobitakNaCekanju: null,
+    gambleCount: 0,
+    prikazDobitka: { razina, zlato: d.zlato, key: (ss.prikazDobitka?.key ?? 0) + 1 },
+  });
+  playSfx("collect");
+  vibrate(20);
+  primijeniPlijen(d);
+  // Auto-credit right after a spin keeps the spin's own message and win lines visible.
+  if (!opts.automatski) {
+    useGameStore.setState({ poruka: "DOBITAK PREUZET!" });
+    useSlotStore.getState().setDobitnaPolja([]);
+  }
+  useGameStore.getState().spremi();
+  return true;
+}
+
 export function useSlotMachine() {
   const preuzmiDobitak = useCallback(() => {
-    const ss = useSlotStore.getState();
-    const d = ss.dobitakNaCekanju;
-    if (!d) return;
-    playSfx("collect");
-    vibrate(20);
-    primijeniPlijen(d);
-    useGameStore.setState({ poruka: "DOBITAK PREUZET!" });
-    useSlotStore.getState().setDobitakNaCekanju(null);
-    useSlotStore.getState().setDobitnaPolja([]);
-    useGameStore.getState().spremi();
+    naplatiDobitak();
   }, []);
 
   const igrajGamble = useCallback((odabranaBoja: "red" | "black") => {
@@ -216,11 +236,12 @@ export function useSlotMachine() {
       return;
     }
     const pick = znak && jeExpandZnak(znak) ? znak : null;
-    const c = cijenaBesplatnih(gs.igracRazina) + (pick ? BESPLATNE_ZNAK_DIJAMANT : 0);
-    if (gs.dijamanti < c) {
-      useGameStore.setState({ poruka: "Skupo. Treba dijamante." });
+    const naplata = naplatiBonusKupnju(gs.dijamanti, gs.igracRazina, ss.ulog, !!pick);
+    if (!naplata.ok) {
+      useGameStore.setState({ poruka: `Skupo. Bonus ×${ss.ulog} traži ${naplata.cijena} dijamanata.` });
       return;
     }
+    const c = naplata.cijena;
     playSfx("collect");
     vibrate(22);
     useGameStore.setState((s) => ({
@@ -245,8 +266,10 @@ export function useSlotMachine() {
   const zavrtiMasinu = useCallback(async () => {
     if (busy.current) return;
     const ss = useSlotStore.getState();
-    if (ss.dobitakNaCekanju || ss.raidAktivan) return;
+    if (ss.raidAktivan) return;
     if (ss.knjigaFaza === "uvod" || ss.knjigaFaza === "kraj") return;
+    // A win left pending (old save, interrupted spin) is credited once, never dropped.
+    if (ss.dobitakNaCekanju) naplatiDobitak();
     const gs = useGameStore.getState();
     const { ulog, turboRezim } = ss;
     const jeLucky = gs.luckySpinCounter === 1 && gs.besplatneVrtnje <= 0;
@@ -567,6 +590,8 @@ export function useSlotMachine() {
         playSfx("skull");
         useSlotStore.setState({ dobitnaPolja: poljaPrikaz, dobitneLinije: [], winCelebration: "skull" });
       }
+      // Base-spin win is credited automatically once the outcome is shown.
+      naplatiDobitak({ automatski: true });
     } finally {
       useSlotStore.setState({
         spinningCols: [false, false, false, false, false],

@@ -1,4 +1,5 @@
 import { createPortal } from "react-dom";
+import { Iznos, TekstResursa } from "@/components/game/Iznos";
 import { useLive } from "@/lib/multiplayer";
 import { ART, SYMBOL_ART } from "@/lib/game/art";
 import { playSfx } from "@/lib/game/audio";
@@ -162,7 +163,7 @@ export function PosjetTabor() {
                 onClick={() => live.cinPosjet("salun")}
                 className="min-h-11 rounded-xl border border-gold/40 bg-gold/10 text-[11px] font-bold tracking-wider text-gold uppercase"
               >
-                Salun · 6g
+                Salun · <Iznos resurs="zlato" kolicina={6} />
               </button>
               <button
                 type="button"

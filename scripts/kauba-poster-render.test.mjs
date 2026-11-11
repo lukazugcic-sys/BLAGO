@@ -2,7 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
-const compiled=readFileSync(process.env.KAUBA_COMPILED || "/workspace/blago-backups/pohod-qa-20261108/KaubaScena.cjs","utf8");
+import ts from "typescript";
+// Compile the CURRENT component source (no machine-specific precompiled fixture).
+const tsx=readFileSync(new URL("../src/components/game/KaubaScena.tsx",import.meta.url),"utf8");
+const compiled=ts.transpileModule(tsx,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022}}).outputText;
 const jsx=(type,props)=>({type,props});
 const state={metci:0,metakRed:0,metakDogadaj:null};
 const stubs={

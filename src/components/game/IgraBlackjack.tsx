@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Iznos, TekstResursa } from "@/components/game/Iznos";
 import { useGameStore } from "@/lib/stores/gameStore";
 import { ZGRADA_ART } from "@/lib/game/art";
 import { playSfx, vibrate } from "@/lib/game/audio";
@@ -244,7 +245,7 @@ export function IgraBlackjack() {
             onClick={dijeli}
             className="min-h-11 w-full rounded-xl bg-gold text-xs font-bold tracking-widest text-void uppercase disabled:bg-panel-2 disabled:text-dim"
           >
-            Dijeli · {ulogSad}g
+            Dijeli · <Iznos resurs="zlato" kolicina={ulogSad} />
           </button>
         )}
 

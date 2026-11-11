@@ -69,7 +69,7 @@ export function SljedeciKorak() {
     }
     if (prikaz.vrsta === "zgrada" && prikaz.zgrada) otvoriCiljZgradu(prikaz.zgrada as keyof Gradevine);
     else if (prikaz.vrsta === "nalog" && prikaz.tip) idiNaNalog(prikaz.tip);
-    else idi({ tab: "misije", zadaci: "nalozi" });
+    else idi({ tab: "zid", zid: "nalozi" });
   };
 
   if (smanjen) {

@@ -1,22 +1,23 @@
 import { memo } from "react";
 import { Raslina, TRAGOVI } from "@/components/game/KaubaObzor";
 import { bojaSloja, cetvrtZgrade, rombTocke, sirinaPuta, type Sloj } from "@/lib/game/kartaPogled";
-import type { Grlo } from "@/lib/game/stokaKarta";
+import { ogradaTora, type Grlo } from "@/lib/game/stokaKarta";
 import {
   CVAT,
   DETALJ,
+  MOSTOVI,
   DRVECE,
   DRVORED,
   GAZ,
   GRANE,
   JOS,
+  KAMENOLOM_KAMENJE,
   KRUG,
   KVART,
   LIVADA,
   LOKVA,
   NASELJA,
   OBALA,
-  PLOT,
   POTOK,
   PRAZNINE,
   PRSTEN,
@@ -26,15 +27,95 @@ import {
   STAZA,
   TEREN,
   UZCESTU,
+  UVALA,
   VODA,
   ZAKRPE,
   obrubNaselja,
 } from "@/lib/game/teren";
 import type { Gradevine, Gradnja } from "@/lib/game/types";
 import { CESTA, PARCELE, SVIJET, putelji, sitniDekor, type SitniTip } from "@/lib/game/ulicaRaspored";
+import { SIRINA_PJESINE, mostoviPjesina } from "@/lib/game/pjesine";
+import { trakaPuta } from "@/lib/game/putTraka";
+import { KaubaDvorista, KaubaGazeno, KaubaTrg, DvSimboli } from "@/components/game/KaubaDvorista";
 import { cn } from "@/lib/utils";
 
 const SITNI = sitniDekor();
+/** 0.9.174: ograda obora oko tora (stalna geometrija, samo prikaz). */
+const OBOR_OGRADA = ogradaTora();
+
+/**
+ * Konj s glavom (vrat, glava, uši, griva, rep), nacrtan da gleda DESNO;
+ * smjer -1 zrcali cijelu sličicu. Ishodište = kopita na tlu.
+ */
+export function KonjZnak({ boja, griva }: { boja: string; griva: string }) {
+  return (
+    <>
+      <ellipse cx={0} cy={0.6} rx={8.6} ry={1.7} className="izo-zivotinja-sjena" />
+      {/* stražnje noge (dalje) */}
+      <path d="M-4.6 -5 L-5.4 0.2 M4.2 -5 L4.8 0.2" stroke="#2e1a0c" strokeWidth={1.3} strokeLinecap="round" />
+      {/* rep */}
+      <path d="M-6.6 -8.4 Q-9.4 -7 -8.8 -2.2" stroke={griva} strokeWidth={1.8} fill="none" strokeLinecap="round" />
+      {/* tijelo */}
+      <path
+        d="M-6.8 -7.6 Q-6.6 -10.2 -3 -10.1 L3.6 -10.2 Q6.6 -10 6.6 -7.4 Q6.4 -4.6 3.4 -4.6 L-3.8 -4.6 Q-6.9 -4.8 -6.8 -7.6 Z"
+        fill={boja}
+        stroke="#24140a"
+        strokeWidth={0.7}
+      />
+      {/* prednje noge (bliže) */}
+      <path d="M-3.4 -5 L-3.2 0.4 M3.2 -5 L3.6 0.4" stroke="#24140a" strokeWidth={1.4} strokeLinecap="round" />
+      {/* vrat */}
+      <path d="M3.4 -9.6 L6.4 -14.6 L9 -13.2 L7.2 -7.4 Z" fill={boja} stroke="#24140a" strokeWidth={0.7} strokeLinejoin="round" />
+      {/* glava: čelo -> njuška */}
+      <path
+        d="M6 -15.2 Q7.6 -16.4 9.2 -15.2 L12.2 -11.8 Q12.6 -10.6 11.4 -10.4 L9.6 -10.8 L7.4 -12.6 Z"
+        fill={boja}
+        stroke="#24140a"
+        strokeWidth={0.7}
+        strokeLinejoin="round"
+      />
+      <ellipse cx={11.3} cy={-11.2} rx={1.1} ry={0.8} fill="#2a1a10" />
+      {/* uši */}
+      <path d="M6.6 -15.4 L6.9 -17.6 L7.9 -15.6 Z" fill={griva} />
+      <path d="M7.8 -15.6 L8.5 -17.4 L9 -15.2 Z" fill={griva} />
+      {/* griva */}
+      <path d="M6.2 -15 Q4.6 -12.4 3.4 -9.8" stroke={griva} strokeWidth={1.6} fill="none" strokeLinecap="round" />
+      <circle cx={8.4} cy={-14.1} r={0.55} fill="#120a06" />
+    </>
+  );
+}
+
+/** Govedo (bijelo s crnim mrljama, rogovi), gleda DESNO. */
+function GovedoZnak() {
+  return (
+    <>
+      <ellipse cx={0} cy={0.6} rx={8.6} ry={1.7} className="izo-zivotinja-sjena" />
+      <path d="M-4.8 -4.4 L-5 0.2 M4 -4.4 L4.2 0.2" stroke="#3a322c" strokeWidth={1.3} strokeLinecap="round" />
+      <path d="M-6.8 -7.6 Q-8.8 -6.6 -8.4 -3.6" stroke="#2a2420" strokeWidth={0.9} fill="none" strokeLinecap="round" />
+      <rect x={-7} y={-10} width={13.4} height={6.2} rx={2.6} fill="#ece4d4" stroke="#3a322c" strokeWidth={0.7} />
+      <ellipse cx={-3} cy={-7.6} rx={2.3} ry={1.5} fill="#2a2420" />
+      <ellipse cx={2} cy={-6.2} rx={1.6} ry={1.1} fill="#2a2420" />
+      <path d="M-3.2 -4.4 L-3.1 0.4 M2.8 -4.4 L3 0.4" stroke="#2a2420" strokeWidth={1.4} strokeLinecap="round" />
+      <path d="M5.4 -10.2 L9.4 -10.6 Q10.8 -9.6 10.4 -7.6 L8.8 -6.6 L5.8 -7.4 Z" fill="#e2d8c4" stroke="#3a322c" strokeWidth={0.7} strokeLinejoin="round" />
+      <ellipse cx={9.9} cy={-7.4} rx={1.2} ry={0.9} fill="#d9a89a" />
+      <path d="M6.4 -10.4 L5.6 -12.4 M9 -10.6 L9.8 -12.6" stroke="#f4ecd8" strokeWidth={0.9} strokeLinecap="round" />
+      <circle cx={8.2} cy={-9.2} r={0.5} fill="#120a06" />
+    </>
+  );
+}
+
+const KONJ_BOJE: { boja: string; griva: string }[] = [
+  { boja: "#8a5228", griva: "#2a160a" },
+  { boja: "#6b3b1c", griva: "#1e1008" },
+  { boja: "#a8743e", griva: "#3a2210" },
+  { boja: "#3e2a1e", griva: "#120a06" },
+  { boja: "#c9a56c", griva: "#f0e2c0" },
+];
+export function bojaKonja(id: string) {
+  const n = Number(id.slice(id.lastIndexOf("-") + 1)) || 0;
+  return KONJ_BOJE[(n * 7 + 3) % KONJ_BOJE.length]!;
+}
+
 
 function SitniZnak({ tip }: { tip: SitniTip }) {
   if (tip === "ograda") {
@@ -81,6 +162,27 @@ function SitniZnak({ tip }: { tip: SitniTip }) {
 }
 
 type Staza = ReturnType<typeof putelji>[number];
+
+/** Organic (non-elliptical) lake outline: smooth closed curve with fixed lobes. */
+export function obalaLokve(cx: number, cy: number, rx: number, ry: number, faza: number) {
+  const N = 10;
+  const lob = [1, 0.92, 1.08, 0.95, 1.04, 0.9, 1.06, 0.97, 1.02, 0.93];
+  const pts = Array.from({ length: N }, (_, i) => {
+    const a = (i / N) * Math.PI * 2;
+    const k = lob[(i + faza) % N]!;
+    return { x: cx + Math.cos(a) * rx * k, y: cy + Math.sin(a) * ry * k };
+  });
+  const mid = (a: { x: number; y: number }, b: { x: number; y: number }) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+  const f = (n: number) => n.toFixed(1);
+  const m0 = mid(pts[N - 1]!, pts[0]!);
+  let d = `M${f(m0.x)} ${f(m0.y)}`;
+  for (let i = 0; i < N; i++) {
+    const p = pts[i]!;
+    const m = mid(p, pts[(i + 1) % N]!);
+    d += `Q${f(p.x)} ${f(p.y)} ${f(m.x)} ${f(m.y)}`;
+  }
+  return d + "Z";
+}
 
 export const KaubaCesta = memo(function KaubaCesta({
   gradevine,
@@ -129,6 +231,7 @@ export const KaubaCesta = memo(function KaubaCesta({
                 <line x1="14" y1="13" x2="16" y2="3" stroke="#3f5a2288" strokeWidth="1" />
                 <line x1="19" y1="14" x2="18" y2="7" stroke="#8aaa55aa" strokeWidth="0.7" />
               </pattern>
+              <DvSimboli />
             </defs>
             {PARCELE.map((z) => (
               <polygon key={`cv-${z.id}`} className={`izo-cetvrt is-${cetvrtZgrade(z.id)}`} points={rombTocke(z)} />
@@ -167,24 +270,31 @@ export const KaubaCesta = memo(function KaubaCesta({
                   />
                 ))
               : null}
+            {/* 0.9.176 (19, t443u): puteljci kao vijugave trake promjenjive širine s mekanim rubom; pješačke staze uže i svjetlije */}
             {staze.map((s) => {
               const lv = s.veza
                 ? Math.min(...s.id.split("-").map((id) => gradevine[id as keyof Gradevine] || 0))
                 : gradevine[s.id as keyof Gradevine] || 0;
-              const sir = s.veza || KVART.has(s.id) ? 8 : Math.max(6, sirinaPuta(lv, false));
+              const pjesina = !!s.pjesina;
+              const sir = pjesina ? SIRINA_PJESINE : s.veza || KVART.has(s.id) ? 8 : Math.max(6, sirinaPuta(lv, false));
               const pts = s.tocke.map((p) => `${p.x},${p.y}`).join(" ");
+              const traka = trakaPuta(s.tocke, sir, s.id + (pjesina ? ":pj" : ""), { vrata: !s.veza, spoj: !s.veza });
               return (
-                <g key={s.id}>
-                  <polyline className="izo-put-rame" points={pts} stroke="url(#izo-pijesak)" style={{ strokeWidth: sir + 3.4 }} />
-                  <polyline
-                    className={cn("izo-put", s.veza && "is-veza", !mirno && skok && s.id.includes(String(skok)) && "is-novi")}
-                    points={pts}
-                    pathLength={1}
-                    style={{ strokeWidth: sir }}
-                  />
+                <g key={pjesina ? `pj-${s.id}` : s.id} className={cn("izo-put-g", pjesina && "is-pjesina")} data-put={s.id}>
+                  <polygon className={cn("izo-put-traka-rub", pjesina && "is-pjesina")} points={traka} />
+                  <polygon className={cn("izo-put-traka", pjesina && "is-pjesina")} points={traka} />
+                  {pjesina ? null : (
+                    <polyline
+                      className={cn("izo-put", s.veza && "is-veza", !mirno && skok && s.id.includes(String(skok)) && "is-novi")}
+                      points={pts}
+                      pathLength={1}
+                      style={{ strokeWidth: Math.max(1.2, sir * 0.26) }}
+                    />
+                  )}
                 </g>
               );
             })}
+            <KaubaGazeno gradevine={gradevine} />
             {ZAKRPE.map((z, i) => (
               <ellipse
                 key={`zk${i}`}
@@ -206,6 +316,14 @@ export const KaubaCesta = memo(function KaubaCesta({
                 <polygon className="izo-kamen" points={k.pts} />
                 <ellipse className="izo-kamen-ploha" cx={k.x - 2} cy={k.y - 2} rx={4.2} ry={1.8} />
                 <polyline className="izo-kamen-puk" points={k.puk} />
+              </g>
+            ))}
+            {KAMENOLOM_KAMENJE.map((k, i) => (
+              <g key={`kk${i}`} className="izo-kamen-kamenolom">
+                <ellipse className="izo-sjena-tlo" cx={k.x + k.r * 0.35} cy={k.y + k.r * 0.32} rx={k.r * 1.05} ry={k.r * 0.42} />
+                <polygon className="izo-kamen" points={k.pts} />
+                <ellipse className="izo-kamen-ploha" cx={k.x - k.r * 0.25} cy={k.y - k.r * 0.22} rx={k.r * 0.5} ry={k.r * 0.2} />
+                {k.r > 5.5 ? <polyline className="izo-kamen-puk" points={k.puk} /> : null}
               </g>
             ))}
             {TEREN.mrlje.map((z, i) => (
@@ -235,6 +353,14 @@ export const KaubaCesta = memo(function KaubaCesta({
             <polyline className="izo-potok is-rub" points={POTOK} />
             <polyline className="izo-potok" points={POTOK} stroke="url(#izo-voda-tk)" />
             <polyline className="izo-potok is-dno" points={POTOK} />
+            {UVALA ? (
+              <>
+                <polyline className="izo-potok is-obala is-uvala" points={UVALA} />
+                <polyline className="izo-potok is-rub is-uvala" points={UVALA} />
+                <polyline className="izo-potok is-uvala" points={UVALA} stroke="url(#izo-voda-tk)" />
+                <polyline className="izo-potok is-dno is-uvala" points={UVALA} />
+              </>
+            ) : null}
             {VODA.pjena.map((p, i) => (
               <ellipse key={`pj${i}`} className="izo-pjena" cx={p.x} cy={p.y} rx={p.rx} ry={p.rx * 0.45} />
             ))}
@@ -256,10 +382,34 @@ export const KaubaCesta = memo(function KaubaCesta({
                 <line className="izo-trska is-tamna" x1={t.x1 + 1.6} y1={t.y1} x2={t.x2 + 1.2} y2={t.y2 + 1} />
               </g>
             ))}
+            {/* 0.9.175: mostić gdje puteljak/cesta prelazi potok */}
+            {MOSTOVI.map((m, i) => (
+              <g key={`most${i}`} className="izo-most" data-most={i} transform={`translate(${m.x} ${m.y}) rotate(${m.kut})`}>
+                <ellipse cx={1} cy={4} rx={17} ry={4} fill="#2a1a0e" opacity={0.28} />
+                <rect x={-15} y={-6} width={30} height={12} rx={1.5} fill="#8a5a32" stroke="#4a2e18" strokeWidth={0.9} />
+                {[-10, -5, 0, 5, 10].map((x) => (
+                  <line key={x} x1={x} y1={-6} x2={x} y2={6} stroke="#5a3a1e" strokeWidth={0.8} />
+                ))}
+                <line x1={-15} y1={-6.5} x2={15} y2={-6.5} stroke="#3e2614" strokeWidth={1.6} strokeLinecap="round" />
+                <line x1={-15} y1={6.5} x2={15} y2={6.5} stroke="#3e2614" strokeWidth={1.6} strokeLinecap="round" />
+              </g>
+            ))}
+            {/* 0.9.176: mostić pješačke staze (t443u) */}
+            {mostoviPjesina().map((m, i) => (
+              <g key={`mostpj${i}`} className="izo-most" data-most={`pj${i}`} transform={`translate(${m.x} ${m.y}) rotate(${m.kut})`}>
+                <ellipse cx={1} cy={4} rx={17} ry={4} fill="#2a1a0e" opacity={0.28} />
+                <rect x={-15} y={-6} width={30} height={12} rx={1.5} fill="#8a5a32" stroke="#4a2e18" strokeWidth={0.9} />
+                {[-10, -5, 0, 5, 10].map((x) => (
+                  <line key={x} x1={x} y1={-6} x2={x} y2={6} stroke="#5a3a1e" strokeWidth={0.8} />
+                ))}
+                <line x1={-15} y1={-6.5} x2={15} y2={-6.5} stroke="#3e2614" strokeWidth={1.6} strokeLinecap="round" />
+                <line x1={-15} y1={6.5} x2={15} y2={6.5} stroke="#3e2614" strokeWidth={1.6} strokeLinecap="round" />
+              </g>
+            ))}
             {LOKVA ? (
               <g>
-                <ellipse className="izo-lokva-obala" cx={LOKVA.x} cy={LOKVA.y + 1} rx={28} ry={12} />
-                <ellipse className="izo-lokva" cx={LOKVA.x} cy={LOKVA.y} rx={22} ry={9} />
+                <path className="izo-lokva-obala" d={obalaLokve(LOKVA.x, LOKVA.y + 1, 28, 12, 1)} />
+                <path className="izo-lokva" d={obalaLokve(LOKVA.x, LOKVA.y, 22, 9, 0)} />
                 <ellipse className="izo-lokva-dno" cx={LOKVA.x + 3} cy={LOKVA.y + 1.5} rx={11} ry={4.2} />
                 <ellipse className="izo-lokva-val" cx={LOKVA.x - 4} cy={LOKVA.y - 1} rx={9} ry={2.4} />
                 <ellipse className="izo-lokva-val is-van" cx={LOKVA.x + 5} cy={LOKVA.y + 1} rx={7} ry={1.8} />
@@ -278,6 +428,7 @@ export const KaubaCesta = memo(function KaubaCesta({
               </g>
             ) : null}
             {LIVADA ? <polygon className="izo-livada" points={LIVADA} /> : null}
+            <KaubaTrg />
             {PRAZNINE.livade.map((p, i) => (
               <polygon key={`pz${i}`} className="izo-praznina" points={p} />
             ))}
@@ -303,11 +454,7 @@ export const KaubaCesta = memo(function KaubaCesta({
                 <line x1={8} y1={-5} x2={8} y2={5} />
               </g>
             ) : null}
-            {PLOT.zica ? <polyline className="izo-plot" points={PLOT.zica} /> : null}
-            {PLOT.letva ? <polyline className="izo-plot is-letva" points={PLOT.letva} /> : null}
-            {PLOT.stupovi.map((p, i) => (
-              <rect key={`plot${i}`} className="izo-plot-stup" x={p.x - 1.2} y={p.y - 7} width={2.4} height={8} rx={0.6} />
-            ))}
+            {/* 0.9.174: kratki PLOT uz tor zamijenjen punom ogradom obora (OBOR_OGRADA niže). */}
             {PRSTEN.map((p, i) => (
               <ellipse key={`pr${i}`} className="izo-rub-kamen" cx={p.x} cy={p.y} rx={3.4} ry={1.7} />
             ))}
@@ -399,27 +546,31 @@ export const KaubaCesta = memo(function KaubaCesta({
                 <rect x={-6} y={1.2} width={13} height={2.2} rx={0.4} />
               </g>
             ) : null}
-            {stoka.map((d) =>
-              d.vrsta === "konj" ? (
-                <g key={d.id} className="izo-zivotinja is-konj" data-zivotinja={d.id} transform={`translate(${d.x} ${d.y})`}>
-                  <ellipse cx={0} cy={2.2} rx={7} ry={1.4} className="izo-zivotinja-sjena" />
-                  <path d="M-4 0v2.6M-2 0v2.6M3 0v2.6M5 0v2.6" stroke="#3a2414" strokeWidth={0.9} />
-                  <ellipse cx={0.5} cy={-1.6} rx={5.6} ry={2.3} fill="#7b4a26" />
-                  <path d="M4.6 -2.6 L7.4 -6.4 L8 -4.6 L5.8 -1.4 Z" fill="#6a3d1e" />
-                  <path d="M-5 -2.4 Q-7.6 -1 -7 1.6" stroke="#2e1a0c" strokeWidth={1} fill="none" />
+            <KaubaDvorista gradevine={gradevine} />
+            {/* 0.9.177 (t453u): ograda obora tek kad je tor izgrađen (razina ≥ 1, isto kao zgrade na karti) */}
+            {(gradevine.tor || 0) > 0 && OBOR_OGRADA.letve.map(([a, b], i) => (
+              <g key={`obl${i}`} className="izo-obor-letva">
+                <line x1={a.x} y1={a.y - 7} x2={b.x} y2={b.y - 7} />
+                <line x1={a.x} y1={a.y - 3.2} x2={b.x} y2={b.y - 3.2} />
+              </g>
+            ))}
+            {(gradevine.tor || 0) > 0 && OBOR_OGRADA.stupovi.map((p, i) => (
+              <rect key={`obs${i}`} className="izo-obor-stup" x={p.x - 1.5} y={p.y - 9.5} width={3} height={10.5} rx={0.6} />
+            ))}
+            {/* po dubini (y): bliže grlo crta se preko daljeg */}
+            {[...stoka]
+              .sort((a, b) => a.y - b.y || a.x - b.x)
+              .map((d) => (
+                <g
+                  key={d.id}
+                  className={d.vrsta === "konj" ? "izo-zivotinja is-konj" : "izo-zivotinja is-govedo"}
+                  data-zivotinja={d.id}
+                  data-smjer={d.smjer < 0 ? "l" : "d"}
+                  transform={d.smjer < 0 ? `translate(${d.x} ${d.y}) scale(-1 1)` : `translate(${d.x} ${d.y})`}
+                >
+                  {d.vrsta === "konj" ? <KonjZnak {...bojaKonja(d.id)} /> : <GovedoZnak />}
                 </g>
-              ) : (
-                <g key={d.id} className="izo-zivotinja is-govedo" data-zivotinja={d.id} transform={`translate(${d.x} ${d.y})`}>
-                  <ellipse cx={0} cy={2.2} rx={7.4} ry={1.5} className="izo-zivotinja-sjena" />
-                  <path d="M-4.5 0v2.4M-2.4 0v2.4M2.6 0v2.4M4.6 0v2.4" stroke="#2a2420" strokeWidth={1.1} />
-                  <rect x={-6} y={-4.6} width={11.4} height={5.2} rx={2.2} fill="#ece4d4" />
-                  <ellipse cx={-2.4} cy={-2.6} rx={2} ry={1.3} fill="#2a2420" />
-                  <ellipse cx={2.2} cy={-1.6} rx={1.5} ry={1} fill="#2a2420" />
-                  <rect x={5} y={-5} width={2.8} height={3} rx={1} fill="#d8ccb8" />
-                  <path d="M5.2 -5.2 L4.4 -6.6 M7.6 -5.2 L8 -6.6" stroke="#f4ecd8" strokeWidth={0.8} />
-                </g>
-              ),
-            )}
+              ))}
           </svg>
   );
 });

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Iznos, TekstResursa } from "@/components/game/Iznos";
 import { useGameStore } from "@/lib/stores/gameStore";
 import { ZGRADA_ART } from "@/lib/game/art";
 import { mozeKrupije } from "@/lib/game/ljudi";
@@ -198,7 +199,7 @@ export function IgraKarata() {
             onClick={() => igraj(Math.floor(Math.random() * 3))}
             className="mb-3 min-h-11 w-full rounded-xl bg-gold text-xs font-bold tracking-widest text-void uppercase disabled:bg-panel-2 disabled:text-dim"
           >
-            Gost vuče · {ulog}g
+            Gost vuče · <Iznos resurs="zlato" kolicina={ulog} />
           </button>
         )}
         <div className="faro-red flex justify-center gap-2">

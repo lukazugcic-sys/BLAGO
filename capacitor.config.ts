@@ -18,9 +18,14 @@ const config: CapacitorConfig = {
       backgroundColor: "#2B1814",
       showSpinner: false,
     },
+    // 0.9.178: svijetle ikone na tamnim trakama i kad je telefon u svijetloj temi
+    SystemBars: {
+      style: "DARK",
+    },
     StatusBar: {
       style: "DARK",
       backgroundColor: "#2B1814",
+      overlaysWebView: false,
     },
   },
 };

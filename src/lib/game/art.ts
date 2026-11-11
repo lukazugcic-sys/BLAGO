@@ -1,6 +1,6 @@
 import type { SimbolId } from "./types";
 
-const V = "v=56";
+const V = "v=57";
 
 export function asset(path: string) {
   const raw = (path.startsWith("/") ? path.slice(1) : path).split("?")[0];

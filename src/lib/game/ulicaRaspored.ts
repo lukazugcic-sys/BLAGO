@@ -9,8 +9,20 @@ export const KORAK_Y = 56;
 /** 112 / 96 ≈ 1.17, unutar 1–1.3 ćelije. Visina stane u ćeliju da ne prekrije susjeda. */
 export const ZGRADA_W = 112;
 export const ZGRADA_H = 96;
+/** Veće zgrade (rudnik, kamenolom, staja, ispust) imaju širi sprite. */
+export const VECE_ZGRADE: ReadonlySet<string> = new Set(["rudnik", "kamenolom", "staja", "korali"]);
+/** 0.9.173: dodatno povećanje pojedinih zgrada (samo prikaz). */
+export const POVECANJE_ZGRADE: Readonly<Record<string, number>> = { tvornica: 1.5 };
 export const KOLAC_W = 72;
 export const KOLAC_H = 64;
+
+/** Širina i visina spritea na karti (zum 1, prije rastSkala). */
+export function velicinaSpritea(id: string, puna: boolean) {
+  const veca = VECE_ZGRADE.has(id);
+  if (!puna) return { w: veca ? 84 : KOLAC_W, h: veca ? 74 : KOLAC_H };
+  const f = POVECANJE_ZGRADE[id] ?? 1;
+  return { w: Math.round((veca ? 128 : ZGRADA_W) * f), h: Math.round((veca ? 110 : ZGRADA_H) * f) };
+}
 
 const ZOOM_POD = 0.24;
 const ZOOM_STROP = 2;
@@ -20,7 +32,7 @@ export const POGLED_Y = 0.5;
 /** Uska prašnjava cesta. Kuće nisu u rešetki: grozdovi uz cestu, rupa između. */
 export const POJAS_L = { colOd: 0, colDo: 2.05, redOd: 0, redDo: 6 };
 export const POJAS_D = { colOd: 3.9, colDo: 6.2, redOd: 0, redDo: 6 };
-export const ULICA = { colOd: 2.88, colDo: 3.12, redOd: -0.55, redDo: 8.7 };
+export const ULICA = { colOd: 2.88, colDo: 3.12, redOd: -0.55, redDo: 9.4 };
 
 
 export type Strana = "l" | "d";
@@ -67,16 +79,21 @@ const NASELJE: { id: string; col: number; row: number; strana: Strana }[] = [
   { id: "staza", col: 1.55, row: 7.7, strana: "l" },
   { id: "pilana", col: 4.3, row: 0.5, strana: "d" },
   { id: "kovacnica", col: 5.5, row: 0.25, strana: "d" },
-  { id: "tor", col: 5.2, row: 1.2, strana: "d" },
+  // 0.9.174: tor (stražarnica + ograđeni obor) premješten na otvoreno tlo desno od tvornice,
+  // da ograda i sva goveda stanu oko njega (prije stisnut između pilane, kovačnice i barutane).
+  { id: "tor", col: 7.675, row: 2.887, strana: "d" },
   { id: "barutana", col: 6.2, row: 1.4, strana: "d" },
   { id: "staja", col: 4.05, row: 1.42, strana: "d" },
-  { id: "tvornica", col: 5.9, row: 2.5, strana: "d" },
+  // 0.9.173: tvornica oružja je 1.5× veća; parcela malo niže/desno da ne dira tor.
+  { id: "tvornica", col: 6.05, row: 2.75, strana: "d" },
   { id: "korali", col: 4.95, row: 3.42, strana: "d" },
-  { id: "lov", col: 6.1, row: 4.7, strana: "d" },
+  // 0.9.180: lovački dom uz prolaz tor–ispust, izvan stupova obora i izvan tvornice.
+  { id: "lov", col: 6.88, row: 4.24, strana: "d" },
   { id: "farma", col: 4.25, row: 5, strana: "d" },
   { id: "mlin", col: 5.4, row: 5.6, strana: "d" },
   { id: "cisterna", col: 4.1, row: 6.2, strana: "d" },
-  { id: "kamenolom", col: 6.55, row: 6.95, strana: "d" },
+  // 0.9.180: kamenolom zapadno od rudnika, na suhom. Cesta ide do njega (redDo).
+  { id: "kamenolom", col: 5.3, row: 9.2, strana: "d" },
   { id: "rudnik", col: 6.05, row: 8.55, strana: "d" },
   { id: "banka", col: 4.2, row: 8, strana: "d" },
 ];
@@ -105,7 +122,11 @@ const DEKOR_MREZA: { tip: DekorKom["tip"]; col: number; row: number; sc: number 
   { tip: "kaktus", col: -0.7, row: 2.4, sc: 1 },
   { tip: "kaktus", col: -0.4, row: 8.2, sc: 0.9 },
   { tip: "kaktus", col: 7.4, row: 1.1, sc: 0.95 },
-  { tip: "kaktus", col: 7.3, row: 7.6, sc: 0.85 },
+  // 0.9.180: uz novi kamenolom (zapadno od rudnika), ne u vodi.
+  { tip: "kaktus", col: 4.55, row: 9.55, sc: 0.85 },
+  // 0.9.180: kaktus uz lovački dom, izvan spritea i vode.
+  { tip: "kaktus", col: 7, row: 6, sc: 0.9 },
+  { tip: "kaktus", col: 7.85, row: 6.2, sc: 0.88 },
   { tip: "bacva", col: 1.82, row: 0.38, sc: 0.7 },
   { tip: "bacva", col: 3.92, row: 4.9, sc: 0.7 },
   { tip: "bacva", col: 2.12, row: 7.7, sc: 0.7 },
@@ -333,7 +354,11 @@ export function pogledOkoKuce(vw: number, vh: number) {
   return { z: cam.z, n: ids.length, ids, dekor };
 }
 
-export type Puteljak = { id: string; tocke: Tocka[]; veza: boolean };
+/**
+ * tocke: prikazana i hodana linija (0.9.176: vijugava, glatka); kosti: sirova linija (stari
+ * ravni segmenti, za stalna sidra poput konja uz salun). pjesina: uska staza unutar naselja (t443u).
+ */
+export type Puteljak = { id: string; tocke: Tocka[]; veza: boolean; kosti?: Tocka[]; pjesina?: boolean };
 
 export type SitniTip = "ograda" | "bacva" | "sijeno" | "lampa" | "kaktus" | "kamen" | "kola" | "korito";
 
@@ -417,16 +442,132 @@ export function putelji(aktivni: readonly string[]): Puteljak[] {
   const out: Puteljak[] = [];
   for (const p of PARCELE) {
     if (!set.has(p.id)) continue;
-    out.push({ id: p.id, tocke: hodDoUlice(p), veza: false });
+    const kosti = hodDoUlice(p);
+    out.push({ id: p.id, tocke: vijugavo(p.id, kosti), veza: false, kosti });
   }
   for (const [ia, ib] of VEZE) {
     if (!set.has(ia) || !set.has(ib)) continue;
     const a = PARCELE.find((p) => p.id === ia);
     const b = PARCELE.find((p) => p.id === ib);
     if (!a || !b) continue;
-    out.push({ id: `${ia}-${ib}`, tocke: vezaTocke(a, b), veza: true });
+    const kosti = vezaTocke(a, b);
+    out.push({ id: `${ia}-${ib}`, tocke: vijugavo(`${ia}-${ib}`, kosti), veza: true, kosti });
   }
   return out;
+}
+
+const vijugaCache = new Map<string, Tocka[]>();
+function vijugavo(kljuc: string, kosti: readonly Tocka[]) {
+  let v = vijugaCache.get(kljuc);
+  if (!v) {
+    v = vijugaj(kljuc, kosti);
+    vijugaCache.set(kljuc, v);
+  }
+  return v;
+}
+
+function hesStr(s: string) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+/** Jednoliko uzorkovanje izlomljene linije (korak px), krajevi točno ostaju. */
+export function uzorkuj(t: readonly Tocka[], korak: number): Tocka[] {
+  const out: Tocka[] = [];
+  const cist = t.filter((p, i) => i === 0 || Math.hypot(p.x - t[i - 1]!.x, p.y - t[i - 1]!.y) > 0.01);
+  if (cist.length < 2) return cist.map((p) => ({ ...p }));
+  out.push({ ...cist[0]! });
+  let ost = 0;
+  for (let i = 1; i < cist.length; i++) {
+    const a = cist[i - 1]!;
+    const b = cist[i]!;
+    const l = Math.hypot(b.x - a.x, b.y - a.y);
+    let d = korak - ost;
+    while (d < l) {
+      out.push({ x: a.x + ((b.x - a.x) * d) / l, y: a.y + ((b.y - a.y) * d) / l });
+      d += korak;
+    }
+    ost = l - (d - korak);
+  }
+  const zad = cist[cist.length - 1]!;
+  const pz = out[out.length - 1]!;
+  if (Math.hypot(pz.x - zad.x, pz.y - zad.y) < korak * 0.4) out.pop();
+  out.push({ ...zad });
+  return out;
+}
+
+/**
+ * 0.9.176 (19): puteljak vijuga prirodno. Sirova linija (ravni dijagonalni segmenti sa skokovima
+ * oko tuđih rombova) se gusto uzorkuje, izgladi (simetrični prozor koji se sužava prema krajevima,
+ * pa vrata i spoj s cestom ostaju točno) i dobije blagu vijugu okomito na smjer (amplituda 0 na
+ * krajevima, faza i valna duljina stalne po ključu). Ako bi ijedna točka ušla u neki romb (ili u
+ * zabranjeno područje `zabrana`), pokuša se blaže, na kraju vraća sirovu liniju.
+ */
+export function vijugaj(kljuc: string, kosti: readonly Tocka[], zabrana?: (p: Tocka) => boolean, amp = 6): Tocka[] {
+  const gusto = uzorkuj(kosti, 4);
+  if (gusto.length < 3) return kosti.map((p) => ({ ...p }));
+  const h = hesStr(kljuc);
+  const faza = ((h & 0xffff) / 0xffff) * Math.PI * 2;
+  const lam = 62 + ((h >>> 16) % 34);
+  const smjer = (h >>> 9) & 1 ? 1 : -1;
+  const n = gusto.length;
+  const izgladi = (k: number) => {
+    let cur = gusto;
+    for (let prolaz = 0; prolaz < 3 && k > 0; prolaz++) {
+      const nx: Tocka[] = [];
+      for (let i = 0; i < n; i++) {
+        const w = Math.min(k, i, n - 1 - i);
+        let sx = 0;
+        let sy = 0;
+        for (let j = i - w; j <= i + w; j++) {
+          sx += cur[j]!.x;
+          sy += cur[j]!.y;
+        }
+        nx.push({ x: sx / (2 * w + 1), y: sy / (2 * w + 1) });
+      }
+      cur = nx;
+    }
+    return cur;
+  };
+  const vijuga = (t: Tocka[], a: number) => {
+    if (a <= 0) return t;
+    const s: number[] = [0];
+    for (let i = 1; i < t.length; i++) s.push(s[i - 1]! + Math.hypot(t[i]!.x - t[i - 1]!.x, t[i]!.y - t[i - 1]!.y));
+    const L = s[s.length - 1] || 1;
+    const A = Math.min(a, L * 0.07);
+    return t.map((p, i) => {
+      const q = t[Math.min(t.length - 1, i + 1)]!;
+      const o = t[Math.max(0, i - 1)]!;
+      const dx = q.x - o.x;
+      const dy = q.y - o.y;
+      const l = Math.hypot(dx, dy) || 1;
+      const u = s[i]! / L;
+      const env = Math.sin(Math.PI * u) ** 0.8;
+      const off = smjer * A * env * (Math.sin((2 * Math.PI * s[i]!) / lam + faza) * 0.8 + Math.sin((2 * Math.PI * s[i]!) / (lam * 2.3) + faza * 1.7) * 0.4);
+      return { x: p.x + (-dy / l) * off, y: p.y + (dx / l) * off };
+    });
+  };
+  const ok = (t: Tocka[]) => t.every((p, i) => (i === 0 || i === t.length - 1 ? true : !PARCELE.some((q) => uRomu(p.x, p.y, q)) && !(zabrana && zabrana(p))));
+  for (const [k, a] of [
+    [6, 1],
+    [6, 0.6],
+    [4, 0.4],
+    [3, 0],
+    [0, 0],
+  ] as const) {
+    const t = vijuga(izgladi(k), amp * a);
+    if (!ok(t)) continue;
+    // stanji na ~12 px (krivulja ostaje glatka, manje točaka za hodače)
+    const out: Tocka[] = [];
+    for (let i = 0; i < t.length; i++) if (i === 0 || i === t.length - 1 || i % 3 === 0) out.push({ x: Math.round(t[i]!.x * 10) / 10, y: Math.round(t[i]!.y * 10) / 10 });
+    if (out.length < 3) out.splice(1, 0, { x: (out[0]!.x + out[out.length - 1]!.x) / 2, y: (out[0]!.y + out[out.length - 1]!.y) / 2 });
+    return out;
+  }
+  return kosti.map((p) => ({ ...p }));
 }
 
 /** Uzorak duž puta. Vraća id parcele ako put siječe njezin romb. */

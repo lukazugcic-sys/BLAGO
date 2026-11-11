@@ -93,7 +93,8 @@ test("hod na 10 Hz prati stazu i ne mijenja nizove", async () => {
   const devet = new a.AgentSim();
   devet.postavi(
     [flat],
-    Array.from({ length: 9 }, (_, i) => ({ ruta: 0, brzina: 10, faza: i * 0.1, tip: 0 })),
+    // 0.9.175: granica je AGENT_CAP (16: 8 heroja + kola + pas); jedan više se odreže
+    Array.from({ length: a.AGENT_CAP + 1 }, (_, i) => ({ ruta: 0, brzina: 10, faza: i * 0.1, tip: 0 })),
   );
   assert.equal(devet.count, a.AGENT_CAP);
 });

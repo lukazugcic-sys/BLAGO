@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { Iznos, TekstResursa } from "@/components/game/Iznos";
 import { useGameStore } from "@/lib/stores/gameStore";
 import { ART } from "@/lib/game/art";
 import { playSfx, vibrate } from "@/lib/game/audio";
@@ -160,7 +161,7 @@ export function UtrkaStaza() {
               onClick={kreni}
               className="mt-2 min-h-11 w-full rounded-xl bg-gold text-xs font-bold tracking-widest text-void uppercase disabled:bg-panel-2 disabled:text-dim"
             >
-              Jaši · {ulogSad}g
+              Jaši · <Iznos resurs="zlato" kolicina={ulogSad} />
             </button>
           </>
         )}
@@ -227,7 +228,7 @@ export function UlogTraka({
         >
           −
         </button>
-        <span className="min-w-16 flex-1 text-center text-sm font-bold tabular-nums text-gold">{ulog}g</span>
+        <span className="min-w-16 flex-1 text-center text-sm font-bold tabular-nums text-gold"><Iznos resurs="zlato" kolicina={ulog} /></span>
         <button
           type="button"
           disabled={disabled || ulog >= max}

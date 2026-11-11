@@ -8,7 +8,8 @@ assert.match(slot, /BESPLATNE_ZNAK_DIJAMANT/);
 assert.match(slot, /EXPAND_ZNAKOVI/);
 assert.match(slot, /kupiBesplatne\(bonusZnak\)/);
 assert.match(slot, /aria-label="Bonus izbornik"/);
-assert.match(slot, /disabled=\{!plati && zakljucan\}/);
+// 0.9.172: Znak kupnja se gasi i kad nema dijamanata za skaliranu cijenu
+assert.match(slot, /disabled=\{\(!plati && zakljucan\) \|\| !mozeKupitiZnak\}/);
 assert.doesNotMatch(slot, /plati && !mozeKupiti/);
 assert.doesNotMatch(slot, /KUPI \$\{kupiN\}/);
 

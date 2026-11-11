@@ -25,3 +25,16 @@ export function kartaPetljaPokreni(fn: () => void) {
     }
   };
 }
+
+/**
+ * 0.9.177 (t448u): dok se karta vuče/zumira (i dok traje inercija), hodači miruju — kadar tada
+ * pomiče samo kompozitirani sloj svijeta (bez paint/layerize zbog agenata). Kamera javlja pomak.
+ */
+let kameraU = -1e9;
+export const KAMERA_MIRUJE_MS = 140;
+export function kameraSeMakla(t = performance.now()) {
+  kameraU = t;
+}
+export function kameraSeMice(t = performance.now()) {
+  return t - kameraU < KAMERA_MIRUJE_MS;
+}

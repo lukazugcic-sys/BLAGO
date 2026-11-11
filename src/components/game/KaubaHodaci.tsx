@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { KaravanaKola } from "./KaravanaKola";
 import { AGENT_CAP, AgentSim, spljostiRutu, type AgentUlaz } from "@/lib/game/agentiSim";
 import {
   ciljIzGdje,
@@ -13,9 +14,11 @@ import {
   type PlanHoda,
 } from "@/lib/game/hodCilj";
 import { playSfx } from "@/lib/game/audio";
-import { brojAgenata, tockaNaPutu, type Detalj, type Staza } from "@/lib/game/kartaPogled";
-import { kartaPetljaPokreni } from "@/lib/game/kartaPetlja";
-import { danDoba, gdjeJe, poredajGlavne, type DanDoba, type Stanovnik } from "@/lib/game/ljudi";
+import { brojAgenata, fazaKola, odaberiHodace, rutaKaravane, tockaNaPutu, type Detalj, type Staza } from "@/lib/game/kartaPogled";
+import { kartaPetljaPokreni, kameraSeMice } from "@/lib/game/kartaPetlja";
+import { danDoba, gdjeJe, poredajGlavne, tkoJaše, type DanDoba, type Stanovnik } from "@/lib/game/ljudi";
+import { BRZINA_HODA, BRZINA_JAHACA } from "@/lib/game/kartaPogled";
+import { KonjZnak, bojaKonja } from "./KaubaCesta";
 import { PARCELE } from "@/lib/game/ulicaRaspored";
 import { Termika } from "@/lib/game/termika";
 import { TokPolje } from "@/lib/game/tokPolje";
@@ -24,6 +27,12 @@ import { LikAvatar } from "./LikAvatar";
 
 const DVO_MS = 300;
 const OTVORI_MS = 320;
+/** 0.9.174: kola na karti voze sporije (prije 22 px/s, sad 10 px/s ≈ 45 %). */
+const BRZINA_KOLA = 10;
+/** 0.9.175: kola voze cijelu glavnu cestu tamo-natrag (rub karte → naselje → drugi rub). */
+const RUTA_KOLA = rutaKaravane();
+/** Početak vožnje kola (performance.now): faza ide po satu, pa zum/promjena pogleda ne vraća kola na početak ceste. */
+let kolaT0: number | null = null;
 
 type Kadro = { x0: number; y0: number; x1: number; y1: number; z: number };
 type Tap = { id: string; t: number; timer: number };
@@ -59,6 +68,7 @@ export function KaubaHodaci({
   const gradnje = useGameStore((s) => s.gradnje);
   const ostecenja = useGameStore((s) => s.ostecenja);
   const karavana = useGameStore((s) => s.karavana);
+  const konjiDuznost = useGameStore((s) => s.konjiDuznost);
   const [doba, setDoba] = useState<DanDoba>(() => danDoba());
   useEffect(() => {
     const id = window.setInterval(() => setDoba(danDoba()), 60_000);
@@ -68,13 +78,16 @@ export function KaubaHodaci({
   const balonTimer = useRef(0);
   const korijen = useRef<HTMLSpanElement>(null);
   // Cilj svakog hodača dolazi iz gdjeJe(): gradilište, posao, doba dana. Tko je na putu (pohod, karavana) nije na karti.
-  const { hodaci, ciljevi } = useMemo(() => {
+  const { hodaci, ciljevi, jase } = useMemo(() => {
     const svi = ljudi.concat(segrti).concat(zamjenici);
     const c = new Map<string, CiljHoda>();
     for (const p of svi) c.set(p.id, ciljIzGdje(gdjeJe(p, gradevine, gradnje, ostecenja, doba, karavana, svi)));
     const tu = poredajGlavne(svi).filter((p) => c.get(p.id)?.tip !== "put");
-    return { hodaci: tu.slice(0, brojAgenata(stanovnici, 0).hodaci), ciljevi: c };
-  }, [ljudi, segrti, zamjenici, stanovnici, gradevine, gradnje, ostecenja, karavana, doba]);
+    // 0.9.175: svaki heroj (glavni lik) koji je u kaubi uvijek je na karti; obični kauboji popune ostatak do granice.
+    // 0.9.175: tko jaše (isto pravilo kao popis kauboja: staja + kapacitet/dužnost jahanja) crta se na konju i ide brže
+    const jase = tkoJaše(svi, gradevine, ostecenja, konjiDuznost);
+    return { hodaci: odaberiHodace(tu, brojAgenata(stanovnici, 0).hodaci), ciljevi: c, jase };
+  }, [ljudi, segrti, zamjenici, stanovnici, gradevine, gradnje, ostecenja, karavana, doba, konjiDuznost]);
   const ciljRef = useRef(ciljevi);
   ciljRef.current = ciljevi;
   /** Plan i prijeđeni put po osobi; preživljava zum i promjenu zgrada (nema skoka). Samo prikaz, ne sprema se. */
@@ -94,6 +107,8 @@ export function KaubaHodaci({
     if (!root || !world) return;
     const nodes = root.querySelectorAll<HTMLElement>("[data-agent]");
     const flat = rute.map((r) => spljostiRutu(r.tocke));
+    const kolaRi = flat.length;
+    flat.push(spljostiRutu(RUTA_KOLA.tocke));
     const tok = new TokPolje();
     let tokKljuc = "";
     for (let i = 0; i < rute.length; i++) {
@@ -108,6 +123,10 @@ export function KaubaHodaci({
     const ids: string[] = [];
     const slot0 = flat.length;
     const pocetni: { i: number; plan: PlanHoda; d: number }[] = [];
+    let kolaK = 0;
+    if (kolaT0 === null) kolaT0 = performance.now();
+    const kolaPomak = (((performance.now() - kolaT0) / 1000) * BRZINA_KOLA) / (RUTA_KOLA.duzina || 1);
+    const jahac0 = new Uint8Array(AGENT_CAP);
     nodes.forEach((n, i) => {
       if (ulaz.length >= AGENT_CAP) return;
       const tip = n.dataset.agent;
@@ -117,21 +136,30 @@ export function KaubaHodaci({
         const cilj = ciljRef.current.get(id) ?? { tip: "ulica" as const };
         const st = mapa.get(id) ?? { plan: planNaCilju(cilj), d: 0 };
         pocetni.push({ i: ulaz.length, plan: st.plan, d: st.d });
-        ulaz.push({ ruta: 0, brzina: 32, faza: 0, tip: 0 });
+        if (n.dataset.jase === "1") jahac0[ulaz.length] = 1;
+        ulaz.push({ ruta: 0, brzina: n.dataset.jase === "1" ? BRZINA_JAHACA : BRZINA_HODA, faza: 0, tip: 0 });
         els.push(n);
         ids.push(id);
         return;
       }
       // Kola i pas: kao prije (ulica); u pogledu izdaleka miruju i skriveni su.
       if (daleko) return;
-      const ri = (tip === "kola" || tip === "pas" ? 0 : i) % rute.length;
+      if (tip === "kola") {
+        // kola: cijela cesta tamo-natrag, razmaknuta po ruti
+        if (RUTA_KOLA.duzina < 1) return;
+        ulaz.push({ ruta: kolaRi, brzina: BRZINA_KOLA, faza: (fazaKola(kolaK++, kolaN) + kolaPomak) % 1, tip: 1 });
+        els.push(n);
+        ids.push("");
+        return;
+      }
+      const ri = (tip === "pas" ? 0 : i) % rute.length;
       const ruta = rute[ri];
       if (!ruta || ruta.duzina < 1) return;
       ulaz.push({
         ruta: ri,
-        brzina: tip === "kola" ? 22 : 32,
+        brzina: 32,
         faza: tip === "pas" ? -0.045 : i * 0.17,
-        tip: tip === "kola" ? 1 : tip === "pas" ? 2 : 0,
+        tip: tip === "pas" ? 2 : 0,
       });
       els.push(n);
       ids.push("");
@@ -169,11 +197,19 @@ export function KaubaHodaci({
     const kut0 = new Int16Array(AGENT_CAP);
     kut0.fill(-9999);
     const pred0 = new Int8Array(AGENT_CAP);
+    // 0.9.174: smjer kola prati kretanje (slika zadano gleda lijevo, udesno se zrcali)
+    const smjer0 = new Int8Array(AGENT_CAP);
     const ulica = world.closest<HTMLElement>(".ziva-ulica");
     const termika = new Termika();
     let oznaka = 0;
     const stop = kartaPetljaPokreni(() => {
-      sim.frame(performance.now());
+      const sad = performance.now();
+      // ?.: stari strukturni testovi podmeću kartaPetlju bez ove funkcije
+      if (kameraSeMice?.(sad)) {
+        sim.preskoci(sad);
+        return;
+      }
+      sim.frame(sad);
       if (++provjera >= 30) {
         provjera = 0;
         uskladi();
@@ -181,7 +217,8 @@ export function KaubaHodaci({
       const vruce = termika.frame(sim.teret);
       let t = sim.simT - 0.1 + sim.alpha * 0.1;
       if (t < 0) t = 0;
-      if (sim.teret === 0 && vruce === 0) world.style.setProperty("--t", t.toFixed(3));
+      // 0.9.177 (t448u): --t se više ne piše na .izo-svijet svaki kadar — nijedan CSS ga ne čita, a
+      // naslijeđeno custom svojstvo na korijenu svijeta tjeralo je preračun stila ~4000 čvorova po kadru.
       if (ulica && oznaka !== vruce) {
         oznaka = vruce;
         if (vruce > 0) ulica.dataset.teret = "1";
@@ -212,6 +249,28 @@ export function KaubaHodaci({
         if (sim.zadnjiZ[i] !== z) {
           sim.zadnjiZ[i] = z;
           n.style.setProperty("--z", String(z));
+        }
+        if (sim.tip[i] === 1) {
+          const dx = sim.x[i]! - sim.prevX[i]!;
+          // skok pri prelasku petlje (teleport) se ne broji; mali pomak ne mijenja smjer
+          if (dx > 0.15 && dx < 30 && smjer0[i] !== 1) {
+            smjer0[i] = 1;
+            n.dataset.smjer = "d";
+          } else if (dx < -0.15 && dx > -30 && smjer0[i] !== -1) {
+            smjer0[i] = -1;
+            n.dataset.smjer = "l";
+          }
+        }
+        if (jahac0[i]) {
+          // jahač: konj gleda kamo ide (slika gleda desno, ulijevo se zrcali)
+          const dx = sim.x[i]! - sim.prevX[i]!;
+          if (dx > 0.15 && dx < 30 && smjer0[i] !== 1) {
+            smjer0[i] = 1;
+            n.dataset.smjer = "d";
+          } else if (dx < -0.15 && dx > -30 && smjer0[i] !== -1) {
+            smjer0[i] = -1;
+            n.dataset.smjer = "l";
+          }
         }
         if (teret || sim.tip[i] !== 0) continue;
         const alat = n.dataset.alat;
@@ -262,7 +321,7 @@ export function KaubaHodaci({
         els[i]!.classList.remove("is-ispred");
       }
     };
-  }, [pauza, mirno, detalj, rute, hodaci, kolaN, kadarRef]);
+  }, [pauza, mirno, detalj, rute, hodaci, jase, kolaN, kadarRef]);
 
   // Promjena zadatka: preusmjeri od trenutne točke, bez novog sima.
   useEffect(() => {
@@ -319,6 +378,8 @@ export function KaubaHodaci({
             data-id={p.id}
             data-cilj={kljucCilja(cilj)}
             data-alat={p.alat}
+            data-jase={jase.has(p.id) ? "1" : undefined}
+            data-smjer={jase.has(p.id) ? "d" : undefined}
             style={{ transform: `translate3d(${start.x}px, ${start.y}px, 0)`, ["--z" as string]: Math.round(start.y) }}
             aria-label={`${p.ime}. ${p.rec}`}
             onDoubleClick={(e) => {
@@ -333,6 +394,11 @@ export function KaubaHodaci({
             }}
             onClick={dodir(p.id, () => reci(p))}
           >
+            {jase.has(p.id) ? (
+              <svg className="izo-jahac-konj" viewBox="-13 -21 26 25" width={26} height={25} aria-hidden>
+                <KonjZnak {...bojaKonja(`jahac-${p.id}`)} />
+              </svg>
+            ) : null}
             <span className="izo-setac-hod">
               <span className="izo-setac-lik">
                 <LikAvatar p={p} mood="dan" />
@@ -347,16 +413,20 @@ export function KaubaHodaci({
         );
       })}
       {Array.from({ length: kolaN }, (_, i) => {
-        const ruta = rute[0];
-        const start = ruta ? tockaNaPutu(ruta.tocke, 0.2 + i * 0.35) : { x: 0, y: 0 };
+        const u = fazaKola(i, kolaN);
+        const start = tockaNaPutu(RUTA_KOLA.tocke, u);
+        const dalje = tockaNaPutu(RUTA_KOLA.tocke, u + 0.002);
         return (
           <span
             key={`kola${i}`}
             className="izo-kola-agent"
             data-agent="kola"
+            data-smjer={dalje.x > start.x + 0.01 ? "d" : "l"}
             style={{ transform: `translate3d(${start.x}px, ${start.y}px, 0)` }}
             aria-hidden
-          />
+          >
+            <KaravanaKola className="izo-kola-svg" />
+          </span>
         );
       })}
       {hodaci.length > 0 && rute[0] ? (

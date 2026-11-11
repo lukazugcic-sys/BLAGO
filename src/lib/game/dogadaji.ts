@@ -40,12 +40,12 @@ const STRANAC_REC = [
 const DVOBOJ_REC = [
   "Dva pijanca pred salunom. Pistoli van.",
   "Svađa u prašini. Netko viknuo ime.",
-  "Dvoboj. Ulica se cijepa.",
+  "Dvoboj. Ljudi se razilaze s ulice.",
 ];
 const SALUN_REC = [
-  "Netko vara u casinu. Mara viče.",
+  "Netko vara u salunu. Mara viče.",
   "Salun je tijesan. Čaša leti.",
-  "Kocka pod stolom. Tišina reže.",
+  "Kocka pod stolom. U salunu je tiho.",
 ];
 const KRDO_REC = [
   "Govedo razbilo tor. Prašina i rika.",
@@ -59,7 +59,7 @@ const KONJ_REC = [
 ];
 const KISA_REC = [
   "Oblaci nad mlinom. Kiša ili prah.",
-  "Bunar pada. Cisterna čeka nebo.",
+  "Bunar presušuje. Cisterna čeka nebo.",
   "Suša na polju. Prašina u zubima.",
 ];
 const TRGOVAC_REC = [
@@ -114,7 +114,7 @@ const SERIF_CINOVI: Array<{
     rec: (ime) => `As pod stolom. Mara šuti. ${ime} čuje ime. Zakon, tura ili vrata.`,
     opcije: (ime) => [
       { id: "serif", rec: `${ime} stane` },
-      { id: "nali", rec: "Natoči · 6g" },
+      { id: "nali", rec: "Natoči · 6 zlata" },
       { id: "izbaci", rec: "Baci ga van" },
     ],
     kraj: (ime, opcija, imaRed) => {
@@ -132,7 +132,7 @@ const SERIF_CINOVI: Array<{
     rec: (ime) => `Podne. Dva pištolja. Prašina stoji. ${ime} može stati u sredinu, ili ne.`,
     opcije: (ime) => [
       { id: "serif", rec: `${ime} u sredinu` },
-      { id: "gledaj", rec: "Ulog · 8g" },
+      { id: "gledaj", rec: "Ulog · 8 zlata" },
       { id: "pusti", rec: "Pusti krv" },
     ],
     kraj: (ime, opcija, imaRed) => {
@@ -186,11 +186,11 @@ const SERIF_CINOVI: Array<{
     rec: (ime) => `Prašina se slegla. ${ime} skida zvijezdu. Čaša, mir ili još jedan krug. Sutra opet.`,
     opcije: (ime) => [
       { id: "serif", rec: `${ime} sjedi` },
-      { id: "nali", rec: "Natoči · 6g" },
+      { id: "nali", rec: "Natoči · 6 zlata" },
       { id: "izbaci", rec: "Mir u ulici" },
     ],
     kraj: (ime, opcija) => {
-      if (opcija === "serif") return { rec: `${ime} sjedi. Čaša. Ulica diše. Cin je gotov. Zvijezda opet na prsima.`, zlato: 10, energija: 3, kvaliteta: 4, serifXp: true };
+      if (opcija === "serif") return { rec: `${ime} sjedi. Čaša. Ulica diše. Čin je gotov. Zvijezda opet na prsima.`, zlato: 10, energija: 3, kvaliteta: 4, serifXp: true };
       if (opcija === "nali") return { rec: "Natočili. Mara kima. Sutra nova prašina.", zlato: -6, energija: 2, kvaliteta: 2 };
       return { rec: "Mir. Vrata zatvorena. Zakon spava jednu noć.", zlato: 6, kvaliteta: 3, popravi: "salun" };
     },
@@ -303,7 +303,7 @@ export function napraviDogadaj(tip: DogadajTip, serifIme: string, t = Date.now()
       rec: iz(SVADBA_REC, t),
       t,
       opcije: [
-        { id: "daj", rec: "Baci 8g" },
+        { id: "daj", rec: "Baci 8 zlata" },
         { id: "plesi", rec: "Plesi" },
         { id: "ostavi", rec: "Ostavi" },
       ],
@@ -419,7 +419,7 @@ export function rijesiIshod(
   }
   if (d.tip === "konj") {
     if (opcija === "lijeci") {
-      if (ctx.zlato < 5) return { rec: "Nema 5g za zavoj." };
+      if (ctx.zlato < 5) return { rec: "Nema 5 zlata za zavoj." };
       return { rec: "Kopito zavezano. Konj diše.", zlato: -5, energija: 1, kvaliteta: 1 };
     }
     if (opcija === "serif") return { rec: "Vodi ga u staju. Tiho.", stitovi: 1, serifXp: true };
@@ -432,7 +432,7 @@ export function rijesiIshod(
   }
   if (d.tip === "trgovac") {
     if (opcija === "trguj") {
-      if (ctx.zlato < 8) return { rec: "Nema 8g. Trgovac ode." };
+      if (ctx.zlato < 8) return { rec: "Nema 8 zlata. Trgovac ode." };
       return { rec: "Mjera gotova. Torba teža.", zlato: -8 + 12, kvaliteta: 1 };
     }
     if (opcija === "serif") return { rec: "Mjeri. Vaga ne laže.", zlato: 4, serifXp: true };
@@ -440,8 +440,8 @@ export function rijesiIshod(
   }
   if (d.tip === "svadba") {
     if (opcija === "daj") {
-      if (ctx.zlato < 8) return { rec: "Nema 8g. Mladenci kimali i otišli." };
-      return { rec: "Bacio si 8g. Mara pjeva. Salun diše.", zlato: -8, energija: 2, kvaliteta: 3 };
+      if (ctx.zlato < 8) return { rec: "Nema 8 zlata. Mladenci kimali i otišli." };
+      return { rec: "Bacio si 8 zlata. Mara pjeva. Salun diše.", zlato: -8, energija: 2, kvaliteta: 3 };
     }
     if (opcija === "plesi") return { rec: "Ples u prašini. Čizma lupa. Kauba vesela.", energija: 1, kvaliteta: 2 };
     return { rec: "Ostavi. Vijenac se suši na vjetru.", kvaliteta: -1 };
@@ -457,8 +457,8 @@ export function rijesiIshod(
   }
   if (d.tip === "cirkus") {
     if (opcija === "ulaz") {
-      if (ctx.zlato < 5) return { rec: "Nema 5g. Šator ostaje zatvoren." };
-      return { rec: "Ulaz. Vatra u grlu. Smijeh. Kauba odahne.", zlato: -5, energija: 3, kvaliteta: 3 };
+      if (ctx.zlato < 5) return { rec: "Nema 5 zlata. Šator ostaje zatvoren." };
+      return { rec: "Ulaz. Bubanj i vatra. Smijeh. Kauba odahne.", zlato: -5, energija: 3, kvaliteta: 3 };
     }
     if (opcija === "gledaj") return { rec: "S ruba. Bubanj daleko. Dosta je.", energija: 1 };
     return { rec: "Šator se sklopio. Prašina opet." };
@@ -468,8 +468,8 @@ export function rijesiIshod(
     return { rec: "Još jedna tura. Mara kihne, ali pjeva.", zlato: -6, kvaliteta: 1 };
   }
   if (opcija === "serif") {
-    if (!ctx.imaRed) return { rec: "Šerifa nema. Casino ide dalje, ružno.", kvaliteta: -2 };
-    return { rec: "Ušao je. Kocke na stol. Tišina.", serifXp: true, kvaliteta: 1 };
+    if (!ctx.imaRed) return { rec: "Šerifa nema. Kocka u salunu ide dalje.", kvaliteta: -2 };
+    return { rec: "Ušao je. Kocke su na stolu.", serifXp: true, kvaliteta: 1 };
   }
-  return { rec: "Izbacili varača. Casino opet čist.", zlato: 4, kvaliteta: 1 };
+  return { rec: "Izbacili varača. Salun je opet čist.", zlato: 4, kvaliteta: 1 };
 }

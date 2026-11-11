@@ -232,7 +232,7 @@ export function Header({
   return (
     <header
       ref={headRef}
-      className="z-20 shrink-0 overflow-visible border-b border-line bg-void/92 px-2.5 pb-1.5 pt-[max(1.75rem,calc(env(safe-area-inset-top,0px)+0.45rem))]"
+      className="hdr-179 z-20 shrink-0 overflow-visible border-b border-line bg-void/92 px-2.5 pb-1.5 hdr-gore"
     >
       <div className="relative z-40 mb-1.5 flex items-center gap-1.5">
         <ImeNaDodir ime="razina">

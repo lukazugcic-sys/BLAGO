@@ -128,6 +128,9 @@ function ucitajKomponentu(stanje, mirno, detalj, pauza = false) {
   const sat = { t: 0 };
   const stubs = {
     "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: "F" },
+    "./KaravanaKola": { KaravanaKola: "KaravanaKola" },
+    // 0.9.175: jahač na karti crta konja iz KaubaCesta
+    "./KaubaCesta": { KonjZnak: "KonjZnak", bojaKonja: () => ({ boja: "#000", griva: "#000" }) },
     react: {
       useEffect: (f) => efekti.push(f),
       useMemo: (f) => f(),

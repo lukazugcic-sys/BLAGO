@@ -1,4 +1,6 @@
-import { CESTA, PARCELE, SVIJET, okvirNaselja, uRomu, type SitniTip } from "./ulicaRaspored";
+import { CELIJA_H, CELIJA_W, CESTA, PARCELE, SVIJET, okvirNaselja, putelji, uRomu, velicinaSpritea, type SitniTip } from "./ulicaRaspored";
+
+type Tocka = { x: number; y: number };
 
 export function stazaPoligon() {
   const a = CESTA[0];
@@ -103,10 +105,170 @@ export function potokTocke() {
     }
     pts.push(`${Math.round(x)},${Math.round(y)}`);
   }
+  // 0.9.175: potok teče dalje uz cisternu, između rudnika i kamenoloma, i izlazi s karte na jugu.
+  pts.push(...nastavakPotoka(pts[pts.length - 1]!));
   return pts.join(" ");
 }
 
+/** Sidra nastavka (svjetske koordinate iz parcela): ispod cisterne, istočno od rudnika, van južnog ruba. */
+export function sidraNastavka(): Tocka[] {
+  const cisterna = PARCELE.find((p) => p.id === "cisterna");
+  const rudnik = PARCELE.find((p) => p.id === "rudnik");
+  if (!cisterna || !rudnik) return [];
+  // 0.9.180: stari tok ostaje obala. Prolaz je uz rudnik, kamenolom ga više ne vuče (premješten na suho, zapadno).
+  // Kratki meandar sjeverno od mlina da puteljak mlina prijeđe vodu (most). Inače bi ostao samo jedan prijelaz.
+  const prolaz = rudnik.x + 86;
+  return [
+    { x: cisterna.x + 120, y: cisterna.y - 16 },
+    { x: cisterna.x + 92, y: cisterna.y + 70 },
+    { x: cisterna.x + 36, y: cisterna.y + 62 },
+    { x: cisterna.x + 14, y: cisterna.y + 104 },
+    { x: prolaz - 20, y: rudnik.y - 84 },
+    { x: prolaz - 4, y: rudnik.y - 16 },
+    { x: prolaz + 4, y: rudnik.y + 40 },
+    { x: prolaz - 6, y: SVIJET.h + 46 },
+  ];
+}
+
+function nastavakPotoka(kraj: string): string[] {
+  const [kx, ky] = kraj.split(",").map(Number);
+  const sidra = sidraNastavka();
+  if (!sidra.length || !Number.isFinite(kx) || !Number.isFinite(ky)) return [];
+  const sidro = [{ x: kx!, y: ky! }, ...sidra];
+  const out: string[] = [];
+  const n = 30;
+  for (let i = 1; i <= n; i++) {
+    const t = i / n;
+    const seg = t * (sidro.length - 1);
+    const a = Math.min(sidro.length - 2, Math.floor(seg));
+    const u = seg - a;
+    // glatko (Catmull-Rom) kroz sidra + ista blaga valovitost kao gornji dio
+    const p0 = sidro[Math.max(0, a - 1)]!;
+    const p1 = sidro[a]!;
+    const p2 = sidro[a + 1]!;
+    const p3 = sidro[Math.min(sidro.length - 1, a + 2)]!;
+    const cr = (q0: number, q1: number, q2: number, q3: number) =>
+      0.5 * (2 * q1 + (-q0 + q2) * u + (2 * q0 - 5 * q1 + 4 * q2 - q3) * u * u + (-q0 + 3 * q1 - 3 * q2 + q3) * u * u * u);
+    const kraj_ = i === n;
+    let x = cr(p0.x, p1.x, p2.x, p3.x) + (kraj_ ? 0 : Math.sin(t * Math.PI * 4.2) * 5);
+    let y = cr(p0.y, p1.y, p2.y, p3.y) + (kraj_ ? 0 : Math.sin(t * Math.PI * 5.3) * 3);
+    for (let k = 0; k < 8; k++) {
+      const hit = PARCELE.find((p) => uRomu(x, y, p));
+      if (!hit) break;
+      const dx = x - hit.x || 1;
+      const dy = y - hit.y || 1;
+      const len = Math.hypot(dx, dy) || 1;
+      x += (dx / len) * 10;
+      y += (dy / len) * 7;
+    }
+    out.push(`${Math.round(x)},${Math.round(y)}`);
+  }
+  // dalje van karte (preko okolice) da se kraj nikad ne vidi
+  const [zx, zy] = (out[out.length - 1] ?? kraj).split(",").map(Number);
+  for (let k = 1; k <= 7; k++) out.push(`${Math.round(zx! + Math.sin(k * 1.3) * 9 - k * 4)},${Math.round(zy! + k * 58)}`);
+  return out;
+}
+
 export const POTOK = potokTocke();
+
+/**
+ * 0.9.180: obala od ispusta (korali) prema toru, pa zavoj u malu uvalu.
+ * Potok i lokva se ne diraju — ovo je nastavak obale, ne novi tok kroz rudnik.
+ * Zaljev ide južno od prolaza, izvan spritea zgrada (lovački dom ostaje na suhom).
+ */
+function izvanSpritea(x: number, y: number): Tocka {
+  const skala = 1.08;
+  const rub = 28;
+  for (let k = 0; k < 14; k++) {
+    let gurnut = false;
+    for (const p of PARCELE) {
+      const s = velicinaSpritea(p.id, true);
+      const hw = (s.w * skala) / 2 + rub;
+      const hh = (s.h * skala) / 2 + rub;
+      const l = p.x - hw;
+      const r = p.x + hw;
+      const t = p.y - hh;
+      const b = p.y + hh;
+      if (x < l || x > r || y < t || y > b) continue;
+      const dl = x - l;
+      const dr = r - x;
+      const dt = y - t;
+      const db = b - y;
+      const m = Math.min(dl, dr, dt, db);
+      if (m === db) y = b + 2;
+      else if (m === dl) x = l - 2;
+      else if (m === dr) x = r + 2;
+      else y = t - 2;
+      gurnut = true;
+    }
+    if (!gurnut) break;
+  }
+  return { x, y };
+}
+
+export function uvalaTocke(): string {
+  const korali = PARCELE.find((p) => p.id === "korali");
+  const tor = PARCELE.find((p) => p.id === "tor");
+  if (!korali || !tor) return "";
+  const sidra: Tocka[] = [
+    { x: korali.x - 108, y: korali.y + 64 },
+    { x: korali.x - 24, y: korali.y + 228 },
+    { x: korali.x * 0.42 + tor.x * 0.58, y: Math.max(korali.y, tor.y) + 236 },
+    { x: tor.x - 214, y: tor.y + 214 },
+    { x: tor.x - 36, y: tor.y + 176 },
+    { x: tor.x - 148, y: tor.y + 276 },
+  ];
+  const out: string[] = [];
+  const n = 36;
+  const cr = (q0: number, q1: number, q2: number, q3: number, u: number) =>
+    0.5 * (2 * q1 + (-q0 + q2) * u + (2 * q0 - 5 * q1 + 4 * q2 - q3) * u * u + (-q0 + 3 * q1 - 3 * q2 + q3) * u * u * u);
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    const seg = t * (sidra.length - 1);
+    const a = Math.min(sidra.length - 2, Math.floor(seg));
+    const u = seg - a;
+    const p0 = sidra[Math.max(0, a - 1)]!;
+    const p1 = sidra[a]!;
+    const p2 = sidra[a + 1]!;
+    const p3 = sidra[Math.min(sidra.length - 1, a + 2)]!;
+    let x = cr(p0.x, p1.x, p2.x, p3.x, u);
+    let y = cr(p0.y, p1.y, p2.y, p3.y, u);
+    const van = izvanSpritea(x, y);
+    x = van.x;
+    y = van.y;
+    out.push(`${Math.round(x)},${Math.round(y)}`);
+  }
+  return out.join(" ");
+}
+
+export const UVALA = uvalaTocke();
+
+let vodaLin: Tocka[][] | null = null;
+function linijeVode(): Tocka[][] {
+  if (!vodaLin) {
+    const potok = tockeOd(POTOK);
+    const uvala = tockeOd(UVALA);
+    vodaLin = uvala.length > 1 ? [potok, uvala] : [potok];
+  }
+  return vodaLin;
+}
+
+/** 0.9.175: udaljenost do osi potoka; 0.9.180 i do uvale (ukrasi i grla ne stoje u vodi). */
+export function doPotoka(x: number, y: number) {
+  let d = Infinity;
+  for (const lin of linijeVode()) {
+    for (let i = 1; i < lin.length; i++) {
+      const a = lin[i - 1]!;
+      const b = lin[i]!;
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const l = dx * dx + dy * dy || 1;
+      const k = Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / l));
+      d = Math.min(d, Math.hypot(x - a.x - dx * k, y - a.y - dy * k));
+    }
+  }
+  return d;
+}
 
 export function uzPotok() {
   const pts = POTOK.split(" ").flatMap((p) => {
@@ -246,23 +408,68 @@ export function detaljiUzCestu() {
 
 export const DETALJ = detaljiUzCestu();
 
+/**
+ * 0.9.175: mostić (daske) svugdje gdje puteljak ili cesta prelazi potok.
+ * kut = smjer puta (daske leže uzduž puta, preko vode).
+ */
+export function mostoviPotoka() {
+  const vode = [tockeOd(POTOK), tockeOd(UVALA)].filter((v) => v.length > 1);
+  const linije = [...putelji(PARCELE.map((p) => p.id)).map((p) => p.tocke), tockeOd(STAZA.trag)];
+  const out: { x: number; y: number; kut: number }[] = [];
+  for (const l of linije) {
+    for (let i = 1; i < l.length; i++) {
+      const a = l[i - 1]!;
+      const b = l[i]!;
+      for (const voda of vode) {
+        for (let j = 1; j < voda.length; j++) {
+          const c = voda[j - 1]!;
+          const d = voda[j]!;
+          const r = (b.x - a.x) * (d.y - c.y) - (b.y - a.y) * (d.x - c.x);
+          if (!r) continue;
+          const s1 = ((c.x - a.x) * (d.y - c.y) - (c.y - a.y) * (d.x - c.x)) / r;
+          const s2 = ((c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x)) / r;
+          if (s1 < 0 || s1 > 1 || s2 < 0 || s2 > 1) continue;
+          const x = Math.round((a.x + (b.x - a.x) * s1) * 10) / 10;
+          const y = Math.round((a.y + (b.y - a.y) * s1) * 10) / 10;
+          if (out.some((m) => Math.hypot(m.x - x, m.y - y) < 24)) continue;
+          out.push({ x, y, kut: Math.round((Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI) });
+        }
+      }
+    }
+  }
+  return out;
+}
+
+export const MOSTOVI = mostoviPotoka();
+
+/**
+ * Short corral fence on the tor's outer (lower-right) edge.
+ * Previously the fence was interpolated from tor to korali (a different, distant
+ * parcel), producing one long straight double line across the ranch, and the lower
+ * rail sat below the posts. Now: posts follow one rhombus edge just outside the plot,
+ * posts too close to the creek or inside any plot are dropped, and both rails hang
+ * between the post top (y-7) and bottom (y+1).
+ */
 export function plotRanca() {
+  const prazno = { zica: "", letva: "", stupovi: [] as { x: number; y: number }[] };
   const a = PARCELE.find((p) => p.id === "tor");
-  const b = PARCELE.find((p) => p.id === "korali");
-  if (!a || !b) return { zica: "", letva: "", stupovi: [] as { x: number; y: number }[] };
+  if (!a) return prazno;
+  const potok = tockeOd(POTOK);
+  const odmak = 8;
+  const od = { x: a.x + CELIJA_W / 2 + odmak, y: a.y + 2 };
+  const do_ = { x: a.x + 2, y: a.y + CELIJA_H / 2 + odmak };
   const stupovi: { x: number; y: number }[] = [];
   for (let i = 0; i <= 4; i++) {
     const t = i / 4;
-    const x = a.x + (b.x - a.x) * t + 36;
-    const y = a.y + (b.y - a.y) * t + 20;
-    if (PARCELE.some((p) => uRomu(x, y, p))) return { zica: "", letva: "", stupovi: [] };
+    const x = od.x + (do_.x - od.x) * t;
+    const y = od.y + (do_.y - od.y) * t;
+    if (PARCELE.some((p) => uRomu(x, y, p))) break;
+    if (potok.some((q) => Math.hypot(q.x - x, q.y - y) < 16)) break;
     stupovi.push({ x, y });
   }
-  return {
-    zica: stupovi.map((p) => `${Math.round(p.x)},${Math.round(p.y)}`).join(" "),
-    letva: stupovi.map((p) => `${Math.round(p.x)},${Math.round(p.y + 4)}`).join(" "),
-    stupovi,
-  };
+  if (stupovi.length < 2) return prazno;
+  const crta = (dy: number) => stupovi.map((p) => `${Math.round(p.x)},${Math.round(p.y + dy)}`).join(" ");
+  return { zica: crta(-5), letva: crta(-2), stupovi };
 }
 
 export const PLOT = plotRanca();
@@ -299,6 +506,7 @@ export function drvoredFarma() {
       const x = farma.x + (i - 1) * 48 + (i % 2 === 0 ? 7 : -9);
       const y = farma.y + 74 + (i % 2) * 6;
       if (PARCELE.some((p) => uRomu(x, y, p))) continue;
+      if (doPotoka(x, y) < 28) continue;
       out.push({ x, y, tip: i % 2, sc: 0.82 + (i % 2) * 0.16 });
     }
   }
@@ -307,6 +515,7 @@ export function drvoredFarma() {
       const x = ord.x - 18 + i * 20;
       const y = ord.y + 34 + (i % 2) * 9;
       if (PARCELE.some((p) => uRomu(x, y, p))) continue;
+      if (doPotoka(x, y) < 28) continue;
       out.push({ x, y, tip: (i + 1) % 2, sc: 0.7 + (i % 2) * 0.12 });
     }
   }
@@ -332,6 +541,7 @@ export function stablaUzCestu() {
     const x = t.x + (-dy / len) * 28 * strana;
     const y = t.y + (dx / len) * 28 * strana;
     if (PARCELE.some((p) => uRomu(x, y, p))) continue;
+    if (doPotoka(x, y) < 28) continue;
     out.push({ x, y, tip: i % 2, sc: 0.72 + (i % 3) * 0.1 });
   }
   return out;
@@ -358,6 +568,7 @@ export function rekviziti() {
     const x = p.x + r.ox;
     const y = p.y + r.oy;
     if (PARCELE.some((q) => uRomu(x, y, q))) return [];
+    if (doPotoka(x, y) < 12) return [];
     return [{ ...r, x, y, okret: (i % 2 === 0 ? -8 : 7) }];
   });
 }
@@ -450,13 +661,14 @@ export const SIPAK = (() => {
     [120, 28],
     [-110, 70],
   ];
-  for (const id of ["korali", "farma", "cisterna", "rudnik", "lov"]) {
+  for (const id of ["korali", "farma", "cisterna", "rudnik", "lov", "banka"]) {
     const p = PARCELE.find((z) => z.id === id);
     if (!p) continue;
     od.forEach(([ox, oy], i) => {
       const x = p.x + (ox ?? 0);
       const y = p.y + (oy ?? 0);
       if (PARCELE.some((q) => uRomu(x, y, q))) return;
+      if (doPotoka(x, y) < 28) return;
       out.push({ x, y, tip: (out.length + i) % 4, sc: 0.5 + (i % 3) * 0.16 });
     });
   }
@@ -488,7 +700,8 @@ export function grana(od: string, ka: string) {
   return [...lijevo, ...desno.reverse()].join(" ");
 }
 
-export const GRANE = [grana("korali", "farma"), grana("cisterna", "rudnik"), grana("salun", "pekara"), grana("salun", "lov")].filter(
+// 0.9.176: grana salun–pekara uklonjena – tu je sada trg (t437u)
+export const GRANE = [grana("korali", "farma"), grana("cisterna", "rudnik"), grana("salun", "lov")].filter(
   (g) => g.length > 0,
 );
 
@@ -501,6 +714,12 @@ export const DRVECE = (
     ["korali", 86, 52],
     ["staza", 48, 34],
     ["lov", -40, 60],
+    ["lov", 52, 48],
+    ["lov", -8, -70],
+    ["banka", -72, 28],
+    ["banka", 64, 40],
+    ["banka", 8, 70],
+    ["banka", -24, -58],
   ] as const
 )
   .map(([id, ox, oy], i) => {
@@ -509,6 +728,7 @@ export const DRVECE = (
     const x = p.x + ox;
     const y = p.y + oy;
     if (PARCELE.some((q) => uRomu(x, y, q))) return null;
+    if (doPotoka(x, y) < 28) return null;
     return { x, y, tip: i % 2, sc: 1.05 + (i % 3) * 0.12 };
   })
   .filter((d) => d !== null);
@@ -685,6 +905,65 @@ export function terenKarte() {
 
 export const TEREN = terenKarte();
 
+export type KamenKamenoloma = { pts: string; x: number; y: number; r: number; puk: string };
+
+/**
+ * 0.9.173: više kamenja oko kamenoloma. Prsten ispred i sa strane spritea
+ * (gornja polovica bi ionako bila iza zgrade), izvan svih parcela i puteljaka.
+ */
+export function kamenjeKamenoloma(): KamenKamenoloma[] {
+  const k = PARCELE.find((p) => p.id === "kamenolom");
+  if (!k) return [];
+  let s = 20261110;
+  const rnd = () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+  const staze = putelji(PARCELE.map((p) => p.id)).flatMap((p) => {
+    const out: { x: number; y: number }[] = [];
+    for (let i = 0; i < p.tocke.length - 1; i++) {
+      const a = p.tocke[i]!;
+      const b = p.tocke[i + 1]!;
+      for (let t = 0; t <= 1.001; t += 0.2) out.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+    }
+    return out;
+  });
+  const slobodno = (x: number, y: number) =>
+    PARCELE.every((p) => Math.abs(p.x - x) / 72 + Math.abs(p.y - y) / 36 > 1) &&
+    staze.every((q) => Math.hypot(q.x - x, q.y - y) > 14);
+  const out: KamenKamenoloma[] = [];
+  const N = 24;
+  for (let i = 0; i < N; i++) {
+    // kut od -25° do 205° (desna strana → ispred → lijeva strana)
+    const a = ((-25 + (230 * i) / (N - 1)) * Math.PI) / 180;
+    const prsten = i % 3 === 0 ? 1.18 : i % 3 === 2 ? 1.4 : 1;
+    const cx = k.x + Math.cos(a) * (80 + rnd() * 14) * prsten;
+    const cy = k.y + 6 + Math.sin(a) * (40 + rnd() * 8) * prsten;
+    const r = (3.4 + rnd() * 4.6 + (i % 4 === 1 ? 2.6 : 0)) * (prsten > 1.3 ? 0.7 : 1);
+    const kut = rnd() * Math.PI;
+    const tr = Array.from({ length: 6 }, () => 0.8 + rnd() * 0.3);
+    const tr2 = Array.from({ length: 6 }, () => 0.8 + rnd() * 0.3);
+    if (!slobodno(cx, cy)) continue;
+    const pts: string[] = [];
+    for (let j = 0; j < 6; j++) {
+      const b = kut + (j / 6) * Math.PI * 2;
+      const x = cx + Math.cos(b) * r * tr[j]!;
+      const y = cy + Math.sin(b) * r * 0.58 * tr2[j]!;
+      pts.push(`${Math.round(x * 10) / 10},${Math.round(y * 10) / 10}`);
+    }
+    out.push({
+      pts: pts.join(" "),
+      x: Math.round(cx * 10) / 10,
+      y: Math.round(cy * 10) / 10,
+      r: Math.round(r * 10) / 10,
+      puk: `${Math.round(cx - r * 0.4)},${Math.round(cy)} ${Math.round(cx + r * 0.45)},${Math.round(cy + r * 0.18)}`,
+    });
+  }
+  return out;
+}
+
+export const KAMENOLOM_KAMENJE = kamenjeKamenoloma();
+
 export function tockeRekvizita() {
   const out: { x: number; y: number }[] = [];
   const dodaj = (x: number, y: number) => out.push({ x, y });
@@ -717,5 +996,6 @@ export function tockeRekvizita() {
   for (const p of PRAZNINE.busen) dodaj(p.x, p.y);
   for (const p of TEREN.mrlje) dodaj(p.x, p.y);
   for (const p of TEREN.kamenje) dodaj(p.x, p.y);
+  for (const p of KAMENOLOM_KAMENJE) dodaj(p.x, p.y);
   return out;
 }

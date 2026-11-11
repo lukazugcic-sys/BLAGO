@@ -1,4 +1,5 @@
 import type { KaubaDogadaj } from "@/lib/game/dogadaji";
+import { TekstResursa } from "@/components/game/Iznos";
 import { natpisOtjeraj } from "@/lib/game/akuzativ";
 import { playSfx } from "@/lib/game/audio";
 import { cn } from "@/lib/utils";
@@ -41,7 +42,7 @@ export function EventKartica({
       data-vodic={oznaka}
     >
       <p className="text-[10px] font-bold tracking-[0.22em] text-gold uppercase">{naslov}</p>
-      <p className="mt-1 text-sm font-bold leading-snug text-ink">{d.rec}</p>
+      <p className="mt-1 text-sm font-bold leading-snug text-ink"><TekstResursa tekst={d.rec} /></p>
       <div className="mt-2 flex flex-wrap gap-1.5">
         {d.opcije.map((o, i) => (
           <button
@@ -58,7 +59,7 @@ export function EventKartica({
               i === 0 ? "bg-gold text-void" : i === 1 ? "bg-volt text-void" : "bg-xp text-void",
             )}
           >
-            {o.id === "otjeraj" ? natpisOtjeraj(d.serifIme || "stranac") : o.rec}
+            {o.id === "otjeraj" ? natpisOtjeraj(d.serifIme || "stranac") : <TekstResursa tekst={o.rec} />}
           </button>
         ))}
       </div>

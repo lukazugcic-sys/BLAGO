@@ -84,9 +84,10 @@ export function requestNativeFullscreen(_el?: HTMLElement | null) {
   const api = blagoFs();
   if (api) {
     try {
-      api.enter();
+      // 0.9.167: keep Android status bar visible by default (exit immersive).
+      api.exit();
     } catch {
-      /* native immersive already on */
+      /* bars already visible */
     }
     return;
   }

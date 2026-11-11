@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Iznos, TekstResursa } from "@/components/game/Iznos";
 import { ZGRADE } from "@/lib/game/constants";
 import { POTREBE_META, cijenaZgrade, hubZaZgradu, zgradaUvjet } from "@/lib/game/economy";
 import { nagradaZaNadogradnju } from "@/lib/game/sljedeciCilj";
@@ -9,10 +10,10 @@ import type { Gradevine } from "@/lib/game/types";
 
 function recCijene(c: { zlato: number; drvo: number; kamen: number; zeljezo: number }) {
   const d: string[] = [];
-  if (c.zlato) d.push(`${Math.ceil(c.zlato)} g`);
+  if (c.zlato) d.push(`${Math.ceil(c.zlato)} zlata`);
   if (c.drvo) d.push(`${Math.ceil(c.drvo)} drva`);
-  if (c.kamen) d.push(`${Math.ceil(c.kamen)} kam`);
-  if (c.zeljezo) d.push(`${Math.ceil(c.zeljezo)} žel`);
+  if (c.kamen) d.push(`${Math.ceil(c.kamen)} kamena`);
+  if (c.zeljezo) d.push(`${Math.ceil(c.zeljezo)} željeza`);
   return d.join(" · ") || "besplatno";
 }
 
@@ -160,7 +161,7 @@ export function KartaIzbornik({
               onZatvori();
             }}
           >
-            {strop ? "Strop" : `Nadogradi · ${cijenaRec}`}
+            {strop ? "Strop" : <TekstResursa tekst={`Nadogradi · ${cijenaRec}`} />}
           </button>
           <button type="button" role="menuitem" onClick={() => { playSfx("button"); setInfo((v) => !v); }}>
             Info
@@ -191,7 +192,7 @@ export function KartaIzbornik({
           onClick={gradi}
         >
           <span>Gradi</span>
-          <small>{uvjet ? uvjet : `${z.naziv} · ${cijenaRec}`}</small>
+          <small>{uvjet ? uvjet : <TekstResursa tekst={`${z.naziv} · ${cijenaRec}`} />}</small>
         </button>
       )}
       <button

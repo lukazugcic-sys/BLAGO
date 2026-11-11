@@ -1,10 +1,12 @@
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { napuniBazen, pokupiPrvi, useBazen } from "@/lib/game/aiBazen";
 import { citajOdsutnost, sloziKontekst } from "@/lib/game/aiDogadaj";
 import { playSfx } from "@/lib/game/audio";
 import { danDoba } from "@/lib/game/ljudi";
 import { vodicJosIde } from "@/lib/game/vodic";
 import { usePovratak, zatvoriPovratak } from "@/lib/game/aiPrikaz";
+import { portalKorijen } from "@/lib/game/portal";
 import { useGameStore } from "@/lib/stores/gameStore";
 
 function ulazIz(jos: () => boolean) {
@@ -122,14 +124,17 @@ export function AiOznaka({ ziva }: { ziva: boolean }) {
 export function AiPovratak() {
   const linija = usePovratak();
   if (!linija) return null;
-  return (
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <button
       type="button"
       className="ai-povratak"
       data-testid="dok-te-nije-bilo"
+      aria-live="polite"
       onClick={() => zatvoriPovratak()}
     >
       {linija.tekst}
-    </button>
+    </button>,
+    portalKorijen(),
   );
 }

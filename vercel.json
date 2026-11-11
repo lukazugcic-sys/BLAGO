@@ -2,7 +2,7 @@
   "redirects": [
     {
       "source": "/BLAGO.apk",
-      "destination": "/apk/BLAGO-0.9.161-beta.apk",
+      "destination": "/apk/BLAGO-0.9.178-beta.apk",
       "permanent": false
     }
   ],
@@ -34,7 +34,7 @@
         },
         {
           "key": "Content-Disposition",
-          "value": "attachment; filename=\"BLAGO-0.9.161-beta.apk\""
+          "value": "attachment; filename=\"BLAGO-0.9.178-beta.apk\""
         },
         {
           "key": "Cache-Control",

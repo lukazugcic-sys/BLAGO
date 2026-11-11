@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { TekstResursa } from "@/components/game/Iznos";
 import { useGameStore } from "@/lib/stores/gameStore";
 import { useSlotStore, type KnjigaFaza } from "@/lib/stores/slotStore";
 import { useSlotMachine } from "@/lib/hooks/useSlotMachine";
 import { SlotReel } from "./SlotReel";
-import { NagradaPikseli } from "./NagradaPikseli";
 import {
   uloziZaMax,
   sestUloga,
 } from "@/lib/game/constants";
-import { GAMBLE_MAX, izracunajMaxEnergiju, raspolozenjeKaube, uskoVrtnjaRec } from "@/lib/game/economy";
+import { izracunajMaxEnergiju, raspolozenjeKaube, uskoVrtnjaRec } from "@/lib/game/economy";
 import { nizAkoVrijedi, winStreakMnozitelj } from "@/lib/game/tuning";
 import { cn } from "@/lib/utils";
 import { playSfx, vibrate } from "@/lib/game/audio";
@@ -16,32 +16,14 @@ import { WinCelebration } from "./WinCelebration";
 import { KnjigaIgra } from "./KnjigaIgra";
 import { PrikazCijene } from "./PrikazCijene";
 import { kaubaOd } from "@/lib/game/ljudi";
-import { cijenaBesplatnih, KNJIGA_SKUP_CILJ, BESPLATNE_ZNAK_DIJAMANT, EXPAND_ZNAKOVI } from "@/lib/game/knjiga";
+import { cijenaBonusKupnje, KNJIGA_SKUP_CILJ, BESPLATNE_ZNAK_DIJAMANT, EXPAND_ZNAKOVI } from "@/lib/game/knjiga";
 import type { SimbolId } from "@/lib/game/types";
 import { SYMBOL_ART } from "@/lib/game/art";
 import { jeSerifovaPoruka } from "./ObavijestSloj";
+import { Sparkles, Zap } from "lucide-react";
+import { IkonaG } from "./IkonaG";
 
 const AUTO_HOLD_MS = 480;
-
-function recIsplate(d: {
-  zlato: number;
-  dijamanti: number;
-  energija: number;
-  stitovi: number;
-  drvo: number;
-  kamen: number;
-  zeljezo: number;
-}) {
-  const dijelovi: string[] = [];
-  if (d.zlato) dijelovi.push(`${Math.floor(d.zlato)} zlata`);
-  if (d.dijamanti) dijelovi.push(`${Math.floor(d.dijamanti)} dijamanata`);
-  if (d.drvo) dijelovi.push(`${Math.floor(d.drvo)} drva`);
-  if (d.kamen) dijelovi.push(`${Math.floor(d.kamen)} kamena`);
-  if (d.zeljezo) dijelovi.push(`${Math.floor(d.zeljezo)} željeza`);
-  if (d.energija) dijelovi.push(`${Math.floor(d.energija)} energije`);
-  if (d.stitovi) dijelovi.push(`${Math.floor(d.stitovi)} štitova`);
-  return dijelovi.length ? `Isplata: ${dijelovi.join(", ")}` : "Isplata je prazna.";
-}
 
 export function SlotScreen() {
   const energija = useGameStore((s) => Math.floor(s.energija));
@@ -65,12 +47,12 @@ export function SlotScreen() {
   const winStreakDo = useGameStore((s) => s.winStreakDo);
 
   const winCelebration = useSlotStore((s) => s.winCelebration);
+  const prikazDobitka = useSlotStore((s) => s.prikazDobitka);
 
   const vrti = useSlotStore((s) => s.vrti);
   const ulog = useSlotStore((s) => s.ulog);
   const dobitakNaCekanju = useSlotStore((s) => s.dobitakNaCekanju);
   const turboRezim = useSlotStore((s) => s.turboRezim);
-  const gambleCount = useSlotStore((s) => s.gambleCount);
   const setUlog = useSlotStore((s) => s.setUlog);
   const setTurboRezim = useSlotStore((s) => s.setTurboRezim);
 
@@ -78,7 +60,7 @@ export function SlotScreen() {
   const autoVrtnja = useSlotStore((s) => s.autoVrtnja);
   const knjigaFaza = useSlotStore((s) => s.knjigaFaza);
   const setAutoVrtnja = useSlotStore((s) => s.setAutoVrtnja);
-  const { zavrtiMasinu, preuzmiDobitak, igrajGamble, kupiBesplatne } = useSlotMachine();
+  const { zavrtiMasinu, preuzmiDobitak, kupiBesplatne } = useSlotMachine();
 
   const jeFreeSpin = luckySpinCounter === 1 || besplatneVrtnje > 0;
   const knjigaOtvorena = knjigaFaza === "uvod" || knjigaFaza === "kraj";
@@ -95,10 +77,11 @@ export function SlotScreen() {
     raidAktivan ||
     knjigaOtvorena ||
     (!autoVrtnja && (vrti || (!jeFreeSpin && energija < ulog)));
-  const gambleOstalo = Math.max(0, GAMBLE_MAX - gambleCount);
-  const gambleZakljucan = gambleOstalo <= 0;
-  const imaPlijen = !!dobitakNaCekanju && !autoVrtnja;
-  const kupiCijena = cijenaBesplatnih(igracRazina);
+  // 0.9.172: bonus cijena = osnovna × trenutni ulog (isti helper kao naplata)
+  const kupiCijena = cijenaBonusKupnje(igracRazina, ulog);
+  const kupiCijenaZnak = cijenaBonusKupnje(igracRazina, ulog, true);
+  const mozeKupiti = dijamanti >= kupiCijena;
+  const mozeKupitiZnak = dijamanti >= kupiCijenaZnak;
 
   const holdT = useRef<number | null>(null);
   const holdDone = useRef(false);
@@ -119,6 +102,10 @@ export function SlotScreen() {
   useEffect(() => {
     if (knjigaOtvorena || knjigaFaza === "igra") setKupiOtvoren(false);
   }, [knjigaOtvorena, knjigaFaza]);
+
+  useEffect(() => {
+    if (dobitakNaCekanju && !vrti) preuzmiDobitak();
+  }, [dobitakNaCekanju, vrti, preuzmiDobitak]);
 
   useEffect(() => {
     if (!ulozi.includes(ulog)) {
@@ -207,16 +194,11 @@ export function SlotScreen() {
     >
       <KnjigaIgra />
 
-      <div className="slot-kolo-omot relative flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden">
+      <div className="slot-kolo-omot relative flex min-h-0 w-full items-center justify-center overflow-hidden">
         <WinCelebration />
-        {winCelebration === "win" && (
-          <p className="slot-dobitak-flash" role="status">
-            Dobitak
-          </p>
-        )}
         <div
           className={cn(
-            "slot-kolo w-full",
+            "slot-kolo slot-kolo--frameless w-full",
             (knjigaFaza === "igra" || knjigaSkup > 0) && "slot-kolo-knjiga",
             knjigaSkup > 0 && knjigaFaza !== "igra" && "slot-kolo-skup",
             winCelebration === "jackpot" && "reel-frame-jackpot",
@@ -224,12 +206,8 @@ export function SlotScreen() {
             winCelebration === "skull" && "reel-frame-skull",
           )}
         >
-          <span className="slot-zakovica slot-zakovica-tl" aria-hidden />
-          <span className="slot-zakovica slot-zakovica-tr" aria-hidden />
-          <span className="slot-zakovica slot-zakovica-bl" aria-hidden />
-          <span className="slot-zakovica slot-zakovica-br" aria-hidden />
           <span className="slot-lampa slot-lampa-l" aria-hidden />
-          <span className="slot-ploca">BLAGO</span>
+          <span className="slot-ploca" data-testid="slot-ploca" aria-hidden>BLAGO</span>
           <span className="slot-lampa slot-lampa-d" aria-hidden />
           <span className="slot-prasina" aria-hidden />
           <div className="slot-kolo-okvir">
@@ -240,130 +218,92 @@ export function SlotScreen() {
         </div>
       </div>
 
-      <div className="zavrti-traka flex w-full shrink-0 flex-col gap-1.5">
-        <button
-          type="button"
-          data-testid="zavrti"
-          disabled={imaPlijen ? false : gumbZakljucan}
-          onContextMenu={(e) => e.preventDefault()}
-          onPointerDown={(e) => {
-            e.stopPropagation();
-            if (imaPlijen) return;
-            if (e.pointerType === "mouse" && e.button !== 0) return;
-            if (raidAktivan || knjigaOtvorena) return;
-            (e.currentTarget as HTMLButtonElement).setPointerCapture(e.pointerId);
-            if (autoVrtnja) {
-              holdDone.current = false;
-              return;
-            }
-            if (vrti || (!jeFreeSpin && energija < ulog)) return;
-            holdDone.current = false;
-            setDrzim(true);
-            holdT.current = window.setTimeout(() => {
-              holdDone.current = true;
-              setDrzim(false);
-              playSfx("button");
-              vibrate(18);
-              setAutoVrtnja(true);
-              void zavrtiMasinu();
-            }, AUTO_HOLD_MS);
-          }}
-          onPointerUp={() => {
-            if (imaPlijen) {
-              prestaniDrzati();
-              preuzmiDobitak();
-              return;
-            }
-            const gotovo = holdDone.current;
-            prestaniDrzati();
-            if (useSlotStore.getState().autoVrtnja && !gotovo) {
-              setAutoVrtnja(false);
-              playSfx("button");
-              return;
-            }
-            if (gotovo || raidAktivan || knjigaOtvorena) return;
-            void zavrtiMasinu();
-          }}
-          onPointerCancel={prestaniDrzati}
-          className={cn(
-            "slot-zavrti zavrti-usko relative mx-auto flex min-h-12 touch-manipulation items-center justify-center overflow-hidden rounded-2xl px-8 py-3.5 font-display text-xl tracking-[0.22em] text-void select-none transition-transform duration-150 ease-out active:scale-[0.94]",
-            imaPlijen
-              ? "bg-volt"
-              : autoVrtnja
-                ? "zavrti-auto bg-gold"
-                : jeFreeSpin
-                  ? "zavrti-wiggle bg-xp shadow-[0_0_24px_color-mix(in_oklab,var(--color-xp)_45%,transparent)]"
-                  : "zavrti-wiggle bg-energy shadow-[0_0_24px_color-mix(in_oklab,var(--color-energy)_50%,transparent)]",
-            !imaPlijen && gumbZakljucan && "scale-[0.98] opacity-50 shadow-none",
-          )}
-        >
-          <span className={cn("zavrti-hold-fill", drzim && "ide")} />
-          <span className="relative z-10">
-            {imaPlijen
-              ? "PREUZMI"
-              : autoVrtnja
-                ? !jeFreeSpin && energija < ulog
-                  ? "ČEKAM"
-                  : "AUTO"
-                : vrti
-                  ? "VRTIM..."
-                  : "ZAVRTI"}
-          </span>
-        </button>
-        <div className="slot-status-red">
-          {!imaPlijen && (
-            <p className="slot-mnozitelj text-center text-[11px] font-bold tracking-wide text-gold">
-              Ulog ×{ulog} množi isplatu
-            </p>
-          )}
-          <div className="energija-hud flex w-full flex-col items-center gap-1" data-chip="energija">
-            <p
-              className={cn(
-                "text-center text-sm font-bold tabular-nums",
-                energija > maxEnergija ? "text-volt" : "text-energy",
-              )}
-              aria-label={`Energija ${Math.min(energija, maxEnergija)} od ${maxEnergija}`}
-            >
-              Energija {Math.min(energija, maxEnergija)}/{maxEnergija}
-              {energija > maxEnergija ? ` +${energija - maxEnergija}` : ""}
-            </p>
+      <div className="zavrti-traka slot-dock-casino slot-dock-171 slot-dock-172 flex w-full shrink-0 flex-col" data-testid="slot-dock-171">
+        <div className="slot-dock-info" role="status" aria-live="polite">
+          <div className={cn("slot-ticker", !(prikazDobitka && prikazDobitka.zlato > 0) && "is-prazan")}>
+            <span className="slot-ticker-oznaka">Dobitak</span>
+            <span>{prikazDobitka && prikazDobitka.zlato > 0 ? `+${Math.floor(prikazDobitka.zlato).toLocaleString("hr-HR")}` : "—"}</span>
           </div>
+          <p className="slot-mnozitelj" title="Ulog množi isplatu">
+            Ulog ×{ulog}
+          </p>
+          <p
+            className={cn(
+              "slot-energija tabular-nums",
+              energija > maxEnergija ? "text-volt" : "text-energy",
+            )}
+            aria-label={`Energija ${Math.min(energija, maxEnergija)} od ${maxEnergija}`}
+            data-chip="energija"
+          >
+            {Math.min(energija, maxEnergija)}/{maxEnergija}
+            {energija > maxEnergija ? ` +${energija - maxEnergija}` : ""}
+          </p>
         </div>
+        {/* 0.9.172: ZAVRTI centre anchored from screen bottom where the old ×2..×15 strip sat (see .slot-dock-dno) */}
+        <div className="slot-zavrti-slot" data-testid="zavrti-slot">
+          <button
+            type="button"
+            data-testid="zavrti"
+            disabled={gumbZakljucan}
+            onContextMenu={(e) => e.preventDefault()}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              if (e.pointerType === "mouse" && e.button !== 0) return;
+              if (raidAktivan || knjigaOtvorena) return;
+              (e.currentTarget as HTMLButtonElement).setPointerCapture(e.pointerId);
+              if (autoVrtnja) {
+                holdDone.current = false;
+                return;
+              }
+              if (vrti || (!jeFreeSpin && energija < ulog)) return;
+              holdDone.current = false;
+              setDrzim(true);
+              holdT.current = window.setTimeout(() => {
+                holdDone.current = true;
+                setDrzim(false);
+                playSfx("button");
+                vibrate(18);
+                setAutoVrtnja(true);
+                void zavrtiMasinu();
+              }, AUTO_HOLD_MS);
+            }}
+            onPointerUp={() => {
+              const gotovo = holdDone.current;
+              prestaniDrzati();
+              if (useSlotStore.getState().autoVrtnja && !gotovo) {
+                setAutoVrtnja(false);
+                playSfx("button");
+                return;
+              }
+              if (gotovo || raidAktivan || knjigaOtvorena) return;
+              void zavrtiMasinu();
+            }}
+            onPointerCancel={prestaniDrzati}
+            className={cn(
+              "slot-zavrti zavrti-usko relative mx-auto flex min-h-11 touch-manipulation items-center justify-center overflow-hidden rounded-full px-8 py-3 font-display text-xl tracking-[0.16em] text-void select-none transition-transform duration-150 ease-out active:scale-[0.94]",
+              autoVrtnja
+                  ? "zavrti-auto bg-gold"
+                  : jeFreeSpin
+                    ? "zavrti-wiggle bg-xp shadow-[0_0_24px_color-mix(in_oklab,var(--color-xp)_45%,transparent)]"
+                    : "zavrti-wiggle bg-energy shadow-[0_0_24px_color-mix(in_oklab,var(--color-energy)_50%,transparent)]",
+              gumbZakljucan && "scale-[0.98] opacity-50 shadow-none",
+            )}
+          >
+            <span className={cn("zavrti-hold-fill", drzim && "ide")} />
+            <span className="relative z-10">
+              {autoVrtnja
+                  ? !jeFreeSpin && energija < ulog
+                    ? "ČEKAM"
+                    : "AUTO"
+                  : vrti
+                    ? "VRTIM..."
+                    : "ZAVRTI"}
+            </span>
+          </button>
+        </div>
+
+        <div className="slot-dock-dno" data-testid="slot-dock-dno">
         <div className="slot-dock">
-        {imaPlijen && dobitakNaCekanju ? (
-          <div className="plijen-traka">
-            <p className="mb-1 text-[10px] font-bold tracking-widest text-dim uppercase">
-              Trenutni plijen
-            </p>
-            <p className="mb-1 text-[11px] font-bold text-ink">{recIsplate(dobitakNaCekanju)}</p>
-            <div className="mb-1">
-              <NagradaPikseli nagrada={dobitakNaCekanju} />
-            </div>
-            <p className="mb-1.5 text-[11px] font-semibold text-dim">
-              {gambleZakljucan
-                ? "Udvostručenja gotova. Preuzmi dobitak."
-                : `Još ${gambleOstalo} udvostručenja (48%)`}
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                disabled={gambleZakljucan}
-                className="min-h-11 rounded-xl bg-ruby py-2.5 text-sm font-bold tracking-wide text-ink transition-transform duration-150 ease-out active:scale-[0.96] disabled:opacity-40"
-                onClick={() => igrajGamble("red")}
-              >
-                CRVENA (×2)
-              </button>
-              <button
-                type="button"
-                disabled={gambleZakljucan}
-                className="min-h-11 rounded-xl border-2 border-line bg-panel-2 py-2.5 text-sm font-bold tracking-wide text-ink transition-transform duration-150 ease-out active:scale-[0.96] disabled:opacity-40"
-                onClick={() => igrajGamble("black")}
-              >
-                CRNA (×2)
-              </button>
-            </div>
-          </div>
-        ) : (
           <div className="ulozi-red">
             {sest.map((op) => (
               <button
@@ -373,8 +313,10 @@ export function SlotScreen() {
                   playSfx("button");
                   setUlog(op);
                 }}
+                aria-pressed={ulog === op}
+                aria-label={`Ulog ×${op}`}
                 className={cn(
-                  "min-h-10 min-w-11 rounded-full border px-3 py-2 text-sm font-bold transition-transform duration-150 ease-out active:scale-[0.96]",
+                  "ulozi-cip min-h-11 min-w-11 rounded-full border px-2.5 py-2 text-sm font-bold transition-transform duration-150 ease-out active:scale-[0.96]",
                   ulog === op
                     ? "border-ruby bg-ruby text-ink"
                     : "border-line bg-panel text-dim",
@@ -384,84 +326,92 @@ export function SlotScreen() {
               </button>
             ))}
           </div>
-        )}
         </div>
         <div className="slot-sporedno">
-        {poruka && !jeSerifovaPoruka(poruka) && knjigaFaza !== "igra" && !knjigaOtvorena && (
-          <p className="slot-poruka">{poruka}</p>
-        )}
-        {vrtnjaRec && !imaPlijen && (
-          <p className="px-1 text-center text-[11px] font-bold leading-snug text-gold">
-            {moodRec} {vrtnjaRec}
-          </p>
-        )}
-        {nizAkoVrijedi(winStreak, winStreakDo) > 0 && (
-          <p className="text-center text-[11px] font-bold text-gold">
-            Niz od {nizAkoVrijedi(winStreak, winStreakDo)}{" "}
-            {nizAkoVrijedi(winStreak, winStreakDo) === 1 ? "dobitka" : "dobitaka"}, isplata ×
-            {winStreakMnozitelj(nizAkoVrijedi(winStreak, winStreakDo)).toLocaleString("hr-HR")}
-          </p>
-        )}
-        {!imaPlijen && (
-          <div className="slot-bonus">
-            <button type="button" aria-label="Bonus izbornik" onClick={() => setKupiOtvoren((v) => !v)}>
-              BONUS
-            </button>
-            {kupiOtvoren &&
-              EXPAND_ZNAKOVI.map((id) => (
-                <button
-                  key={id}
-                  type="button"
-                  className={cn("slot-bonus-znak", bonusZnak === id && "on")}
-                  onClick={() => setBonusZnak(id)}
-                >
-                  {id}
-                </button>
-              ))}
-            <button
-              type="button"
-              className="slot-bonus-plati"
-              disabled={!plati && zakljucan}
-              onClick={() => {
-                if (zakljucan) return;
-                kupiBesplatne(bonusZnak);
+          {poruka && !jeSerifovaPoruka(poruka) && knjigaFaza !== "igra" && !knjigaOtvorena && (
+            <p className="slot-poruka"><TekstResursa tekst={poruka} /></p>
+          )}
+          {(vrtnjaRec || nizAkoVrijedi(winStreak, winStreakDo) > 0) && (
+            <p className="slot-hint">
+              {vrtnjaRec ? `${moodRec} ${vrtnjaRec}` : ""}
+              {vrtnjaRec && nizAkoVrijedi(winStreak, winStreakDo) > 0 ? " · " : ""}
+              {nizAkoVrijedi(winStreak, winStreakDo) > 0
+                ? `Niz ${nizAkoVrijedi(winStreak, winStreakDo)} ×${winStreakMnozitelj(nizAkoVrijedi(winStreak, winStreakDo)).toLocaleString("hr-HR")}`
+                : ""}
+            </p>
+          )}
+          <div className="slot-alat-red">
+            <div className="slot-bonus">
+              <button
+                type="button"
+                className="g179-tipka"
+                aria-label="Bonus izbornik"
+                title="Bonus"
+                aria-expanded={kupiOtvoren}
+                onClick={() => setKupiOtvoren((v) => !v)}
+              >
+                <IkonaG ikona={Sparkles} rijec="BONUS" />
+              </button>
+              {kupiOtvoren &&
+                EXPAND_ZNAKOVI.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    className={cn("slot-bonus-znak", bonusZnak === id && "on")}
+                    aria-label={`Znak ${id}`}
+                    aria-pressed={bonusZnak === id}
+                    onClick={() => setBonusZnak(id)}
+                  >
+                    {SYMBOL_ART[id] ? <img src={SYMBOL_ART[id]} alt="" draggable={false} /> : id}
+                  </button>
+                ))}
+              <button
+                type="button"
+                className="slot-bonus-plati"
+                disabled={(!plati && zakljucan) || !mozeKupitiZnak}
+                aria-label={`Bonus sa znakom, ${kupiCijenaZnak} dijamanata`}
+                onClick={() => {
+                  if (zakljucan || !mozeKupitiZnak) return;
+                  kupiBesplatne(bonusZnak);
+                  setKupiOtvoren(false);
+                }}
+              >
+                {BESPLATNE_ZNAK_DIJAMANT ? `Znak ${kupiCijenaZnak}` : "Bez znaka"}
+              </button>
+            </div>
+            <KnjigaTraka
+              skup={knjigaSkup}
+              ostalo={besplatneVrtnje}
+              faza={knjigaFaza}
+              turbo={turboRezim}
+              zakljucan={vrti || raidAktivan || !!dobitakNaCekanju || knjigaOtvorena || besplatneVrtnje > 0}
+              sakrijKupnju={knjigaOtvorena || knjigaFaza === "igra"}
+              mozeKupiti={mozeKupiti}
+              cijena={kupiCijena}
+              mnozitelj={ulog}
+              plati={kupiOtvoren}
+              onTurbo={() => {
+                playSfx("button");
+                setTurboRezim(!turboRezim);
+              }}
+              onKupi={() => {
+                playSfx("button");
+                if (!mozeKupiti) return;
+                if (!kupiOtvoren) {
+                  setKupiOtvoren(true);
+                  return;
+                }
+                kupiBesplatne();
                 setKupiOtvoren(false);
               }}
-            >
-              {BESPLATNE_ZNAK_DIJAMANT ? `Znak +${BESPLATNE_ZNAK_DIJAMANT}` : "Bez znaka"}
-            </button>
+            />
+            {kupiOtvoren && !knjigaOtvorena && knjigaFaza !== "igra" && (
+              <div className="slot-kupi-cijena">
+                <PrikazCijene src={SYMBOL_ART.gem} iznos={kupiCijena} trenutno={dijamanti} />
+              </div>
+            )}
           </div>
-        )}
-        {!imaPlijen && (
-        <KnjigaTraka
-          skup={knjigaSkup}
-          ostalo={besplatneVrtnje}
-          faza={knjigaFaza}
-          turbo={turboRezim}
-          zakljucan={vrti || raidAktivan || !!dobitakNaCekanju || knjigaOtvorena || besplatneVrtnje > 0}
-          sakrijKupnju={knjigaOtvorena || knjigaFaza === "igra"}
-          mozeKupiti={dijamanti >= kupiCijena}
-          plati={kupiOtvoren}
-          onTurbo={() => {
-            playSfx("button");
-            setTurboRezim(!turboRezim);
-          }}
-          onKupi={() => {
-            playSfx("button");
-            if (!kupiOtvoren) {
-              setKupiOtvoren(true);
-              return;
-            }
-            kupiBesplatne();
-            setKupiOtvoren(false);
-          }}
-        />
-        )}
-        {kupiOtvoren && !knjigaOtvorena && knjigaFaza !== "igra" && !imaPlijen && (
-          <div className="flex flex-wrap justify-end gap-1">
-            <PrikazCijene src={SYMBOL_ART.gem} iznos={kupiCijena} trenutno={dijamanti} />
-          </div>
-        )}
+        </div>
         </div>
       </div>
     </div>
@@ -475,6 +425,8 @@ function KnjigaTraka({
   turbo,
   zakljucan,
   mozeKupiti,
+  cijena,
+  mnozitelj,
   sakrijKupnju,
   plati,
   onKupi,
@@ -486,6 +438,8 @@ function KnjigaTraka({
   turbo: boolean;
   zakljucan: boolean;
   mozeKupiti: boolean;
+  cijena: number;
+  mnozitelj: number;
   sakrijKupnju: boolean;
   plati: boolean;
   onKupi: () => void;
@@ -526,20 +480,30 @@ function KnjigaTraka({
             type="button"
             onClick={onTurbo}
             className={cn(
-              "knjiga-turbo",
+              "knjiga-turbo g179-tipka",
               turbo && "knjiga-turbo-on",
             )}
+            aria-label={turbo ? "Turbo uključen" : "Turbo"}
+            aria-pressed={turbo}
+            title="Turbo"
           >
-            TURBO
+            <IkonaG ikona={Zap} rijec="TURBO" />
           </button>
           {!sakrijKupnju && (
             <button
               type="button"
-              disabled={zakljucan || !mozeKupiti && plati}
+              disabled={zakljucan || !mozeKupiti}
               onClick={onKupi}
-              className={cn("knjiga-kupi", (mozeKupiti || !plati) && !zakljucan && "knjiga-kupi-moze")}
+              data-testid="bonus-kupi"
+              data-cijena={cijena}
+              aria-label={`${plati ? "Plati" : "Kupi"} bonus ×${mnozitelj}: ${cijena} dijamanata`}
+              className={cn("knjiga-kupi", mozeKupiti && !zakljucan ? "knjiga-kupi-moze" : "knjiga-kupi-nemoze")}
             >
               {plati ? "PLATI" : "KUPI"}
+              <span className="knjiga-kupi-cijena">
+                <img src={SYMBOL_ART.gem} alt="" draggable={false} />
+                {cijena}
+              </span>
             </button>
           )}
         </div>

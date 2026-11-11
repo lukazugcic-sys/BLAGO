@@ -9,6 +9,9 @@ import {
   uRomu,
   type Parcela,
 } from "./ulicaRaspored";
+import { SVIJET } from "./ulicaRaspored";
+import { STAZA, tockeOd } from "./teren";
+import { jeGlavni } from "./ljudi";
 
 export type Detalj = "daleko" | "srednje" | "blizu";
 export type Cetvrt = "srediste" | "ranc" | "rad";
@@ -233,6 +236,56 @@ export function stazeKretanja(aktivni: readonly string[]): Staza[] {
   return out;
 }
 
+/** Rub karte koji kola još prelaze (kotači ostaju na karti, kola se vide na ulazu i izlazu). */
+const KOLA_RUB = 16;
+
+/**
+ * 0.9.175: kola voze CIJELU glavnu cestu (STAZA.trag): od ulaza na sjeveroistočnom
+ * rubu karte kroz cijelo naselje do izlaza na jugozapadnom rubu. Os ceste odrezana na
+ * rub karte (presjek s rubom, bez skoka).
+ */
+export function putKaravane(): Tocka[] {
+  const trag = tockeOd(STAZA.trag);
+  const unutra = (p: Tocka) => p.x >= KOLA_RUB && p.y >= KOLA_RUB && p.x <= SVIJET.w - KOLA_RUB && p.y <= SVIJET.h - KOLA_RUB;
+  const rez = (a: Tocka, b: Tocka): Tocka => {
+    // točka na a→b gdje ulazi u pravokutnik (a vani, b unutra): binarno
+    let lo = 0;
+    let hi = 1;
+    for (let k = 0; k < 24; k++) {
+      const m = (lo + hi) / 2;
+      if (unutra({ x: a.x + (b.x - a.x) * m, y: a.y + (b.y - a.y) * m })) hi = m;
+      else lo = m;
+    }
+    return { x: Math.round((a.x + (b.x - a.x) * hi) * 10) / 10, y: Math.round((a.y + (b.y - a.y) * hi) * 10) / 10 };
+  };
+  const out: Tocka[] = [];
+  for (let i = 0; i < trag.length; i++) {
+    const p = trag[i]!;
+    if (!unutra(p)) continue;
+    const prije = trag[i - 1];
+    if (out.length === 0 && prije && !unutra(prije)) out.push(rez(prije, p));
+    out.push(p);
+    const iza = trag[i + 1];
+    if (iza && !unutra(iza)) {
+      out.push(rez(iza, p));
+      break;
+    }
+  }
+  return out;
+}
+
+/** Ruta kola tamo-natrag po cijeloj cesti (na kraju se okrenu, smjer slike prati kretanje). */
+export function rutaKaravane(): Staza {
+  const put = putKaravane();
+  const tocke = [...put, ...[...put].reverse().slice(1)];
+  return { id: "karavana", tocke, duzina: duljina(tocke) };
+}
+
+/** Početna faza (0–1 rute tamo-natrag) za k-ta kola od n: razmaknuta po cijeloj cesti. */
+export function fazaKola(k: number, n: number) {
+  return (0.12 + k / Math.max(1, n)) % 1;
+}
+
 export function tockaNaPutu(tocke: readonly Tocka[], u: number): Tocka {
   if (tocke.length === 0) return { x: 0, y: 0 };
   if (tocke.length === 1) return tocke[0]!;
@@ -255,6 +308,23 @@ export function tockaNaPutu(tocke: readonly Tocka[], u: number): Tocka {
   return tocke[tocke.length - 1]!;
 }
 
+/** Brzina pješaka na karti (px/s) i jahača (0.9.175: 1.5× pješaka). */
+export const BRZINA_HODA = 32;
+export const BRZINA_JAHACA = BRZINA_HODA * 1.5;
+
+/**
+ * 0.9.175: tko hoda kartom. Svaki heroj (★, GLAVNI_ID) koji je u kaubi uvijek je na karti,
+ * bez obzira na granicu hodača; obični kauboji popune ostatak do `n`. Redoslijed ulaza ostaje
+ * (heroji prvi, po GLAVNI_ID); nema duplikata (po id-u).
+ */
+export function odaberiHodace<T extends { id: string }>(tu: readonly T[], n: number): T[] {
+  const vidjeni = new Set<string>();
+  const jedinstveni = tu.filter((p) => (vidjeni.has(p.id) ? false : (vidjeni.add(p.id), true)));
+  const heroji = jedinstveni.filter((p) => jeGlavni(p.id));
+  const ostali = jedinstveni.filter((p) => !jeGlavni(p.id)).slice(0, Math.max(0, Math.floor(n) - heroji.length));
+  return [...heroji, ...ostali];
+}
+
 export function brojAgenata(kauboji: number, zgrada: number) {
   const hodaci = Math.max(0, Math.min(4, Math.floor(kauboji) > 0 ? Math.min(4, Math.ceil(Math.floor(kauboji) / 2)) : 0));
   const kola = zgrada >= 8 ? 2 : zgrada >= 2 ? 1 : 0;
@@ -264,9 +334,11 @@ export function brojAgenata(kauboji: number, zgrada: number) {
 /** Konji privezani uz vrata saluna, izvan romba. */
 export function konjiSaluna(): Tocka[] {
   const p = putelji(["salun"]).find((s) => s.id === "salun");
-  if (!p || p.tocke.length < 3) return [];
-  const traka = p.tocke[1]!;
-  const vrata = p.tocke[2]!;
+  // 0.9.176: sidra po sirovoj liniji (prikazana linija je vijugava i gušća)
+  const k = p?.kosti ?? p?.tocke;
+  if (!k || k.length < 3) return [];
+  const traka = k[1]!;
+  const vrata = k[2]!;
   return [
     { x: traka.x * 0.45 + vrata.x * 0.55, y: traka.y * 0.45 + vrata.y * 0.55 },
     { x: traka.x * 0.7 + vrata.x * 0.3 + 10, y: traka.y * 0.7 + vrata.y * 0.3 + 6 },
@@ -274,16 +346,18 @@ export function konjiSaluna(): Tocka[] {
 }
 
 /** Ograde na vanjskom rubu ranča. Točka mora biti izvan svakog romba. */
-export function ogradeRanca(): Tocka[] {
-  const ids = ["farma", "tor", "staja", "lov"];
-  const out: Tocka[] = [];
+/** 0.9.177 (t453u): svaki komadić ograde nosi zgradu kojoj pripada — crta se tek kad je ona izgrađena. */
+export function ogradeRanca(): (Tocka & { zgrada: string })[] {
+  // 0.9.174: tor ima vlastitu punu ogradu obora (stokaKarta.ogradaTora), bez ovog komadića.
+  const ids = ["farma", "staja", "lov"];
+  const out: (Tocka & { zgrada: string })[] = [];
   for (const id of ids) {
     const p = izvor(id);
     if (!p) continue;
     const znak = p.strana === "l" ? -1 : 1;
     const t = { x: p.x + znak * (CELIJA_W / 2 + 10), y: p.y - 4 };
     if (PARCELE.some((q) => uRomu(t.x, t.y, q))) continue;
-    out.push(t);
+    out.push({ ...t, zgrada: id });
   }
   return out;
 }
@@ -293,9 +367,10 @@ export function stokaTocke(samo?: readonly string[]): Tocka[] {
   const out: Tocka[] = [];
   for (const id of ids) {
     const p = putelji([id]).find((s) => s.id === id);
-    if (!p || p.tocke.length < 2) continue;
-    const a = p.tocke[0]!;
-    const b = p.tocke[1]!;
+    const k = p?.kosti ?? p?.tocke;
+    if (!k || k.length < 2) continue;
+    const a = k[0]!;
+    const b = k[1]!;
     const t = { x: a.x * 0.35 + b.x * 0.65, y: a.y * 0.35 + b.y * 0.65 };
     if (PARCELE.some((q) => uRomu(t.x, t.y, q))) continue;
     out.push(t);

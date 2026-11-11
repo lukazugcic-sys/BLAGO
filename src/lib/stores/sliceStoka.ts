@@ -310,7 +310,7 @@ export function sliceStoka(set: SetGame, get: GetGame): Pick<GameState, "kupiKon
     if (k.cin.id === "zasjeda") {
       if (opcija === "plati") {
         if (s.zlato < 8) {
-          set({ poruka: "Nema 8g." });
+          set({ poruka: "Nema 8 zlata." });
           return;
         }
         zlato = -8;
@@ -324,7 +324,7 @@ export function sliceStoka(set: SetGame, get: GetGame): Pick<GameState, "kupiKon
       } else if (Math.random() < 0.4) rec = "Konj prođe. Prašina u očima.";
       else {
         zlato = -6;
-        rec = "Uhvatili. Uzeše 6g.";
+        rec = "Uhvatili. Uzeše 6 zlata.";
       }
     } else if (k.cin.id === "most") {
       if (opcija === "obidji") {
@@ -338,11 +338,11 @@ export function sliceStoka(set: SetGame, get: GetGame): Pick<GameState, "kupiKon
     } else if (k.cin.id === "sajam") {
       if (opcija === "trguj") {
         if (s.zlato < 6) {
-          set({ poruka: "Nema 6g." });
+          set({ poruka: "Nema 6 zlata." });
           return;
         }
         zlato = 4 + Math.floor(Math.random() * 8);
-        rec = `Trgovac kima. +${zlato + 6}g.`;
+        rec = `Trgovac kima. +${zlato + 6} zlata.`;
       } else rec = "Mašu i idu. Sajam ostaje.";
     }
     if (zlato < 0 && s.zlato < Math.abs(zlato)) {
@@ -421,7 +421,7 @@ export function sliceStoka(set: SetGame, get: GetGame): Pick<GameState, "kupiKon
     const dobit = kocka >= 5 ? 4 : kocka >= 3 ? 2 : 0;
     const rec =
       kocka >= 5
-        ? `${tko.ime} baci ${kocka}. Tvoje. +4g.`
+        ? `${tko.ime} baci ${kocka}. Tvoje. +4 zlata.`
         : kocka >= 3
           ? `${tko.ime} baci ${kocka}. Stoji.`
           : `${tko.ime} baci ${kocka}. Prašina u oku.`;

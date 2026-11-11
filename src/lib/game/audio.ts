@@ -65,8 +65,11 @@ const SFX_GAIN: Record<Sfx, number> = {
 };
 
 const MASTER_GAIN = 0.38;
-const MUSIC_GAIN = 0.22;
-const MUSIC_DUCK = 0.16;
+/** Base BGM level; 0.9.167: −25% vs prior 0.22 / 0.16. SFX unchanged. */
+const MUSIC_GAIN = 0.165;
+const MUSIC_DUCK = 0.12;
+export const MUSIC_GAIN_TEST = MUSIC_GAIN;
+export const MUSIC_DUCK_TEST = MUSIC_DUCK;
 const FADE_S = 1.35;
 
 let ctx: AudioContext | null = null;

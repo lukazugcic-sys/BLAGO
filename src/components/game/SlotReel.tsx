@@ -10,9 +10,9 @@ import { SlotPlatno } from "./SlotPlatno";
 /** Full-window loop duration — later columns lag so the drum staggers. */
 const REEL_SPD = [0, 1, 2, 3, 4].map((c) => `${(0.24 + c * 0.055).toFixed(3)}s`);
 
-function PayTicks({ active }: { active: Set<number> }) {
+function PayTicks({ active, side }: { active: Set<number>; side: "l" | "d" }) {
   return (
-    <div className="pay-tocke" data-testid="pay-tocke" aria-hidden>
+    <div className={cn("pay-tocke", side === "l" ? "pay-tocke-l" : "pay-tocke-d")} data-testid="pay-tocke" data-side={side} aria-hidden>
       {PAY_TOCKE_RED.map((idx) => (
         <span
           key={idx}
@@ -238,9 +238,10 @@ export const SlotReel = memo(function SlotReel({
         skullHit && "reel-skull",
         winCelebration === "win" && "reel-win",
       )}
-      style={{ display: "grid", gridTemplateColumns: "1.35rem minmax(0, 1fr) 1.35rem" }}
+      style={{ display: "grid", gridTemplateColumns: "var(--pay-gutter, 1.4rem) minmax(0, 1fr) var(--pay-gutter, 1.4rem)" }}
+      data-pay-symmetric
     >
-      <PayTicks active={aktivne} />
+      <PayTicks active={aktivne} side="l" />
       <div className="slot-reel-mreza">
         <div className={cn("slot-reel-stupovi", glSpreman && glPokret && "is-gl")}>
           <SlotPlatno onSpreman={setGlSpreman} onPokret={setGlPokret} />
@@ -300,7 +301,7 @@ export const SlotReel = memo(function SlotReel({
 
         {skullHit && <div className="skull-cracks pointer-events-none absolute inset-0 z-[3]" aria-hidden />}
       </div>
-      <PayTicks active={aktivne} />
+      <PayTicks active={aktivne} side="d" />
     </div>
   );
 });

@@ -9,6 +9,7 @@ import {
   generirajMisiju,
   generirajKlanZadatke,
   seloNaMaxu,
+  primijeniSkinTemu,
 } from "@/lib/game/constants";
 import { DOSTIGNUCA, napredakDostignuca, snapshotDostignuca } from "@/lib/game/dostignuca";
 import {
@@ -574,6 +575,7 @@ export function sliceDan(set: SetGame, get: GetGame): Pick<GameState, "osvjeziTj
       skinovi: ima ? s.skinovi : [...s.skinovi, skin.id],
       poruka: ima ? `IZGLED "${skin.naziv.toUpperCase()}"` : `NOVI IZGLED "${skin.naziv.toUpperCase()}"`,
     });
+    primijeniSkinTemu(skin);
   },
 
   osnujiKlan: (naziv) => {

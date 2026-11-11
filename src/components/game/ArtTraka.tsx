@@ -10,7 +10,7 @@ export function ArtTraka({
   label?: string;
 }) {
   return (
-    <div className="relative mb-3 h-28 overflow-hidden rounded-2xl border border-line">
+    <div className="art-traka relative mb-3 h-28 overflow-hidden rounded-2xl border border-line">
       <img src={src} alt="" className="size-full object-cover object-center" draggable={false} />
       {video ? (
         <VideoLoop className="absolute inset-0 opacity-70 mix-blend-screen" src={video} />

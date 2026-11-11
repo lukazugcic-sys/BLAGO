@@ -11,12 +11,9 @@ import {
 import {
   CELIJA_H,
   CELIJA_W,
-  KOLAC_H,
-  KOLAC_W,
   PARCELE,
-  ZGRADA_H,
-  ZGRADA_W,
   centarSpritea,
+  velicinaSpritea,
 } from "@/lib/game/ulicaRaspored";
 import type { Gradevine } from "@/lib/game/types";
 import { cn } from "@/lib/utils";
@@ -33,7 +30,6 @@ const ROBA: Record<string, { src: string; chip: string; naziv: string }> = {
 };
 
 const DIMLJIVE = new Set(["kuca", "pekara", "kovacnica", "banja", "mesnica", "tvornica"]);
-const VECE = new Set(["rudnik", "kamenolom", "staja", "korali"]);
 
 const STROP_LV: Record<string, number> = {};
 for (const z of ZGRADE) STROP_LV[z.id] = z.maxLv;
@@ -49,7 +45,8 @@ export type KucaDodir = {
   hold: RefObject<Hold | null>;
   izbornikU: RefObject<number>;
   vodic: (id: string) => void;
-  odaberi: (id: string) => void;
+  /** prekidac: običan dodir — drugi dodir iste zgrade sakrije ime (0.9.176 t442u). */
+  odaberi: (id: string, prekidac?: boolean) => void;
   drzi: (id: string | null) => void;
   izbornik: (m: { id: keyof Gradevine; x: number; y: number }) => void;
 };
@@ -126,7 +123,7 @@ function KaubaKuceUnutra({
       if (performance.now() < sad2.gut.current) return;
       sad2.otvoreno.current = performance.now();
       playSfx("button");
-      sad2.odaberi(id);
+      sad2.odaberi(id, true);
     }, OTVORI_MS);
     d.tap.current = { id, t: sad, timer };
   };
@@ -196,9 +193,7 @@ function KaubaKuceUnutra({
         const posao = gradnje.find((g) => g.zgrada === id);
         const gradi = !!posao;
         const src = gradi ? IZO_DEKOR.skela : ima ? izoZgrada(z.id, lv) : "";
-        const veca = VECE.has(z.id);
-        const sirina = gradi || ima ? (veca ? 128 : ZGRADA_W) : veca ? 84 : KOLAC_W;
-        const visina = gradi || ima ? (veca ? 110 : ZGRADA_H) : veca ? 74 : KOLAC_H;
+        const { w: sirina, h: visina } = velicinaSpritea(z.id, gradi || ima);
         const c = centarSpritea(z, gradi ? "skela" : ima ? "zgrada" : "kolci");
         return (
           <button

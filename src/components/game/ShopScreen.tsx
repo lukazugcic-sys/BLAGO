@@ -4,11 +4,12 @@ import { useGameStore } from "@/lib/stores/gameStore";
 import { IconBadge } from "./IconBadge";
 import { ScreenTabs } from "./ScreenTabs";
 import { SideGateKartica } from "./SideGateKartica";
-import { jeSideOtkljucan } from "@/lib/game/sideGate";
+import { jeSideOtkljucan, SIDE_GATE_REC } from "@/lib/game/sideGate";
 import { UpgradesScreen } from "./UpgradesScreen";
+import { KaravanaIgra } from "./KaravanaIgra";
+import { LivePohod } from "./LivePohod";
 import { ZGRADE_SKINOVI } from "@/lib/game/constants";
-import { ART, RESURS_ART, SYMBOL_ART, ZGRADA_ART } from "@/lib/game/art";
-import { ArtTraka } from "./ArtTraka";
+import { RESURS_ART, SYMBOL_ART, ZGRADA_ART } from "@/lib/game/art";
 import type { TrznicaId } from "@/lib/game/types";
 import { cn } from "@/lib/utils";
 import { playSfx, vibrate } from "@/lib/game/audio";
@@ -32,6 +33,8 @@ const TABS = [
   { id: "burza", label: "Burza" },
   { id: "alati", label: "Alati" },
   { id: "izgled", label: "Izlog" },
+  { id: "karavana", label: "Karavana" },
+  { id: "uzivo", label: "Uživo" },
 ] as const;
 
 function genitivZalihe(id: TrznicaId, n: number) {
@@ -45,8 +48,11 @@ export function ShopScreen() {
   const [sekcija, setSekcija] = useState<(typeof TABS)[number]["id"]>("burza");
   useEffect(() => {
     const on = (e: Event) => {
-      const id = (e as CustomEvent<IdiDetail>).detail?.trznica;
-      if (id) setSekcija(id);
+      const d = (e as CustomEvent<IdiDetail>).detail;
+      const id = d?.trznica ?? (d?.zadaci === "karavana" || d?.zadaci === "uzivo" ? d.zadaci : undefined);
+      if (id === "burza" || id === "alati" || id === "izgled" || id === "karavana" || id === "uzivo") {
+        setSekcija(id);
+      }
     };
     window.addEventListener(IDI_EVENT, on);
     return () => window.removeEventListener(IDI_EVENT, on);
@@ -65,12 +71,12 @@ export function ShopScreen() {
   const skinovi = useGameStore((s) => s.skinovi);
   const kupiSkin = useGameStore((s) => s.kupiSkin);
   const otkljucan = useGameStore((s) => jeSideOtkljucan(s.gradevine));
+  const setPoruka = useGameStore((s) => s.setPoruka);
 
   if (!otkljucan) {
     return (
       <div className="mx-auto flex h-full min-h-0 w-full max-w-lg flex-col px-3 pt-2">
         <div className="min-h-0 flex-1 overflow-y-auto pb-2">
-          <ArtTraka src={ART.trznica} label="Tržnica" />
           <SideGateKartica naslov="Tržnica" />
         </div>
       </div>
@@ -79,12 +85,9 @@ export function ShopScreen() {
 
   return (
     <div className="trznica mx-auto flex h-full min-h-0 w-full max-w-lg flex-col px-3 pt-2">
-      <h2 className="px-1 text-sm font-bold tracking-widest text-ink uppercase">Tržnica</h2>
-      <div className="trznica-tabovi">
-        <ScreenTabs tabs={TABS} value={sekcija} onChange={setSekcija} />
-      </div>
       <div className="trznica-tijelo min-h-0 flex-1 overflow-y-auto pb-2">
-      <ArtTraka src={ART.trznica} label="Tržnica" />
+      {sekcija === "karavana" && (otkljucan ? <KaravanaIgra /> : <SideGateKartica naslov="Karavana" />)}
+      {sekcija === "uzivo" && (otkljucan ? <LivePohod /> : <SideGateKartica naslov="Uživo" />)}
 
       {sekcija === "alati" && <UpgradesScreen embedded />}
 
@@ -107,8 +110,9 @@ export function ShopScreen() {
                     playSfx("button");
                     setMnoz(n);
                   }}
+                  aria-pressed={mnoz === n}
                   className={cn(
-                    "min-h-11 min-w-11 rounded-full px-2.5 text-[11px] font-bold tracking-wide",
+                    "g179-cip min-h-11 min-w-11 rounded-full px-2.5 text-[11px] font-bold tracking-wide",
                     mnoz === n ? "bg-gold text-void" : "border border-line bg-panel-2 text-ink",
                   )}
                 >
@@ -134,7 +138,7 @@ export function ShopScreen() {
             const trendRec = tr === 1 ? "Cijena raste" : tr === -1 ? "Cijena pada" : "Cijena miruje";
             return (
               <article key={r.id} className="trznica-red">
-                <IconBadge src={r.art} size="lg" />
+                <IconBadge src={r.art} size="md" className="trznica-iko" />
                 <div className="min-w-0">
                   <h3 className="text-[13px] font-bold text-ink">{r.n}</h3>
                   <p className="text-[11px] font-semibold text-ink">Imaš {ima}</p>
@@ -193,7 +197,7 @@ export function ShopScreen() {
               </article>
             );
           })}
-          <article className="mb-3.5 rounded-2xl border border-line bg-panel p-4 shadow-panel" data-testid="kupi-metke">
+          <article className="mb-3.5 rounded-2xl border border-line bg-panel p-4 shadow-panel" data-testid="kupi-metke" data-g179="red">
             <h3 className="text-base font-bold text-ink">Metci</h3>
             <p className="mt-0.5 text-[11px] font-semibold text-dim">imaš {metci} · 6 za 12 zlata</p>
             <button
@@ -313,6 +317,16 @@ export function ShopScreen() {
           </div>
         </>
       )}
+      </div>
+      <div className="trznica-tabovi trznica-tabovi-dolje shrink-0">
+        <ScreenTabs
+          tabs={TABS}
+          value={sekcija}
+          onChange={setSekcija}
+          dolje
+          locked={otkljucan ? undefined : { karavana: true, uzivo: true }}
+          onLocked={() => setPoruka(SIDE_GATE_REC)}
+        />
       </div>
     </div>
   );
