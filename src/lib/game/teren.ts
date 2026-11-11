@@ -74,14 +74,20 @@ export const ZAKRPE = [
 export function potokTocke() {
   const korali = PARCELE.find((p) => p.id === "korali");
   const farma = PARCELE.find((p) => p.id === "farma");
-  const mlin = PARCELE.find((p) => p.id === "mlin");
-  if (!korali || !farma || !mlin) return "";
+  if (!korali || !farma) return "";
+  // 0.9.181: zgrada mlina je na obali između cisterne i rudnika. Gornji tok
+  // ostaje sidren na staro mjesto (farma +58,+98 = mlin iz 0.9.180), da se
+  // jezero ne povuče za zgradom.
+  const mlinObala = { x: farma.x + 58, y: farma.y + 98 };
   const sidro = [
     { x: korali.x - 86, y: korali.y + 30 },
+    // dva prijelaza puteljka lova (mostovi): zavoj južno od staze, pa sjeverno, pa natrag u jezero
+    { x: korali.x - 68, y: korali.y + 92 },
+    { x: korali.x - 140, y: korali.y - 16 },
     { x: (korali.x + farma.x) / 2 - 22, y: (korali.y + farma.y) / 2 + 8 },
     { x: farma.x + 34, y: farma.y + 16 },
-    { x: (farma.x + mlin.x) / 2 + 6, y: (farma.y + mlin.y) / 2 + 18 },
-    { x: mlin.x - 40, y: mlin.y + 16 },
+    { x: (farma.x + mlinObala.x) / 2 + 6, y: (farma.y + mlinObala.y) / 2 + 18 },
+    { x: mlinObala.x - 40, y: mlinObala.y + 16 },
   ];
   const pts: string[] = [];
   const n = 18;
@@ -172,73 +178,49 @@ function nastavakPotoka(kraj: string): string[] {
 export const POTOK = potokTocke();
 
 /**
- * 0.9.180: obala od ispusta (korali) prema toru, pa zavoj u malu uvalu.
- * Potok i lokva se ne diraju — ovo je nastavak obale, ne novi tok kroz rudnik.
- * Zaljev ide južno od prolaza, izvan spritea zgrada (lovački dom ostaje na suhom).
+ * 0.9.181: puna uvala. Zapadni rub je sam potok (spoj s jezerom), istočni ide
+ * do pašnjaka kod tora, sjeverni je južno od farme i lovačkog doma.
+ * Farma, tor, obor, cisterna, rudnik i kamenolom ostaju na suhom.
  */
-function izvanSpritea(x: number, y: number): Tocka {
-  const skala = 1.08;
-  const rub = 28;
-  for (let k = 0; k < 14; k++) {
-    let gurnut = false;
-    for (const p of PARCELE) {
-      const s = velicinaSpritea(p.id, true);
-      const hw = (s.w * skala) / 2 + rub;
-      const hh = (s.h * skala) / 2 + rub;
-      const l = p.x - hw;
-      const r = p.x + hw;
-      const t = p.y - hh;
-      const b = p.y + hh;
-      if (x < l || x > r || y < t || y > b) continue;
-      const dl = x - l;
-      const dr = r - x;
-      const dt = y - t;
-      const db = b - y;
-      const m = Math.min(dl, dr, dt, db);
-      if (m === db) y = b + 2;
-      else if (m === dl) x = l - 2;
-      else if (m === dr) x = r + 2;
-      else y = t - 2;
-      gurnut = true;
-    }
-    if (!gurnut) break;
+function unutar(x: number, y: number, poly: readonly Tocka[]) {
+  let in_ = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[i]!;
+    const b = poly[j]!;
+    if (a.y > y !== b.y > y && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y || 1e-9) + a.x) in_ = !in_;
   }
-  return { x, y };
+  return in_;
+}
+
+let uvalaCache: Tocka[] | null = null;
+export function uvalaPoligon(): Tocka[] {
+  if (uvalaCache) return uvalaCache;
+  const farma = PARCELE.find((p) => p.id === "farma");
+  const lov = PARCELE.find((p) => p.id === "lov");
+  const tor = PARCELE.find((p) => p.id === "tor");
+  if (!farma || !lov || !tor) return (uvalaCache = []);
+  const lovS = velicinaSpritea("lov", true);
+  const lovJug = lov.y + Math.round((lovS.h * 1.08) / 2) + 42;
+  const istok = tor.x - 22 - 172 + 14;
+  const zapad = tockeOd(POTOK).filter((p) => p.y >= farma.y + 72 && p.y <= SVIJET.h + 55 && p.x < istok - 40);
+  if (zapad.length < 4) return (uvalaCache = []);
+  const prvi = zapad[0]!;
+  const zadnji = zapad[zapad.length - 1]!;
+  const sjever: Tocka[] = [
+    { x: Math.round(prvi.x + 78), y: Math.round(prvi.y + 16) },
+    { x: Math.round(farma.x + 210), y: Math.round(farma.y + 155) },
+    { x: Math.round(lov.x - 90), y: lovJug },
+    { x: Math.round(istok), y: Math.round(lovJug + 55) },
+    { x: Math.round(istok - 10), y: SVIJET.h + 16 },
+    { x: Math.round((zadnji.x + istok) / 2), y: SVIJET.h + 36 },
+  ];
+  return (uvalaCache = [prvi, ...sjever, ...[...zapad].reverse()]);
 }
 
 export function uvalaTocke(): string {
-  const korali = PARCELE.find((p) => p.id === "korali");
-  const tor = PARCELE.find((p) => p.id === "tor");
-  if (!korali || !tor) return "";
-  const sidra: Tocka[] = [
-    { x: korali.x - 108, y: korali.y + 64 },
-    { x: korali.x - 24, y: korali.y + 228 },
-    { x: korali.x * 0.42 + tor.x * 0.58, y: Math.max(korali.y, tor.y) + 236 },
-    { x: tor.x - 214, y: tor.y + 214 },
-    { x: tor.x - 36, y: tor.y + 176 },
-    { x: tor.x - 148, y: tor.y + 276 },
-  ];
-  const out: string[] = [];
-  const n = 36;
-  const cr = (q0: number, q1: number, q2: number, q3: number, u: number) =>
-    0.5 * (2 * q1 + (-q0 + q2) * u + (2 * q0 - 5 * q1 + 4 * q2 - q3) * u * u + (-q0 + 3 * q1 - 3 * q2 + q3) * u * u * u);
-  for (let i = 0; i <= n; i++) {
-    const t = i / n;
-    const seg = t * (sidra.length - 1);
-    const a = Math.min(sidra.length - 2, Math.floor(seg));
-    const u = seg - a;
-    const p0 = sidra[Math.max(0, a - 1)]!;
-    const p1 = sidra[a]!;
-    const p2 = sidra[a + 1]!;
-    const p3 = sidra[Math.min(sidra.length - 1, a + 2)]!;
-    let x = cr(p0.x, p1.x, p2.x, p3.x, u);
-    let y = cr(p0.y, p1.y, p2.y, p3.y, u);
-    const van = izvanSpritea(x, y);
-    x = van.x;
-    y = van.y;
-    out.push(`${Math.round(x)},${Math.round(y)}`);
-  }
-  return out.join(" ");
+  return uvalaPoligon()
+    .map((p) => `${Math.round(p.x)},${Math.round(p.y)}`)
+    .join(" ");
 }
 
 export const UVALA = uvalaTocke();
@@ -253,8 +235,10 @@ function linijeVode(): Tocka[][] {
   return vodaLin;
 }
 
-/** 0.9.175: udaljenost do osi potoka; 0.9.180 i do uvale (ukrasi i grla ne stoje u vodi). */
+/** Udaljenost do vode. 0 unutar pune uvale; inače do osi potoka ili ruba uvale. */
 export function doPotoka(x: number, y: number) {
+  const poly = uvalaPoligon();
+  if (poly.length >= 3 && unutar(x, y, poly)) return 0;
   let d = Infinity;
   for (const lin of linijeVode()) {
     for (let i = 1; i < lin.length; i++) {
@@ -503,8 +487,9 @@ export function drvoredFarma() {
   const out: { x: number; y: number; tip: number; sc: number }[] = [];
   if (farma) {
     for (let i = 0; i < 3; i++) {
-      const x = farma.x + (i - 1) * 48 + (i % 2 === 0 ? 7 : -9);
-      const y = farma.y + 74 + (i % 2) * 6;
+      // 0.9.181: drvored s južne strane farme pao je u uvalu — stoji na suhom, istočno od kuće.
+      const x = farma.x + 86 + i * 32;
+      const y = farma.y + 6 + (i % 2) * 12;
       if (PARCELE.some((p) => uRomu(x, y, p))) continue;
       if (doPotoka(x, y) < 28) continue;
       out.push({ x, y, tip: i % 2, sc: 0.82 + (i % 2) * 0.16 });

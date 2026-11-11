@@ -3645,3 +3645,34 @@ html.gui-179 .slot-fx-host .slot-zavrti:disabled {
 .ziva-izo .izo-potok.is-uvala.is-rub { stroke-width: 18px; }
 /* ══ kraj 0.9.180 ══ */
 
+/* ══ 0.9.181
+   Pošta desno (isti kut kao Smanji) i puna uvala.
+   Nije u bloku 0.9.180 — taj sloj ostaje zatvoren. ══ */
+
+/* (a) Pošta i Smanji dijele desni kut; kartica raste prema dolje, gumb ne skače */
+.kauba-skrol > .posta-sredina {
+  top: 14%;
+  transform: translate(-50%, 0);
+}
+.posta-ikona {
+  position: static !important;
+  left: auto !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  margin-left: auto;
+}
+
+/* (c) puna uvala — ispunjeni zaljev spojen s potokom, ne samo crta */
+.ziva-izo .izo-uvala-tijelo {
+  fill: url(#izo-voda-tk);
+  stroke: #d7efe433;
+  stroke-width: 2px;
+  stroke-linejoin: round;
+}
+.ziva-izo .izo-potok.is-obala.is-uvala {
+  fill: none;
+  stroke-linejoin: round;
+}
+/* ══ kraj 0.9.181 ══ */
+

@@ -355,10 +355,9 @@ export const KaubaCesta = memo(function KaubaCesta({
             <polyline className="izo-potok is-dno" points={POTOK} />
             {UVALA ? (
               <>
-                <polyline className="izo-potok is-obala is-uvala" points={UVALA} />
-                <polyline className="izo-potok is-rub is-uvala" points={UVALA} />
+                <polygon className="izo-uvala-tijelo" points={UVALA} />
+                <polygon className="izo-potok is-obala is-uvala" points={UVALA} />
                 <polyline className="izo-potok is-uvala" points={UVALA} stroke="url(#izo-voda-tk)" />
-                <polyline className="izo-potok is-dno is-uvala" points={UVALA} />
               </>
             ) : null}
             {VODA.pjena.map((p, i) => (

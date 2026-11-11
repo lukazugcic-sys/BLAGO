@@ -30,7 +30,8 @@ const sijece = (a, b) => a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b;
 
 test("r180: sloj je zadnji i pokriva krov, ZAVRTI, poštu, zum i uvalu", () => {
   assert.ok(start > 0 && end > start);
-  assert.equal(css.slice(end + "/* ══ kraj 0.9.180 ══ */".length).trim(), "");
+  const poslije = css.slice(end + "/* ══ kraj 0.9.180 ══ */".length).trim();
+  assert.ok(poslije === "" || poslije.startsWith("/* ══ 0.9.181"), "iza 0.9.180 smije samo sloj 0.9.181");
   assert.match(blok, /html\[data-skin\] \.game-shell\[data-tab="automat"\][\s\S]*background-image: none/);
   assert.match(blok, /\.slot-zavrti[\s\S]*color-mix\(in oklab, #c47a3a 46%, transparent\)/);
   assert.match(blok, /\.posta-sredina[\s\S]*transform: translate\(-50%, -54%\)/);

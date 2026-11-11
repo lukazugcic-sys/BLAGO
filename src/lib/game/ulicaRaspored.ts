@@ -90,7 +90,8 @@ const NASELJE: { id: string; col: number; row: number; strana: Strana }[] = [
   // 0.9.180: lovački dom uz prolaz tor–ispust, izvan stupova obora i izvan tvornice.
   { id: "lov", col: 6.88, row: 4.24, strana: "d" },
   { id: "farma", col: 4.25, row: 5, strana: "d" },
-  { id: "mlin", col: 5.4, row: 5.6, strana: "d" },
+  // 0.9.181: mlin na obali između cisterne (4.1, 6.2) i rudnika (6.05, 8.55).
+  { id: "mlin", col: 4.95, row: 7.42, strana: "d" },
   { id: "cisterna", col: 4.1, row: 6.2, strana: "d" },
   // 0.9.180: kamenolom zapadno od rudnika, na suhom. Cesta ide do njega (redDo).
   { id: "kamenolom", col: 5.3, row: 9.2, strana: "d" },
@@ -124,9 +125,9 @@ const DEKOR_MREZA: { tip: DekorKom["tip"]; col: number; row: number; sc: number 
   { tip: "kaktus", col: 7.4, row: 1.1, sc: 0.95 },
   // 0.9.180: uz novi kamenolom (zapadno od rudnika), ne u vodi.
   { tip: "kaktus", col: 4.55, row: 9.55, sc: 0.85 },
-  // 0.9.180: kaktus uz lovački dom, izvan spritea i vode.
-  { tip: "kaktus", col: 7, row: 6, sc: 0.9 },
-  { tip: "kaktus", col: 7.85, row: 6.2, sc: 0.88 },
+  // 0.9.181: kaktusi iz uvale na suho (ranč i istočni rub), ne u vodi.
+  { tip: "kaktus", col: 4, row: 2.75, sc: 0.9 },
+  { tip: "kaktus", col: 5.25, row: -0.5, sc: 0.88 },
   { tip: "bacva", col: 1.82, row: 0.38, sc: 0.7 },
   { tip: "bacva", col: 3.92, row: 4.9, sc: 0.7 },
   { tip: "bacva", col: 2.12, row: 7.7, sc: 0.7 },

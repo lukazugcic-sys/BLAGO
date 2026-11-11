@@ -370,20 +370,20 @@ export function VillageScreen({ naTab, aktivan = true }) {
 					},
 					children: /* @__PURE__ */ jsx(IkonaG, { ikona: MapIkona, rijec: "KARTA" })
 				}),
-				dogadaj && !dio && !almanah && !sakrijKarticu && (postaMala ? /* @__PURE__ */ jsx("button", {
-					type: "button",
-					className: "posta-ikona",
-					"data-lock-pan": true,
-					onPointerUp: (e) => {
-						e.preventDefault();
-						e.stopPropagation();
-						setPostaMala(false);
-					},
-					children: "Pošta"
-				}) : /* @__PURE__ */ jsxs("div", {
+				dogadaj && !dio && !almanah && !sakrijKarticu && /* @__PURE__ */ jsxs("div", {
 					className: "posta-sredina pointer-events-none",
 					children: [
-						/* @__PURE__ */ jsx("button", {
+						postaMala ? /* @__PURE__ */ jsx("button", {
+							type: "button",
+							className: "posta-ikona pointer-events-auto",
+							"data-lock-pan": true,
+							onPointerUp: (e) => {
+								e.preventDefault();
+								e.stopPropagation();
+								setPostaMala(false);
+							},
+							children: "Pošta"
+						}) : /* @__PURE__ */ jsx("button", {
 							type: "button",
 							className: "posta-smanji pointer-events-auto",
 							"data-lock-pan": true,
@@ -394,7 +394,7 @@ export function VillageScreen({ naTab, aktivan = true }) {
 							},
 							children: "Smanji"
 						}),
-						/* @__PURE__ */ jsx(EventKartica, {
+						!postaMala && /* @__PURE__ */ jsx(EventKartica, {
 							className: "pointer-events-auto",
 							d: dogadaj,
 							oznaka: dogadaj.tip === "stranac" ? "nalog-kauba" : void 0,
@@ -404,7 +404,7 @@ export function VillageScreen({ naTab, aktivan = true }) {
 							}
 						})
 					]
-				})),
+				}),
 				dio && /* @__PURE__ */ jsx(KaubaDio, {
 					id: dio,
 					rec: jeKaubaUsko(dio) ? HUB_REC[dio] : dio === "selo" ? recTrga(doba, mood.id) : dio === "oklop" ? "Štitovi i oklop. Drži kaubu." : dio === "ruke" ? "" : tokNaslov(dio),

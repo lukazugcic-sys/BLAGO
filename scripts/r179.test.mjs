@@ -135,10 +135,10 @@ test("r179: samo izgled — ekonomija, cijene i save se ne spominju; reduced-mot
   for (const t of ['rijec="BONUS"', 'rijec="TURBO"', 'rijec: "KARTA"']) assert.ok(!/\d\s?g\b/.test(t));
 });
 
-test("r179: verzija 0.9.180-beta / code 220", () => {
-  assert.match(read("src/lib/game/version.ts"), /0\.9\.180-beta/);
+test("r179: verzija 0.9.181-beta / code 221", () => {
+  assert.match(read("src/lib/game/version.ts"), /0\.9\.181-beta/);
   const g = read("android/app/build.gradle");
-  assert.ok(Number(g.match(/versionCode (\d+)/)[1]) >= 220);
-  assert.match(g, /versionName "0\.9\.180-beta"/);
+  assert.ok(Number(g.match(/versionCode (\d+)/)[1]) >= 221);
+  assert.match(g, /versionName "0\.9\.181-beta"/);
   assert.match(g, /applicationId "hr\.blago\.game"/);
 });

@@ -23,6 +23,7 @@ import {
   SIPAK,
   STAZA,
   UZCESTU,
+  doPotoka,
   tockeOd,
 } from "./teren";
 import { OBZOR, RASUTE, izvanObora } from "./obzorTocke";
@@ -196,6 +197,8 @@ export function slobodnoZaGrlo(x: number, y: number) {
     if (blizuSeg(t, z.putevi, RAZMAK_PUT)) return false;
     if (blizuSeg(t, z.pjesine, RAZMAK_PJESINA)) return false;
     if (blizuSeg(t, z.potok, RAZMAK_VODA)) return false;
+    // 0.9.181: puna uvala (ne samo os potoka) — grlo ne stoji u zaljevu
+    if (doPotoka(t.x, t.y) < RAZMAK_VODA) return false;
     if (LOKVA && ((t.x - LOKVA.x) / (28 + 6)) ** 2 + ((t.y - LOKVA.y) / (12 + 5)) ** 2 < 1) return false;
   }
   return true;
@@ -286,15 +289,15 @@ export function ogradaTora(): Ograda {
 
 /** 0.9.175: konji pasu po cijelom ranču i farmi (zgrade tih naselja), južno od glavne ceste. */
 const RANC_FARMA = ["pilana", "kovacnica", "barutana", "staja", "tvornica", "korali", "tor", "lov", "farma", "mlin", "cisterna"] as const;
-/** Najveća udaljenost pašnjaka od zgrade ranča/farme. */
-const DOSEG_PASE = 150;
-/** 0.9.176: rub pašnjaka (dalje od zgrade) za velika stada, prije zadnje rezerve. */
-const DOSEG_PASE_SIRE = 230;
+/** 0.9.181: pašnjak dalje od zgrade, skupine rjeđe — konji ne stoje zbijeni. */
+const DOSEG_PASE = 200;
+/** Rub pašnjaka (dalje od zgrade) za velika stada, prije zadnje rezerve. */
+const DOSEG_PASE_SIRE = 300;
 /** Razmak središta skupina i konja unutar skupine / između svih konja. */
-const RAZMAK_SKUPINA = 66;
-const RAZMAK_U_SKUPINI = 22;
-const RAZMAK_KONJA = 23;
-const RAZMAK_VISKA = 30;
+const RAZMAK_SKUPINA = 86;
+const RAZMAK_U_SKUPINI = 28;
+const RAZMAK_KONJA = 27;
+const RAZMAK_VISKA = 38;
 const MAX_SKUPINA = 30;
 
 export type Skupina = { x: number; y: number; mjesta: Tocka[] };
@@ -384,8 +387,15 @@ export function bazeni(): Map<Vrsta, Tocka[]> {
       if (juzno && naj <= DOSEG_PASE) pasnjak.push({ x, y, h });
       else if (juzno && naj <= DOSEG_PASE_SIRE) rubPasnjaka.push({ x, y, d: naj });
       else if (dO + 40 < dT) goveda.push({ x, y, d: 10000 + dO });
-      else if (Math.min(dO, dT) <= 900) dalje.push({ x, y, d: dT });
+      else dalje.push({ x, y, d: dT });
     }
+  }
+  // 0.9.181: uvala je uzela južne ćelije. Višak goveda ide na suho daleko od konja,
+  // ne u zaljev; prvih 90 konja i dalje puni pašnjak prije ovog repa.
+  dalje.sort((a, b) => a.d - b.d);
+  while (goveda.length < 220 && dalje.length > 80) {
+    const q = dalje.pop()!;
+    goveda.push({ x: q.x, y: q.y, d: 30000 + q.d });
   }
   // središta skupina: ćelija s barem 5 susjeda na pašnjaku; prva najbliža trokutu staja–ispust–farma,
   // svaka sljedeća najudaljenija od već odabranih (ravnomjerno po cijelom pašnjaku)
