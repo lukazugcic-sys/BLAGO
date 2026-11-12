@@ -1,6 +1,7 @@
 {
-  "version": "0.9.161-beta",
-  "files": 693,
-  "bytes": 35166546,
-  "builtAt": "2026-11-07T15:07:01Z"
+  "version": "0.9.181-beta",
+  "versionCode": 221,
+  "repo": "https://github.com/lukazugcic-sys/BLAGO",
+  "release": "https://github.com/lukazugcic-sys/BLAGO/releases/tag/v0.9.181-beta",
+  "builtAt": "2026-11-12T22:47:26Z"
 }

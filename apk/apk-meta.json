@@ -1,9 +1,9 @@
 {
-  "version": "0.9.178-beta",
-  "versionCode": 218,
-  "bytes": 39638403,
-  "size": 39638403,
-  "builtAt": "2026-11-10T19:55:38Z",
-  "sha256": "5bf05a613c819f2f12b7bb7cb97dd3e0fa02d9fbdbe884d36e51e9e05096c643",
-  "url": "/apk/BLAGO-0.9.178-beta.apk"
+  "version": "0.9.181-beta",
+  "versionCode": 221,
+  "bytes": 39409480,
+  "size": 39409480,
+  "builtAt": "2026-11-12T22:47:26Z",
+  "sha256": "590da2df86168974f450c18d4c273eeeb5d7ea9fa85ebdccef1d86574eb787d9",
+  "url": "/apk/BLAGO-0.9.181-beta.apk"
 }
